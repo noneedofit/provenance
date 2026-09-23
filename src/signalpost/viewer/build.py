@@ -56,7 +56,7 @@ def build_site(envelopes_path: Path, out_dir: Path, state_dir: Path | None = Non
     rows = []
     for env in sorted(envelopes, key=lambda e: e.get("legal_name") or e["organisation_number"]):
         org = env["organisation_number"]
-        row = build_row(env, f"{org}.html")
+        row = build_row(env, f"companies/{org}.html")
         rows.append(row)
         (out_dir / "companies" / f"{org}.html").write_text(render_company_page(env), encoding="utf-8")
         (out_dir / "data" / "companies" / f"{org}.json").write_text(
