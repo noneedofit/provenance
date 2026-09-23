@@ -174,3 +174,68 @@ def test_parked_page_is_rejected():
     verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"))
     assert verdict.status == "rejected"
     assert "parked" in verdict.note
+
+
+# --- assess(): hijacked registry-declared domain (GAASA AS trap) ------------------------------------
+
+
+def test_registry_declared_domain_hijacked_by_casino_content_is_rejected():
+    facts = {**REGISTRY_FACTS, "name": "GAASA AS", "street": "Gaasaveien 4", "postcode": "1234"}
+    html = "<html><body>Best online casino! Free spins, no deposit bonus, jackpot slots - play now and win big!</body></html>"
+    p = page("Best online casino free spins jackpot slots", html=html, url="https://gaasa.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="gaasa.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "rejected"
+    assert verdict.note == "registry website appears hijacked"
+
+
+def test_registry_declared_hijacked_domain_with_real_corroboration_is_not_blindly_exact():
+    # Even if a hijacked-looking page happens to contain some matching text, a single corroborating
+    # signal must stay ambiguous, never jump straight to exact via the (now-disabled) registry_declared path.
+    facts = {**REGISTRY_FACTS, "name": "GAASA AS", "street": "Gaasaveien 4", "postcode": "1234"}
+    html = "<html><body>Online casino jackpot! Gaasaveien 4 1234 (old cached address). Free spins bonus.</body></html>"
+    p = page("casino jackpot", html=html, url="https://gaasa.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="gaasa.no", source="registry_website"), website_org_count=1)
+    assert verdict.status != "exact"
+
+
+# --- assess(): group sites sharing one corporate domain (Bilfinger/Sonat/Xledger/Avarn pattern) -----
+
+
+def test_shared_group_domain_without_our_org_number_is_related_not_exact():
+    facts = {**REGISTRY_FACTS, "name": "AVARN SECURITY AS"}
+    html = "<html><body>Avarn Security operates across the Nordics. Part of the Avarn Group.</body></html>"
+    p = page("Avarn Security Nordics group", html=html, url="https://www.avarn.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="avarn.no", source="registry_website"), website_org_count=6)
+    assert verdict.status == "related"
+    assert verdict.relationship is not None
+
+
+def test_shared_group_domain_promoted_to_exact_only_by_org_number_match():
+    facts = {**REGISTRY_FACTS, "name": "AVARN SECURITY AS"}
+    html = f"<html><body>Avarn Security AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}.</body></html>"
+    p = page("Avarn Security AS org number", html=html, url="https://www.avarn.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="avarn.no", source="registry_website"), website_org_count=6)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"
+
+
+# --- assess(): namesake companies with different org numbers (two "Øen Kuldeteknikk AS") ------------
+
+
+def test_namesake_company_without_org_number_match_does_not_resolve_by_name_alone():
+    # Two distinct legal entities share the exact registered name; only the address differs. Assessing
+    # against the WRONG org number's facts must not reach `exact` off a bare name/title match.
+    site_text = "Oen Kuldeteknikk AS. Kontakt oss i Bergen."
+    p = page(site_text, url="https://oenkuldeteknikk.no/")
+    facts_wrong_entity = {**REGISTRY_FACTS, "name": "Øen Kuldeteknikk AS", "street": "Annenveien 9", "postcode": "9999", "role_holders": []}
+    verdict = assess(OUR_ORG, [p], facts_wrong_entity, cand(domain="oenkuldeteknikk.no", source="name_guess"))
+    assert verdict.status != "exact"
+
+
+def test_namesake_company_resolved_by_org_number_match():
+    site_text = f"Oen Kuldeteknikk AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. Kontakt oss i Bergen."
+    p = page(site_text, url="https://oenkuldeteknikk.no/")
+    facts = {**REGISTRY_FACTS, "name": "Øen Kuldeteknikk AS"}
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="oenkuldeteknikk.no", source="name_guess"))
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"

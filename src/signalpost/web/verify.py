@@ -9,6 +9,9 @@ Pure functions, no network. BUILD_SPEC.md "Identity rules" is the contract this 
   relationship (parent/franchise/brand/service_provider).
 - A registry-declared domain used as `website` by >=3 organisations is a shared/parent site -> `related`,
   never `exact`.
+- A registry-declared domain whose content shows no link to the company (casino/gambling/adult/pharma
+  spam, or a generic "domain for sale" page) is treated as hijacked or parked -> `rejected`, never `exact`
+  -- registry_declared is not decisive on its own for a topically unrelated page.
 
 Precision over recall: when unsure, this module returns `ambiguous` or `rejected`, never `exact`.
 """
@@ -105,6 +108,22 @@ def _normalize(text: str) -> str:
 def is_parked_page(html: str, text: str) -> bool:
     haystack = _normalize((html or "")[:5000] + " " + (text or "")[:2000])
     return any(marker in haystack for marker in PARKED_MARKERS)
+
+
+# A registered domain can lapse and be re-registered by an unrelated party (casino/gambling, adult,
+# pharma-spam affiliate content is the common case for expired Norwegian small-business domains). A
+# registry-declared `hjemmeside` pointing at content like this must never be trusted as decisive.
+HIJACK_MARKERS = (
+    "casino", "jackpot", "slot machine", "free spins", "no deposit bonus", "online betting",
+    "sportsbook", "poker room", "bet now", "play now and win", "best online casino",
+    "viagra", "cialis", "online pharmacy", "cheap pharmacy", "buy pills online",
+    "adult content", "xxx video", "escort service", "webcam girls",
+)
+
+
+def is_hijacked_content(text: str) -> bool:
+    haystack = _normalize(text or "")
+    return any(marker in haystack for marker in HIJACK_MARKERS)
 
 
 _DIGITS_8_RE = re.compile(r"(?<!\d)(\d[\d\s]{6,10}\d)(?!\d)")
@@ -231,9 +250,15 @@ def assess(
     decisive_kinds = {"org_number_on_source", "jsonld_org_number", "wikidata", "nav_employer_homepage"}
     has_decisive = any(s.kind in decisive_kinds for s in signals)
 
-    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared ---
+    # A domain can be re-registered after the company let it lapse and now serves unrelated spam
+    # (casino/adult/pharma affiliate content is the common pattern). Content topically unrelated to the
+    # company overrides a bare registry_declared / parked-style trust — never decisive on its own.
+    hijacked = any(is_hijacked_content(_page_all_text(p)) for p in live_pages)
+
+    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared,
+    # and not showing content topically unrelated to the company (hijacked/re-registered domain) ---
     registry_declared_ok = False
-    if candidate.source == "registry_website" and not conflicts:
+    if candidate.source == "registry_website" and not conflicts and not hijacked:
         if website_org_count is not None and website_org_count >= 3:
             registry_declared_ok = False
         else:
@@ -309,5 +334,8 @@ def assess(
 
     if len(distinct_corroborating) == 1:
         return Verdict("ambiguous", None, None, signals=signals, conflicts=[], note="only one corroborating signal found")
+
+    if candidate.source == "registry_website" and hijacked:
+        return Verdict("rejected", None, None, signals=signals, conflicts=[], note="registry website appears hijacked")
 
     return Verdict("rejected", None, None, signals=signals, conflicts=[], note="no identity evidence found on site")
