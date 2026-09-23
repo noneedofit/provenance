@@ -10,3 +10,7 @@ cache/
 .env
 .claude/
 .DS_Store
+# small committed test fixtures are exempt from the bulk-data ignores above
+!tests/fixtures/**/*.csv
+!tests/fixtures/**/*.csv.gz
+!tests/fixtures/**/*.jsonl.gz
