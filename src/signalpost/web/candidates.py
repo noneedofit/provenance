@@ -101,6 +101,7 @@ def registry_facts(ctx: Any) -> dict[str, Any]:
         "email": bulk.get("epostadresse"),
         "email_domain": (bulk.get("epostadresse") or "").split("@")[-1] if bulk.get("epostadresse") else None,
         "website": bulk.get("hjemmeside"),
+        "nace": bulk.get("naeringskode1.kode"),
         "role_holders": [],
         "subunits": [],
     }

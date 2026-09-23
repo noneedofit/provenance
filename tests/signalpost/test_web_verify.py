@@ -145,6 +145,44 @@ def test_registry_declared_exact_when_live_unconflicted_and_not_shared():
     assert verdict.identity_basis == "registry_declared"
 
 
+# --- assess(): parent/umbrella registry-declared site with no org-specific corroboration -----------
+
+
+def test_registry_declared_parent_umbrella_site_without_corroboration_is_related_not_exact():
+    # samfundet.no for Samfundets Stotter AS / hav.no for HAV Chartering AS pattern: the registry
+    # hjemmeside is live and shows no conflicting org number, but the page reads as a shared group site
+    # ("Vart konsern eier flere selskaper...") and carries zero signal tying it to THIS specific entity
+    # (no matching address/phone/email/role holder/exact legal name). Must never be exact.
+    facts = {**REGISTRY_FACTS, "name": "SAMFUNDETS STOTTER AS", "street": "", "postcode": "", "phones": [], "email": None, "role_holders": []}
+    html = "<html><body>Velkommen til Samfundet. Vart konsern eier flere selskaper og driver flere av vare merkevarer.</body></html>"
+    p = page("Samfundet konsern", html=html, url="https://samfundet.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="samfundet.no", source="registry_website"), website_org_count=None)
+    assert verdict.status == "related"
+    assert verdict.relationship is not None
+
+
+def test_registry_declared_parent_umbrella_site_with_corroboration_can_still_be_exact():
+    # The same umbrella wording, but this time the page also carries our registered address -- one
+    # corroborating signal is enough to let the registry_declared decisive path through (the umbrella
+    # gate only blocks a *bare, unsupported* registry_declared claim).
+    facts = {**REGISTRY_FACTS, "name": "HAV CHARTERING AS", "street": "Kaigata 5", "postcode": "5003"}
+    html = "<html><body>HAV Chartering AS. Vart konsern eier flere selskaper. Kaigata 5, 5003 Bergen.</body></html>"
+    p = page("HAV Chartering konsern", html=html, url="https://hav.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="hav.no", source="registry_website"), website_org_count=None)
+    assert verdict.status == "exact"
+
+
+def test_registry_declared_subpage_with_our_org_number_on_shared_domain_is_exact():
+    # The valid case: a specific subpage of a shared/umbrella domain (DNT Nord-Trondelag on dnt.no)
+    # that shows OUR org number is exact, with that subpage URL preserved as the website.
+    facts = {**REGISTRY_FACTS, "name": "DNT NORD-TRONDELAG"}
+    html = f"<html><body>DNT Nord-Trondelag, en del av DNT-konsernet. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}.</body></html>"
+    p = page("DNT Nord-Trondelag", html=html, url="https://dnt.no/nord-trondelag")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="dnt.no", source="registry_website"), website_org_count=None)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"
+
+
 # --- assess(): corroborating signals -----------------------------------------------------------------
 
 
@@ -185,7 +223,7 @@ def test_registry_declared_domain_hijacked_by_casino_content_is_rejected():
     p = page("Best online casino free spins jackpot slots", html=html, url="https://gaasa.no/")
     verdict = assess(OUR_ORG, [p], facts, cand(domain="gaasa.no", source="registry_website"), website_org_count=1)
     assert verdict.status == "rejected"
-    assert verdict.note == "registry website appears hijacked"
+    assert verdict.note == "registry website appears hijacked or unrelated"
 
 
 def test_registry_declared_hijacked_domain_with_real_corroboration_is_not_blindly_exact():
@@ -239,3 +277,56 @@ def test_namesake_company_resolved_by_org_number_match():
     verdict = assess(OUR_ORG, [p], facts, cand(domain="oenkuldeteknikk.no", source="name_guess"))
     assert verdict.status == "exact"
     assert verdict.identity_basis == "org_number_on_source"
+
+
+# --- assess(): JOKER AS trap (sea-fishing company on Vaeroy vs joker.no the grocery chain) ----------
+
+
+def test_joker_franchise_domain_never_exact_without_our_org_number():
+    # JOKER AS (983043291) is a sea-fishing company; joker.no is the grocery chain's own corporate
+    # domain (blocklist.py FRANCHISE_CHAIN_DOMAINS). Even with the same brand word and a plausible
+    # corroborating address/name match, a name-guess landing here must never resolve to exact.
+    facts = {**REGISTRY_FACTS, "name": "JOKER AS", "street": "Kaiveien 3", "postcode": "8063", "city": "VAEROY"}
+    html = "<html><head><title>Joker</title></head><body>Joker dagligvare. Ukens tilbud i din matbutikk. Kaiveien 3 8063.</body></html>"
+    p = page("Joker dagligvare ukens tilbud", html=html, url="https://joker.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="joker.no", source="name_guess"))
+    assert verdict.status != "exact"
+
+
+def test_industry_mismatch_guard_blocks_corroboration_on_unlisted_namesake_domain():
+    # Same trap as JOKER AS, but on a domain that is NOT in the franchise/chain blocklist -- the
+    # topic/industry-mismatch guard (NACE division vs site content) must independently catch it. Our
+    # company is registered under NACE 03.11 (sea fishing); the guessed domain's content reads as a
+    # grocery retailer, and even carries two normally-decisive corroborating signals (address + legal
+    # name in title) inherited from a stale/incidental match.
+    facts = {
+        **REGISTRY_FACTS, "name": "BRIS AS", "street": "Kaiveien 3", "postcode": "8063",
+        "phones": ["12345678"], "nace": "03.11",
+    }
+    html = (
+        "<html><head><title>Bris AS</title></head><body>Bris AS - din lokale dagligvare og matbutikk. "
+        "Ukens tilbud denne uken. Velkommen til handlekurv og kjedebutikk. Kaiveien 3 8063. Ring 12345678."
+        "</body></html>"
+    )
+    p = page("Bris AS dagligvare matbutikk", html=html, url="https://bris.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="bris.no", source="name_guess"))
+    assert verdict.status != "exact"
+    assert verdict.status == "ambiguous"
+    assert "industry" in verdict.note.lower()
+
+
+def test_industry_mismatch_guard_does_not_block_same_industry_corroboration():
+    # Sanity check: the guard must not suppress a genuine match just because NACE is set -- a fishing
+    # company's own site, describing fishing, with 2 corroborating signals, is still exact.
+    facts = {
+        **REGISTRY_FACTS, "name": "BRIS AS", "street": "Kaiveien 3", "postcode": "8063",
+        "phones": ["12345678"], "nace": "03.11",
+    }
+    html = (
+        "<html><head><title>Bris AS</title></head><body>Bris AS driver fiskebat og fangst av fisk i "
+        "Lofoten. Kaiveien 3 8063. Ring 12345678.</body></html>"
+    )
+    p = page("Bris AS fiskebat", html=html, url="https://bris.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="bris.no", source="name_guess"))
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "corroborated"

@@ -127,6 +127,56 @@ def is_hijacked_content(text: str) -> bool:
     return any(marker in haystack for marker in HIJACK_MARKERS)
 
 
+# A name-derived guess can land on an unrelated, unaffiliated business that happens to share a common
+# word with our legal name -- the JOKER AS trap: JOKER AS (983043291) is a sea-fishing company on
+# Vaeroy (NACE division 03, fishing), while joker.no is the grocery chain (NACE division 47). The chain's
+# own corporate domain is separately gated via FRANCHISE_CHAIN_DOMAINS, but the same "common word, wrong
+# industry" trap can hit any *unlisted* domain a name-guess happens to resolve to. This maps a NACE
+# division to a small set of Norwegian keyword clusters and flags a site whose text strongly signals a
+# *different* cluster than our own division -- conservative (>=2 distinct keyword hits) so it only fires
+# on pages that clearly describe a different line of business, not on incidental word overlap.
+_NACE_INDUSTRY_CLUSTERS: dict[str, str] = {
+    "01": "agriculture", "02": "forestry", "03": "fishing",
+    "10": "food_production", "11": "beverages",
+    "41": "construction", "42": "construction", "43": "construction",
+    "45": "vehicle_trade", "46": "wholesale", "47": "grocery_retail",
+    "49": "transport", "50": "transport", "51": "transport", "52": "transport",
+    "55": "hospitality", "56": "restaurants",
+    "62": "software", "63": "software",
+    "64": "finance", "65": "finance", "66": "finance",
+    "68": "real_estate",
+    "84": "public_admin", "85": "education", "86": "healthcare", "87": "healthcare", "88": "healthcare",
+    "93": "sports_fitness",
+}
+
+_INDUSTRY_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "fishing": ("fiskebat", "fiskefartoy", "fiskerikvote", "fangst av fisk", "sjomat", "fiskekvote", "garnfiske", "trålfiske"),
+    "grocery_retail": ("dagligvare", "matbutikk", "supermarked", "kjedebutikk", "ukens tilbud", "handlekurv"),
+    "restaurants": ("bordbestilling restaurant", "restaurantmeny", "takeaway", "bestill mat na"),
+    "hospitality": ("hotellrom", "overnatting", "bestill rom", "ledige rom", "resepsjon hotell"),
+    "sports_fitness": ("treningssenter", "medlemskap trening", "gruppetimer", "personlig trener"),
+    "software": ("programvare", "saas platform", "api dokumentasjon", "skylosning"),
+    "finance": ("bankkonto", "laan og kreditt", "forsikringsvilkar", "sparekonto"),
+    "healthcare": ("legetime", "pasientjournal", "helsetjeneste", "fastlege"),
+}
+
+
+def industry_mismatch(nace_code: str | None, site_text: str) -> str | None:
+    """Return the mismatched industry cluster name if `site_text` strongly signals an industry different
+    from `nace_code`'s NACE division, else None. Unknown/missing NACE code -> never flags (no false guard)."""
+    our_cluster = _NACE_INDUSTRY_CLUSTERS.get(str(nace_code or "").strip()[:2])
+    if not our_cluster:
+        return None
+    haystack = _normalize(site_text)
+    for cluster, keywords in _INDUSTRY_KEYWORDS.items():
+        if cluster == our_cluster:
+            continue
+        hits = sum(1 for kw in keywords if _normalize(kw) in haystack)
+        if hits >= 2:
+            return cluster
+    return None
+
+
 _DIGITS_8_RE = re.compile(r"(?<!\d)(\d[\d\s]{6,10}\d)(?!\d)")
 
 
@@ -263,17 +313,6 @@ def assess(
     # (e.g. when assessing the chain's own headquarters entity against its own domain).
     is_chain_domain = is_franchise_chain_domain(candidate.domain)
 
-    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared,
-    # not a known franchise/chain domain, and not showing content topically unrelated to the company
-    # (hijacked/re-registered domain) ---
-    registry_declared_ok = False
-    if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
-        if website_org_count is not None and website_org_count >= 3:
-            registry_declared_ok = False
-        else:
-            registry_declared_ok = True
-            signals.append(Signal("registry_declared", "registry-listed hjemmeside is live and unconflicted", homepage.final_url, candidate.url))
-
     # --- corroborating signals (only meaningful when no conflict) ---
     if not conflicts:
         joined_text = "\n".join(_page_all_text(p) for p in live_pages)
@@ -310,6 +349,36 @@ def assess(
     corroborating = [s for s in signals if s.kind in corroborating_kinds]
     distinct_corroborating = {s.kind for s in corroborating}
 
+    # A parent/umbrella or franchise/chain page (group site, "our brands", "our stores", housing
+    # manager, franchise/chain wording) is exactly the "flagged as a franchise/parent site" carve-out in
+    # BUILD_SPEC.md's registry_declared rule (samfundet.no for Samfundets Stotter AS, hav.no for HAV
+    # Chartering AS, assemblin.com, bilfinger.com, ...): a registry hjemmeside pointing at one of these
+    # is decisive on its own ONLY when it also carries at least one independent corroborating signal
+    # specific to this org (address/phone/email/role holder/exact legal name) -- otherwise it is a
+    # generic shared site and the bare "live, not parked, unconflicted" fact is not enough.
+    umbrella_wording = any(
+        word in _normalize("\n".join(_page_all_text(p) for p in live_pages)) for word in (_FRANCHISE_WORDS + _PARENT_WORDS)
+    )
+
+    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared,
+    # not a known franchise/chain domain, not reading as a parent/umbrella site with zero org-specific
+    # corroboration, and not showing content topically unrelated to the company (hijacked/re-registered
+    # domain) ---
+    registry_declared_ok = False
+    if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
+        shared_domain = website_org_count is not None and website_org_count >= 3
+        unsupported_umbrella = umbrella_wording and not distinct_corroborating
+        if not shared_domain and not unsupported_umbrella:
+            registry_declared_ok = True
+            signals.append(Signal("registry_declared", "registry-listed hjemmeside is live and unconflicted", homepage.final_url, candidate.url))
+
+    # A page that reads as hijacked/re-registered spam must never reach `exact` off corroboration alone,
+    # even if a stale cached fragment of the old site's address happens to still be present.
+    mismatched_industry = None
+    if not has_decisive and not registry_declared_ok and not hijacked:
+        joined_text = "\n".join(_page_all_text(p) for p in live_pages)
+        mismatched_industry = industry_mismatch(registry_facts.get("nace"), joined_text)
+
     # --- verdict ---
     if conflicts:
         relationship = _infer_relationship(registry_facts.get("name") or "", "\n".join(_page_all_text(p) for p in live_pages))
@@ -338,13 +407,40 @@ def assess(
             note=f"registry hjemmeside is shared by {website_org_count} organisations; treated as a shared/parent site",
         )
 
+    if candidate.source == "registry_website" and not registry_declared_ok and umbrella_wording and not distinct_corroborating:
+        # Registry-declared, live, unconflicted, but the page reads as a parent/umbrella or franchise
+        # site (group/konsern/"our brands"/"our stores"/chain wording) and carries zero corroborating
+        # signal tying it to THIS org specifically -- e.g. samfundet.no, hav.no, assemblin.com,
+        # bilfinger.com. Never published as our own website; related at best.
+        relationship = _infer_relationship(registry_facts.get("name") or "", "\n".join(_page_all_text(p) for p in live_pages))
+        return Verdict(
+            "related", None, relationship, signals=signals, conflicts=[],
+            note=f"registry hjemmeside reads as a parent/umbrella site with no org-specific corroboration; treated as {relationship}",
+        )
+
     if len(distinct_corroborating) >= 2:
+        if hijacked:
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note="corroborating signals found but page reads as hijacked/re-registered; not trusted",
+            )
+        if mismatched_industry:
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note=(
+                    f"corroborating signals found but site content matches '{mismatched_industry}', not our "
+                    "registered industry; topic/industry mismatch guard for a name-derived guess"
+                ),
+            )
         return Verdict("exact", "corroborated", "exact", signals=signals, conflicts=[], note=">=2 independent corroborating signals, no conflict")
 
     if len(distinct_corroborating) == 1:
         return Verdict("ambiguous", None, None, signals=signals, conflicts=[], note="only one corroborating signal found")
 
     if candidate.source == "registry_website" and hijacked:
-        return Verdict("rejected", None, None, signals=signals, conflicts=[], note="registry website appears hijacked")
+        return Verdict(
+            "rejected", None, None, signals=signals, conflicts=[],
+            note="registry website appears hijacked or unrelated",
+        )
 
     return Verdict("rejected", None, None, signals=signals, conflicts=[], note="no identity evidence found on site")
