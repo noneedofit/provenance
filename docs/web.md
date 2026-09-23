@@ -12,6 +12,26 @@ independent corroborating signals and zero conflicts.
 
 ## Pipeline
 
+0. **`blocklist.py`** — two disjoint domain lists, consulted by both `candidates.py` and `verify.py`:
+   - `MARKETPLACE_BLOCKLIST` — directories, booking/scheduling platforms, marketplaces and generic
+     site-builder default hosts (`finn.no`, `gulesider.no`, `1881.no`, `proff.no`, `purehelp.no`,
+     `mittanbud.no`, `fixit.no`, `timma.no`, `ledigtime.no`, `bestille.no`, `facebook.com`,
+     `instagram.com`, `linktr.ee`, `wix.com`/`wixsite.com`, `weebly.com`, `squarespace.com`, …). Never a
+     candidate at all (`candidates._dedupe` drops them before any HTTP request), and never a source for a
+     derived email-domain candidate either. `registered_domain()` resolves a site-builder default
+     subdomain (`myshop.wixsite.com`) to its blocked apex (`wixsite.com`), not to the registrant's own
+     subdomain, so the gate can't be bypassed by the default hostname pattern.
+   - `FRANCHISE_CHAIN_DOMAINS` — national chain/franchisor corporate domains (`joker.no`, `coop.no`,
+     `rema.no`, `kiwi.no`, `meny.no`, `spar.no`, `extra.no`, `obs.no`, `europris.no`, `7-eleven.no`,
+     `narvesen.no`, `circlek.no`, `mcdonalds.no`, `burgerking.no`, `peppes.no`, `dominos.no`, `sats.no`,
+     `elixia.no`, `bestseller.com`, `thon.no`, `choice.no`, `scandichotels.no`, plus `obos.no`/`usbl.no`
+     housing-manager domains). Unlike the marketplace list, these ARE legitimate candidates (they might
+     genuinely be the chain's own HQ entity) — `verify.assess` is what refuses to let a franchisee's page
+     on one of these domains reach `exact` via `registry_declared` trust or corroboration (a "find your
+     store" page routinely carries the exact franchisee address/phone/name, which would otherwise satisfy
+     the normal >=2-signal rule). Only a literal match of *our* org number on the page can still reach
+     `exact` here.
+
 1. **`candidates.generate_candidates(ctx)`** — builds an ordered, domain-deduplicated candidate list from
    (in order): registry `hjemmeside`, Wikidata websites (`caches.wikidata.lookup`), NAV employer
    homepages for ads matching this org number (`caches.nav.ads_for`), the registry email domain (unless
@@ -37,9 +57,15 @@ independent corroborating signals and zero conflicts.
      numbers, etc.) are not misread. JSON-LD `vatID`/`taxID`/`identifier` fields are checked the same way.
    - **Decisive signals** (any one → `exact`): our org number on any fetched page or in JSON-LD; the
      candidate came from Wikidata (tied to our org number in the cache) or a NAV ad with our org number;
-     or a `registry_website` candidate that is live, not parked, shows no conflicting org number, and
-     whose domain is not used by >=3 organisations (`website_org_count`) — otherwise it is a shared/parent
-     site.
+     or a `registry_website` candidate that is live, not parked, shows no conflicting org number, whose
+     domain is not used by >=3 organisations (`website_org_count`), is not a known franchise/chain domain
+     (`blocklist.FRANCHISE_CHAIN_DOMAINS`), and — when the page reads as a parent/umbrella or franchise
+     site (group/konsern/"our brands"/"our stores"/chain wording) — carries at least one independent
+     corroborating signal tying it to *this* org specifically. A bare "live, not parked, unconflicted"
+     umbrella page with zero org-specific corroboration (samfundet.no for Samfundets Støtter AS, hav.no
+     for HAV Chartering AS, assemblin.com, bilfinger.com) is `related`, not `exact`; a *subpage* of a
+     shared domain that shows our org number (DNT Nord-Trøndelag on `dnt.no/nord-trondelag`) is still
+     `exact` via the org-number decisive path regardless of the umbrella wording elsewhere on the domain.
    - **Conflict**: a *different* valid org number shown on the site → never `exact`. Returns `related`
      with a heuristic `relationship` (`franchise` if franchise/chain wording co-occurs with our name,
      `parent` if group/konsern/housing-manager wording is present, else `brand`).
@@ -49,6 +75,20 @@ independent corroborating signals and zero conflicts.
      `role_names` if present), and an exact legal-name (minus suffix) match in `<title>`. One corroborating
      signal alone → `ambiguous`, never `exact`.
    - A parked homepage, or a page that fetched fine but shows no evidence at all → `rejected`.
+   - **Hijacked registry domain** (GAASA AS trap): a `registry_website` candidate whose live content
+     reads as gambling/casino/adult/pharma affiliate spam (`is_hijacked_content`, keyword list) is never
+     trusted via `registry_declared`, and corroboration is disabled for it too (a stale cached fragment
+     of the real company's old address must not push it to `exact`). No evidence at all on a hijacked
+     registry page → `rejected`, note `"registry website appears hijacked or unrelated"`.
+   - **Topic/industry-mismatch guard** (JOKER AS trap: a sea-fishing company vs. joker.no the grocery
+     chain): `verify.industry_mismatch(nace_code, site_text)` maps a company's NACE division to one of a
+     small set of Norwegian keyword clusters (fishing, grocery_retail, restaurants, hospitality,
+     sports_fitness, software, finance, healthcare, …) and flags a site whose text clearly matches a
+     *different* cluster (>=2 distinct keyword hits) than our own. When it fires for a non-decisive,
+     non-`registry_declared` candidate, corroboration cannot promote the verdict past `ambiguous` — a
+     name-derived guess needs a decisive signal (or 2 corroborating signals *and* no industry mismatch)
+     to reach `exact`. Conservative by construction: an unknown/missing NACE code never triggers it, and
+     it never downgrades a decisive org-number match.
 
 4. **`extract.extract_all(pages)`** — from the *exact*-verified pages only: description (JSON-LD
    `description` > meta/og:description > first substantive paragraph via trafilatura, capped at 400
@@ -78,19 +118,27 @@ independent corroborating signals and zero conflicts.
 `context.CompanyContext` / `context.HttpClient` / `context.Response` (W1), `models.Claim` /
 `Evidence` / `FamilyState` / `ConnectorResult` (orchestrator), `ctx.shared["registry_facts"]` (W1
 registry connector: `organisation_number, name, aliases, street, postcode, city, phones, email,
-email_domain, website, role_holders, subunits`; falls back to `ctx.bulk` when absent), `ctx.caches`
-(W2: `email_domains.is_shared/.website_org_count`, `wikidata.lookup`, `nav.ads_for` — all optional,
-`None`-safe).
+email_domain, website, nace, role_holders, subunits`; falls back to `ctx.bulk` when absent), `ctx.caches`
+(W2: `email_domains.org_count`/`.is_shared`/`.is_freemail`, `wikidata.lookup`, `nav.ads_for` — all
+optional, `None`-safe). `connector._website_org_count` calls `caches.email_domains.org_count(domain)`
+per the documented Caches API (BUILD_SPEC.md), with a fallback probe for a `website_org_count` method
+name in case a cache build exposes a separate counter; either being absent degrades to `None` (no shared-
+domain signal), never an exception.
 
 ## Tests
 
 `tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_crawl.py`,
-`test_web_extract.py`, `test_web_connector.py` — 41 tests, no network (fake `HttpClient` in
-`tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
-`docs/PLAN.md` §3: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise), `MECCA AS -> thon.no`
-(parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not `exact`), and a shared
-housing-manager domain (`obos.no`-style, `website_org_count >= 3` forces `related` even without a
-conflicting org number).
+`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 60 tests, no network (fake
+`HttpClient` in `tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
+`docs/PLAN.md` §3 and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
+`MECCA AS -> thon.no` (parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not
+`exact`), a shared housing-manager domain (`obos.no`-style, `website_org_count >= 3` forces `related`
+even without a conflicting org number), `GAASA AS -> gaasa.no` (hijacked registry domain, casino-affiliate
+spam, `rejected`), `JOKER AS -> joker.no` (franchise-chain gate blocks a sea-fishing company's namesake
+from resolving to the grocery chain's domain) plus an unlisted-domain variant that only the
+topic/industry-mismatch guard catches, `wixsite.com`/marketplace-domain candidate suppression, and
+`samfundet.no`/`hav.no`-style parent/umbrella registry-declared sites with and without corroboration
+(plus the valid DNT-Nord-Trøndelag-subpage-with-our-org-number exact case on the same kind of domain).
 
 Run: `uv run --with pytest pytest -q tests/signalpost`.
 
