@@ -22,6 +22,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from .blocklist import is_franchise_chain_domain
 from .candidates import Candidate
 from .crawl import PARKED_MARKERS, PageFetch
 
@@ -255,10 +256,18 @@ def assess(
     # company overrides a bare registry_declared / parked-style trust — never decisive on its own.
     hijacked = any(is_hijacked_content(_page_all_text(p)) for p in live_pages)
 
+    # A national chain/franchisor's own corporate domain (joker.no, kiwi.no, thon.no, ...). A franchisee
+    # "find your store" entry on that domain routinely carries the exact franchisee address/phone/name,
+    # which would otherwise satisfy the >=2-corroborating-signal exact rule. Corroboration and bare
+    # registry_declared trust are disabled here; only a literal org-number match can still produce exact
+    # (e.g. when assessing the chain's own headquarters entity against its own domain).
+    is_chain_domain = is_franchise_chain_domain(candidate.domain)
+
     # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared,
-    # and not showing content topically unrelated to the company (hijacked/re-registered domain) ---
+    # not a known franchise/chain domain, and not showing content topically unrelated to the company
+    # (hijacked/re-registered domain) ---
     registry_declared_ok = False
-    if candidate.source == "registry_website" and not conflicts and not hijacked:
+    if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
         if website_org_count is not None and website_org_count >= 3:
             registry_declared_ok = False
         else:

@@ -13,9 +13,13 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from bs4 import BeautifulSoup
+import warnings
+
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 from .candidates import Candidate, registered_domain
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 # Secondary pages to fetch by tier, beyond the homepage.
 SECONDARY_PAGE_BUDGET = {"T0": 0, "T1": 2, "T2": 4, "T3": 6}

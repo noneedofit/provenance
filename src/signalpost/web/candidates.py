@@ -13,6 +13,8 @@ from typing import Any
 
 import tldextract
 
+from .blocklist import is_marketplace_or_directory
+
 # Words that should not, on their own, drive a name-guess slug (too generic to be a reliable identity guess).
 GENERIC_WORDS = {
     "norge", "norway", "holding", "gruppen", "group", "invest", "investering", "eiendom",
@@ -71,6 +73,12 @@ def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
     ordered: list[Candidate] = []
     for cand in candidates:
         if not cand.domain or cand.domain in seen:
+            continue
+        if is_marketplace_or_directory(cand.domain):
+            # Directories, booking/scheduling platforms and generic site-builder hosts are never a
+            # company's own website, even when the registry or a subunit happens to list one (e.g. a
+            # booking-platform URL entered as "hjemmeside" by mistake, or an email address on a free
+            # site-builder subdomain). BUILD_SPEC.md: directories aren't evidence.
             continue
         seen.add(cand.domain)
         ordered.append(cand)

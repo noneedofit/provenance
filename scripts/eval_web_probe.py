@@ -33,11 +33,15 @@ from signalpost.web.connector import WebConnector  # noqa: E402
 USER_AGENT = "builderr-signalpost-eval/0.1 (+https://builderr.ai)"
 
 
-def _is_public(host: str) -> bool:
+def _is_public(host: str, timeout: float = 3.0) -> bool:
+    previous = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(timeout)
     try:
         infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
-    except socket.gaierror:
+    except OSError:
         return False
+    finally:
+        socket.setdefaulttimeout(previous)
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         if not ip.is_global:
@@ -124,11 +128,12 @@ class LiveHttpClient:
 TIER_MAP = {"none": "T1", "small": "T2", "large": "T3"}  # probe fixture tiers -> planner-ish tiers
 
 
-def run(entries: list[dict], *, per_company_budget: int) -> dict:
+def run(entries: list[dict], *, per_company_budget: int, save_json: str | None = None) -> dict:
     stats = {
         "by_stratum": defaultdict(lambda: Counter()),
         "requests_per_company": [],
         "manual_review": [],
+        "per_company": [],
     }
     for entry in entries:
         org = entry["org"]
@@ -161,22 +166,32 @@ def run(entries: list[dict], *, per_company_budget: int) -> dict:
         status = result.families.get("website")
         avail = status.availability if status else "missing"
         bucket[f"website_{avail}"] += 1
+        website_url = None
+        website_basis = None
+        website_relationship = None
         for claim in result.claims:
             if claim.family == "website" and claim.field == "official_website":
                 basis = claim.identity_basis or "none"
+                website_url = claim.value.get("url") if isinstance(claim.value, dict) else None
+                website_basis = basis
+                website_relationship = claim.relationship
                 if avail == "available" and basis not in {"org_number_on_source", "wikidata_org_number", "job_feed_org_number"}:
                     stats["manual_review"].append({
-                        "org": org, "name": name, "status": "exact", "basis": basis,
-                        "url": claim.value.get("url") if isinstance(claim.value, dict) else None,
-                        "note": claim.note,
+                        "org": org, "name": name, "status": "exact", "basis": basis, "url": website_url, "note": claim.note,
                     })
                 if avail == "ambiguous":
                     stats["manual_review"].append({
-                        "org": org, "name": name, "status": "related", "relationship": claim.relationship,
-                        "url": claim.value.get("url") if isinstance(claim.value, dict) else None,
-                        "note": claim.note,
+                        "org": org, "name": name, "status": "related", "relationship": claim.relationship, "url": website_url, "note": claim.note,
                     })
-        print(f"[{stratum}] {org} {name}: website={avail} requests={client.used_total} candidates={len(cands)}")
+        stats["per_company"].append({
+            "org": org, "name": name, "stratum": stratum, "website_availability": avail,
+            "website_url": website_url, "identity_basis": website_basis, "relationship": website_relationship,
+            "requests": client.used_total, "candidates_tried": len(cands),
+            "web_attempts": result.shared.get("web_attempts", []),
+        })
+        print(f"[{stratum}] {org} {name}: website={avail} requests={client.used_total} candidates={len(cands)}", flush=True)
+        if save_json:
+            Path(save_json).write_text(json.dumps(stats["per_company"], indent=2, ensure_ascii=False))
     return stats
 
 
@@ -186,6 +201,7 @@ def main() -> None:
     parser.add_argument("--stratum", choices=["small", "large", "none"], default=None)
     parser.add_argument("--per-company-budget", type=int, default=15)
     parser.add_argument("--fixture", default=str(ROOT / "tests/fixtures/website-probe-150.json"))
+    parser.add_argument("--save-json", default=None, help="Write per-company results to this JSON file as they complete.")
     args = parser.parse_args()
 
     entries = json.loads(Path(args.fixture).read_text())
@@ -194,7 +210,7 @@ def main() -> None:
     if args.limit:
         entries = entries[: args.limit]
 
-    stats = run(entries, per_company_budget=args.per_company_budget)
+    stats = run(entries, per_company_budget=args.per_company_budget, save_json=args.save_json)
 
     print("\n=== Summary by stratum ===")
     for stratum, bucket in stats["by_stratum"].items():

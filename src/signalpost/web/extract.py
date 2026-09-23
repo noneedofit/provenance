@@ -10,9 +10,13 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any
 
-from bs4 import BeautifulSoup
+import warnings
+
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 from norway_company_agent.website import normalize_social_url  # reuse starter-kit normalization
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from .crawl import PageFetch
 
