@@ -58,11 +58,12 @@ caches.meta   # dict: built_at, per-part source_urls / row_count / input_sha256 
 | `email_domains` | `data.brreg.no/enhetsregisteret/api/enheter/lastned/csv` (local copy used for this build) | NLOD 2.0 | 1,175,168 orgs -> 127,744 domains | 7.3 MB | 13.1s |
 | `aliases` | `data.brreg.no/enhetsregisteret/api/underenheter/lastned/csv` | NLOD 2.0 | 864,903 subunits | 100.8 MB | 8.0s |
 | `wikidata` | `query.wikidata.org/sparql`, P2333 (Norwegian org number) | CC0 | 10,279 orgs (10,939 raw bindings before per-org grouping) | 2.0 MB | 25.9s |
-| `nav` | `pam-stilling-feed.nav.no` public feed | NLOD 2.0 | see below — partial build, time-boxed | grows with build time | see below |
+| `nav` | `pam-stilling-feed.nav.no` public feed | NLOD 2.0 | 540 feed pages walked, 1,373 ads detail-fetched (1 with full employer data) | 89.0 MB | ~88 min across 4 invocations |
 
 `email_domains`/`aliases`/`wikidata` build fully in well under a minute total and were run to
 completion into `../cache` (outside the repo, per the run's `--cache-dir`
-convention). `nav` did not: see below.
+convention). `nav` did not: see below — it's a partial, resumable walk, by design (a full walk is a
+multi-hour job; see the NAV section's rate/projection numbers).
 
 ### email_domains details
 
@@ -148,18 +149,72 @@ only works once you've already walked to "now" once).
    the mechanism that keeps the NAV index gradually catching up to "now" across many days of running the
    agent, without ever spending the daily budget on ads for companies outside the batch.
 
-**This build (into `../cache`):** ran `prepare` with a wall-clock cap
-(see the run's own log / `meta.json` `parts.nav` for the exact numbers — pages fetched, active ads seen,
-detail fetches, elapsed seconds — captured at build time) rather than a full walk, per the >60-minute
-rule. The saved cursor makes the next `prepare` invocation a resumption, not a restart; **known gap**:
-this cache's `ads` table only covers whatever portion of the backfill-burst window the time-boxed run
-reached — it does **not** yet represent "currently active ads" for most of the org universe. Getting
-there requires either (a) several more hours of `prepare` invocations advancing the same cursor before
-the feed's real-time tail (and thus today's genuinely active ads) is reached, or (b) accepting that
-`sync_incremental` during the daily run will, over enough days, walk the remaining distance while also
-picking up today's batch's ads opportunistically. Given the request-latency bottleneck is server-side,
-neither shortcuts the wall-clock cost; only wall-clock time (spread across many `prepare` calls) fixes
-it.
+**Bug found and fixed during this build (2026-09-24):** the real `GET /api/v1/feedentry/{id}` response
+nests almost the entire ad under `ad_content` — `{uuid, status, sistEndret, ad_content: {employer,
+title, published, expires, ..., workLocations}}` — with only `uuid`/`status`/`sistEndret` at the top
+level. This isn't documented anywhere (the endpoint has no public schema); it was only visible by
+inspecting a live response body. The original `_entry_to_ad_row` read `employer`/`title`/etc. straight
+off the top-level object (matching the test fixture, which was hand-written from a guess at the shape,
+not a real response), so **every** detail-fetched ad — 532/532 in the first full run — was stored with
+`employer_orgnr = NULL`, silently breaking `ads_for` for the entire cache. Fixed by reading from
+`ad_content` (falling back to the top level if absent, for robustness against a future shape change).
+Added `test_entry_to_ad_row_reads_wrapped_ad_content` / `..._falls_back_to_flat_shape...` in
+`tests/signalpost/test_caches_nav.py` and rewrote `tests/fixtures/caches/nav_feedentry_aaa.json` to the
+real wrapped shape so this can't regress silently again.
+
+**A second, structural finding surfaced by chasing that bug down:** `ad_content` is only present while
+the ad is *currently* active on NAV's live system — once an ad has since closed, `GET .../feedentry/{id}`
+returns just `{uuid, status: "INACTIVE", sistEndret}` with no `ad_content` at all (confirmed directly
+against the live API). So detail data is only recoverable at the moment an ad is first seen ACTIVE while
+walking the feed — a same-day or later re-fetch of an already-closed ad cannot repair it retroactively.
+Concretely: of 532 ads detail-fetched in the first full run (all stored NULL due to the parsing bug
+above), a same-day repair pass with the fixed parser recovered only 1 — the other 531 had already closed
+in the time between the original walk and the repair, so NAV's API no longer serves their content. A
+follow-up walk with the fixed parser (309 more detail fetches, live at fetch time) recovered content for
+0 additional ads for the same reason — nearly all of the ads encountered as ACTIVE in this feed region
+had already closed again by the time their detail was fetched moments later, which says more about how
+short-lived a lot of NAV job-feed churn is at this point in the feed than about the code. **Practical
+consequence:** `nav.sqlite`'s `ads` table correctly tracks `status` for every uuid it has seen (via
+`seen_status` and the INACTIVE-flip path, unaffected by either bug), but only reliably carries full
+`employer`/`title`/`application_url` detail for ads that are *still* active by the time a `prepare` or
+`sync_incremental` invocation reaches them — which in practice means recently-posted ads walked promptly,
+not historical ones recovered after the fact.
+
+**This build (into `../cache`), full history:**
+
+| Step | Pages walked | Detail fetches | Wall time | Notes |
+|---|---|---|---|---|
+| Run 1 | 1 → 163 | 0 (all null: parsing bug) | 602.6s | resumable cursor established |
+| Run 2 | 163 → 536 | 532 (all null: parsing bug) | 2,904.7s | |
+| Parser fix + regression tests | — | — | — | `_entry_to_ad_row` now reads `ad_content` |
+| Repair pass | 0 (re-fetch by uuid, no page walk) | 532 re-fetched | 1,152.2s | only 1/532 recovered — rest had closed since |
+| Run 3 (fixed parser, live) | 536 → 540 | 309 (1 recovered, rest already closed) | 632.2s | |
+| **Total** | **540 pages** | **1,373 detail fetches** | **~88 min across 4 invocations** | cursor at page 540, not caught up to "now" |
+
+Measured combined rate across all page-walking invocations (excludes the pure re-fetch repair pass):
+540 pages / (602.6 + 2904.7 + 632.2)s ≈ **0.130 pages/s** (≈7.7s/page average, heavier than the pure
+~3.7s/page page-fetch-only rate because most pages in this window trigger many detail fetches). At that
+combined rate, reaching even 10,000 pages would take **~21 hours** of `prepare` wall time — confirming
+the >60-minute rule applies and this is a multi-session background job, not a single-invocation build.
+The cursor (`last_feed_page_id` in `nav.sqlite`'s `cursor` table) is saved after every page, so the next
+`prepare --skip-email-domains --skip-aliases --skip-wikidata --nav-max-seconds <N>` invocation resumes
+from page 540 automatically.
+
+**Verified end-to-end:** `caches.nav.ads_for(["919858400"])` (Atrium People AS) returns 1 ad —
+`"Konsulentoppdrag - åpen database - Maritim og Offshore"`, status `ACTIVE`, with a full
+`application_url`/`work_locations` — proving the whole pipeline (feed walk → detail fetch → `ads` table
+→ `ads_for` → `Caches.load` wiring) works correctly with real production data now that the parsing bug
+is fixed.
+
+**Known gap:** this cache's `ads` table only covers pages 1-540 of the feed (not yet caught up to "now"),
+and of the 1,373 ads detail-fetched so far, only 1 carries full employer/title data (the structural
+"detail only available while live" limitation above) — the other 1,372 correctly have `status =
+'INACTIVE'` (via `seen_status`) but `employer_orgnr = NULL` (their content is gone from NAV's API).
+Closing this gap requires either (a) many more hours of `prepare` invocations advancing the cursor toward
+the feed's real-time tail, where a much larger fraction of detail-fetched ads will still be active at
+fetch time, or (b) relying on `sync_incremental` during the daily run, which — once the cursor is near
+"now" — detail-fetches items within moments of them going active, avoiding the "already closed by the
+time we looked" problem entirely.
 
 ## Refresh cadence
 
@@ -184,9 +239,12 @@ consumer side: downloads through the run's `HttpClient` (counts as one request, 
 
 ## Known gaps
 
-- NAV: see above — the shipped cache is a partial, time-boxed walk near the feed's 2023 genesis, not yet
-  "currently active ads" coverage. `docs/caches.md`'s own numbers (this section, `meta.json`
-  `parts.nav`) document exactly how far it got.
+- NAV: see above — the shipped cache is a partial, resumable walk (pages 1-540 of an unknown-length feed,
+  cursor saved), not yet "currently active ads" coverage; only 1 of 1,373 detail-fetched ads carries full
+  employer data today, because `ad_content` is only served by NAV's API while an ad is *currently* live,
+  and most ads seen as ACTIVE in this feed region had already closed again by the time of the detail
+  fetch. `docs/caches.md`'s NAV section documents the full build history, the measured combined rate
+  (~0.13 pages/s), and the projected time to walk further.
 - `email_domains`/`aliases`/`wikidata` were built from a **local copy** of the enheter bulk CSV
   (`../data/brreg-enheter.csv`, already on disk) rather than downloading
   it in `prepare` — W1's `registry.load_bulk` also needs this file, so it isn't re-fetched here;

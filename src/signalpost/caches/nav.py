@@ -20,11 +20,15 @@
   page 1 to "now" is a multi-hour job (thousands of pages at ~3.8s/page), far past the 45-minute daily
   run budget. `sync_incremental` is the tool for the timed daily run; a full historical build is a
   `prepare`-time job you resume across multiple invocations via the saved cursor.
-- `GET /api/v1/feedentry/{entryId}` returns the full ad: `employer {name, orgnr, homepage, description}`,
-  `published`, `expires`, `updated`, `sourceurl`, `link`, `applicationUrl`, `workLocations`, `status`.
-  `employer.orgnr` is frequently a SUBUNIT ("BEDR") organisation number, not the parent's — callers
-  resolve subunit -> parent via `caches.aliases`; `Nav.ads_for` does this automatically when `.aliases`
-  is set (Caches.load wires it up).
+- `GET /api/v1/feedentry/{entryId}` returns `{uuid, status, sistEndret, ad_content: {employer {name,
+  orgnr, homepage, description}, title, published, expires, updated, sourceurl, link, applicationUrl,
+  workLocations, ...}}` — almost everything is nested under `ad_content`; only `uuid`/`status`/
+  `sistEndret` are top-level. (An earlier version of this cache read `employer`/`title`/etc. straight off
+  the top-level object, which silently produced `employer_orgnr = NULL` for every detail-fetched ad —
+  fixed 2026-09-24; `_entry_to_ad_row` now reads from `ad_content` and falls back to the top level if
+  `ad_content` is absent.) `employer.orgnr` is frequently a SUBUNIT ("BEDR") organisation number, not the
+  parent's — callers resolve subunit -> parent via `caches.aliases`; `Nav.ads_for` does this
+  automatically when `.aliases` is set (Caches.load wires it up).
 
 ## Storage
 sqlite `ads` table keyed by uuid, indexed by `employer_orgnr`; a `cursor` table holding the last feed
@@ -142,25 +146,32 @@ class _RawFetcher:
 
 
 def _entry_to_ad_row(entry_json: dict[str, Any], *, entry_id: str, retrieved_at: str) -> tuple:
-    employer = entry_json.get("employer") or {}
+    # The real `GET /api/v1/feedentry/{id}` response nests almost everything under `ad_content`, with
+    # only `uuid`/`status`/`sistEndret` at the top level (measured 2026-09-23 against the live feed;
+    # confirmed by inspecting an actual response body, since the endpoint isn't documented). Fall back
+    # to treating `entry_json` itself as the ad content when `ad_content` is absent, so a flatter shape
+    # (e.g. a future API change, or a hand-built test fixture) still parses.
+    ad = entry_json.get("ad_content") if isinstance(entry_json.get("ad_content"), dict) else entry_json
+    employer = ad.get("employer") or {}
+    status = entry_json.get("status") or ad.get("status")
     content = json.dumps(entry_json, ensure_ascii=False, sort_keys=True)
     content_sha256 = store.sha256_bytes(content.encode("utf-8"))
     source_url = f"{BASE_URL}/api/v1/feedentry/{entry_id}"
     return (
-        entry_json.get("uuid") or entry_id,
-        entry_json.get("title"),
-        entry_json.get("status"),
+        entry_json.get("uuid") or ad.get("uuid") or entry_id,
+        ad.get("title"),
+        status,
         employer.get("name"),
         (employer.get("orgnr") or "").strip() or None,
         employer.get("homepage"),
-        entry_json.get("published"),
-        entry_json.get("expires"),
-        entry_json.get("updated"),
-        entry_json.get("applicationUrl"),
+        ad.get("published"),
+        ad.get("expires"),
+        ad.get("updated"),
+        ad.get("applicationUrl"),
         source_url,
         retrieved_at,
         content_sha256,
-        json.dumps(entry_json.get("workLocations") or [], ensure_ascii=False),
+        json.dumps(ad.get("workLocations") or [], ensure_ascii=False),
     )
 
 

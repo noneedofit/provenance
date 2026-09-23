@@ -8,13 +8,50 @@ import pytest
 
 from signalpost.caches import nav as nav_mod
 from signalpost.caches.aliases import Aliases
-from signalpost.caches.nav import Nav, fuzzy_name_match
+from signalpost.caches.nav import Nav, _entry_to_ad_row, fuzzy_name_match
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "caches"
 
 
 def _load(name: str) -> dict:
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+# --- _entry_to_ad_row -------------------------------------------------------------------------------
+# Regression coverage for a real bug (fixed 2026-09-24): the live feedentry endpoint nests almost
+# everything under `ad_content`, with only uuid/status/sistEndret at the top level. An earlier version
+# read `employer`/`title`/etc. off the top level directly, which silently produced `employer_orgnr =
+# NULL` for every detail-fetched ad in the real build (532/532 rows affected before the fix).
+
+def test_entry_to_ad_row_reads_wrapped_ad_content():
+    entry = _load("nav_feedentry_aaa.json")
+    row = _entry_to_ad_row(entry, entry_id="aaa-uuid", retrieved_at="2026-09-24T00:00:00Z")
+    (uuid, title, status, employer_name, employer_orgnr, employer_homepage, published, expires,
+     updated, application_url, source_url, retrieved_at, content_sha256, work_locations) = row
+    assert uuid == "aaa-uuid"
+    assert title == "Butikkmedarbeider"
+    assert status == "ACTIVE"
+    assert employer_name == "Eiker Hagesenter AS"
+    assert employer_orgnr == "100000001"
+    assert employer_homepage == "https://www.eikerhagesenter.no"
+    assert application_url == "https://eikerhagesenter.no/jobb/soknad"
+
+
+def test_entry_to_ad_row_falls_back_to_flat_shape_when_no_ad_content():
+    # Defensive fallback for a flatter shape (no `ad_content` wrapper) so a future API change or an
+    # unusual response doesn't silently null out every field again.
+    flat_entry = {
+        "uuid": "flat-uuid",
+        "title": "Flat Shape Job",
+        "status": "ACTIVE",
+        "employer": {"name": "Flat AS", "orgnr": "200000002", "homepage": "https://flat.no"},
+        "published": "2026-01-01",
+        "workLocations": [],
+    }
+    row = _entry_to_ad_row(flat_entry, entry_id="flat-uuid", retrieved_at="2026-09-24T00:00:00Z")
+    assert row[0] == "flat-uuid"
+    assert row[1] == "Flat Shape Job"
+    assert row[4] == "200000002"  # employer_orgnr
 
 
 # --- fuzzy_name_match -----------------------------------------------------------------------------
