@@ -98,21 +98,134 @@ def fmt_money(value: Any) -> str:
     return f"{esc(currency)} {amount_str}"
 
 
-def fmt_value(field: str, value: Any) -> str:
-    """Render a claim value generically. Special-cases money-shaped dicts; falls back to field-name label."""
-    if isinstance(value, dict) and "amount" in value and "currency" in value:
-        return fmt_money(value)
-    if isinstance(value, (list, tuple)):
-        return esc(", ".join(str(v) for v in value))
-    if isinstance(value, bool):
-        return "Yes" if value else "No"
-    return esc(value)
+# Known nested-dict keys from the real registry connector that read awkwardly if machine-labelled
+# (mostly Norwegian Regnskapsregisteret field names bleeding through financials/audit_status etc).
+FIELD_LABEL_OVERRIDES: dict[str, str] = {
+    "ikkeRevidertAarsregnskap": "Unaudited accounts",
+    "fravalgRevisjon": "Audit opted out",
+    "small_enterprise": "Small enterprise",
+    "type": "Accounting type",
+    "role_code": "Role code",
+    "role_label": "Role",
+    "registered_at": "Registered at",
+    "organisation_number": "Org. number",
+}
 
 
 def label_from_field(field: str) -> str:
-    """Generic label for a claim field we don't have a bespoke renderer for."""
-    words = re.sub(r"[_\-]+", " ", field).strip()
+    """Generic label for a claim field we don't have a bespoke renderer for. Handles snake_case and
+    camelCase (real registry payloads mix both, e.g. "registered_employees", "ikkeRevidertAarsregnskap")."""
+    if field in FIELD_LABEL_OVERRIDES:
+        return FIELD_LABEL_OVERRIDES[field]
+    spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", field)  # split camelCase
+    words = re.sub(r"[_\-]+", " ", spaced)
+    words = re.sub(r"\s+", " ", words).strip()
     return words[:1].upper() + words[1:] if words else field
+
+
+# Address-shaped dicts we know how to format as "street, postcode city[, country]".
+_ADDRESS_KEYS = {"street", "postcode", "city", "municipality", "country"}
+
+
+def address_text(addr: dict) -> str:
+    parts = []
+    if addr.get("street"):
+        parts.append(str(addr["street"]))
+    city_bit = " ".join(str(x) for x in (addr.get("postcode"), addr.get("city")) if x)
+    if city_bit:
+        parts.append(city_bit)
+    text = ", ".join(parts)
+    country = addr.get("country")
+    if country and str(country).lower() not in ("norge", "norway"):
+        text = f"{text}, {country}" if text else str(country)
+    return text or "—"
+
+
+def plain_scalar(value: Any, prefer: tuple[str, ...] = ("code", "label", "name", "count", "url", "title")) -> Any:
+    """Best-effort plain (non-HTML) scalar pulled out of a structured claim value, for directory rows,
+    CSV columns and JS filter/sort comparisons. Never render this output directly as trusted HTML — use
+    `display_value` for that. Falls back to the first simple (str/int/float/bool) value found."""
+    if isinstance(value, dict):
+        for key in prefer:
+            v = value.get(key)
+            if v not in (None, ""):
+                return v
+        for v in value.values():
+            if isinstance(v, (str, int, float, bool)) and v not in (None, ""):
+                return v
+        return None
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+
+def display_value(field: str, value: Any, *, _depth: int = 0) -> str:
+    """Generic, robust HTML renderer for any claim value shape: str, int, float, bool, dict, list, None.
+
+    Preference order for dicts, per field-name-agnostic heuristics: address-shaped (street/postcode/city)
+    -> "street, postcode city"; money-shaped (amount/currency) -> formatted money; else label, then name,
+    then count, then url/title; otherwise a readable "Key: value; Key: value" fallback so an unknown
+    connector field never crashes the page. Output is already HTML-escaped/safe to embed directly.
+    """
+    if value is None:
+        return "—"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, (int, float)):
+        if isinstance(value, int):
+            return f"{value:,}".replace(",", " ")
+        return esc(value)
+    if isinstance(value, str):
+        return esc(value)
+    if isinstance(value, dict):
+        if "amount" in value and "currency" in value:
+            return fmt_money(value)
+        if _ADDRESS_KEYS & value.keys():
+            addr = address_text(value)
+            if value.get("name"):
+                extra = []
+                if value.get("organisation_number"):
+                    extra.append(f"org {value['organisation_number']}")
+                if value.get("employees") is not None:
+                    extra.append(f"{value['employees']} employees")
+                if value.get("nace"):
+                    extra.append(f"NACE {value['nace']}")
+                suffix = f" ({'; '.join(esc(x) for x in extra)})" if extra else ""
+                return f"{esc(value['name'])} — {esc(addr)}{suffix}"
+            return esc(addr)
+        if value.get("label") not in (None, ""):
+            code = value.get("code")
+            return esc(f"{value['label']} ({code})") if code not in (None, "") else esc(str(value["label"]))
+        if value.get("name") not in (None, ""):
+            return esc(str(value["name"]))
+        if value.get("count") is not None:
+            extra = f" (as of {value['registered_at']})" if value.get("registered_at") else ""
+            return esc(f"{value['count']}{extra}")
+        if value.get("url"):
+            title = value.get("title") or value["url"]
+            return f'<a href="{esc(value["url"])}" target="_blank" rel="noopener noreferrer">{esc(title)}</a>'
+        if value.get("title"):
+            return esc(str(value["title"]))
+        # last-resort generic fallback: never crash on an unmapped connector field shape
+        bits = []
+        for k, v in value.items():
+            if v in (None, "", [], {}):
+                continue
+            bits.append(f"{esc(label_from_field(k))}: {display_value(k, v, _depth=_depth + 1)}")
+        return "; ".join(bits) if bits else "—"
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return "—"
+        if all(isinstance(v, str) and re.fullmatch(r"\d{4}", v) for v in value):
+            years = sorted(value)
+            return f"{years[0]}–{years[-1]} ({len(years)} years)" if len(years) > 1 else years[0]
+        return ", ".join(display_value(field, v, _depth=_depth + 1) for v in value)
+    return esc(value)
+
+
+def fmt_value(field: str, value: Any) -> str:
+    """Backwards-compatible alias for display_value (kept short for call sites)."""
+    return display_value(field, value)
 
 
 def org_registry_api_url(org: str) -> str:
@@ -175,3 +288,13 @@ def field_value(claims: list[dict], family: str, field: str) -> dict | None:
 
 def fields_values(claims: list[dict], family: str, field: str) -> list[dict]:
     return [c for c in claims if c["family"] == family and c["field"] == field and c.get("status", "current") == "current"]
+
+
+def first_available(claims: list[dict], family: str, *field_names: str) -> dict | None:
+    """Try several candidate field names in order (different connector versions use different names for
+    the same fact, e.g. "nace" vs "nace_code"/"nace_description") and return the first current claim found."""
+    for field in field_names:
+        c = field_value(claims, family, field)
+        if c is not None:
+            return c
+    return None

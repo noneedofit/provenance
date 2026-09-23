@@ -75,6 +75,24 @@ palettes tuned for contrast in both, and a `@media print` stylesheet that hides 
 keeps facts + evidence legible on paper. Dates render as a human string with the ISO value in the `title`
 attribute (hover) and the `<time datetime>` attribute. Norwegian characters (æøå) are UTF-8 throughout.
 
+## Robustness to real connector output
+
+Claim values are not always plain strings. The real registry connector emits structured values for many
+identity/leadership/locations/financials fields (dicts, lists, bools) — e.g. `identity/legal_form =
+{"code": "AS", "label": "Aksjeselskap"}`, `identity/business_address = {street, postcode, city,
+municipality, country}` (there is no separate top-level `municipality` claim — it lives inside the
+address), `leadership/role = {"role_code", "role_label", "name"}`, `locations/workplace = {...}`,
+`financial_history/filed_years = [...]`. Every render path goes through
+`helpers.display_value(field, value)`, one generic, robust renderer that handles str/int/float/bool/dict/
+list/None: money-shaped and address-shaped dicts get bespoke formatting, then `label`, then `name`, then
+`count`, then `url`/`title` are preferred, with a readable "Key: value; …" fallback for anything else — so
+an unmapped connector field can never crash the page. `helpers.plain_scalar()` is the equivalent for
+directory rows / CSV / JS filter values, which must stay plain (unescaped, non-HTML) scalars rather than
+rendered HTML. `helpers.first_available()` tries several candidate field names in order (e.g. `"nace"` vs.
+the older synthetic `"nace_code"`/`"nace_description"` pair) so both connector shapes render identically.
+`tests/fixtures/viewer/real_registry.jsonl` holds 5 companies taken verbatim from a real registry-connector
+run, exercising these shapes end to end.
+
 ## Known gaps
 
 - The client-side "most data found" sort ranks by count of `available` families only; it does not weight
