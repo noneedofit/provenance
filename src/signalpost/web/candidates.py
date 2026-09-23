@@ -173,6 +173,26 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
                 candidates.append(Candidate(domain, homepage, "nav_employer_homepage", "NAV ad employer_homepage", decisive=True, rank=rank))
                 rank += 1
 
+    # 3b. Live NAV homepages published earlier THIS run by the activity/NAV connector
+    # (ctx.shared["nav_homepages"]: list of {homepage, uuid}), already verified against our org number by
+    # that connector before publishing. Same decisive source as the cache-based lookup above (verify.py
+    # treats "nav_employer_homepage" as one decisive signal regardless of which one produced it) -- this
+    # just covers a run where the live connector found something the offline `caches.nav` snapshot
+    # didn't yet have. Falls back gracefully: an older orchestrator, or a run where that connector hasn't
+    # run yet/found nothing, simply has no `nav_homepages` key.
+    shared = getattr(ctx, "shared", None) or {}
+    for entry in shared.get("nav_homepages") or []:
+        homepage = entry.get("homepage") if isinstance(entry, dict) else None
+        if not homepage:
+            continue
+        domain = registered_domain(homepage)
+        if domain:
+            candidates.append(Candidate(
+                domain, homepage, "nav_employer_homepage",
+                f"live NAV ad {entry.get('uuid', '')}".strip(), decisive=True, rank=rank,
+            ))
+            rank += 1
+
     # 4. Registry email domain, unless shared/freemail.
     email_domain = facts.get("email_domain")
     if email_domain:

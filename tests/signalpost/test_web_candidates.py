@@ -60,6 +60,29 @@ def test_wikidata_and_nav_candidates_are_decisive_and_ordered_before_guesses():
     assert sources.index("nav_employer_homepage") < name_guess_idx
 
 
+def test_live_nav_homepages_from_shared_state_become_decisive_candidates():
+    # A live NAV connector run this session publishes ctx.shared["nav_homepages"] (already filtered to
+    # ads for our org number) ahead of the offline caches.nav snapshot. Must produce the same decisive
+    # "nav_employer_homepage" source as the cache-based lookup, ordered before name guesses.
+    ctx = make_ctx("923456783", registry_facts={"name": "EXAMPLE AS"})
+    ctx.shared["nav_homepages"] = [{"homepage": "https://live-example.no", "uuid": "abc-123"}]
+    cands = generate_candidates(ctx)
+    live = [c for c in cands if c.domain == "live-example.no"]
+    assert len(live) == 1
+    assert live[0].source == "nav_employer_homepage"
+    assert live[0].decisive is True
+    name_guess_idx = next((i for i, c in enumerate(cands) if c.source == "name_guess"), len(cands))
+    assert cands.index(live[0]) < name_guess_idx
+
+
+def test_missing_nav_homepages_shared_state_is_handled_gracefully():
+    ctx = make_ctx("923456783", registry_facts={"name": "EXAMPLE AS"})
+    # ctx.shared has no "nav_homepages" key at all (older orchestrator / connector hasn't run) -- must
+    # not raise.
+    cands = generate_candidates(ctx)
+    assert isinstance(cands, list)
+
+
 def test_shared_email_domain_is_not_a_candidate():
     caches = FakeCaches(email_domains=FakeEmailDomains({"styrerommet.no"}))
     ctx = make_ctx(
