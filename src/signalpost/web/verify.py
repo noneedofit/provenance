@@ -37,7 +37,9 @@ _ORGNR_CANDIDATE_RE = re.compile(
     r"(?:\bNO[\s.]?)?\b(\d[\d\s. ]{7,15}\d)\b(?:\s?MVA\b)?", re.IGNORECASE
 )
 _ORGNR_LABEL_RE = re.compile(
-    r"(org(?:anisasjonsnummer|\.?\s*nr)\.?\s*[:.]?\s*)(\d[\d\s. ]{7,15}\d)", re.IGNORECASE
+    r"(org(?:anisasjonsnummer|\.?\s*nr)\.?\s*[:.]?\s*|eies\s+av\s+|belongs\s+to\s+(?:org\s+)?)"
+    r"(\d[\d\s. ]{7,15}\d)",
+    re.IGNORECASE,
 )
 
 _MOD11_WEIGHTS = (3, 2, 7, 6, 5, 4, 3, 2)
@@ -252,6 +254,63 @@ def _page_all_text(page: PageFetch) -> str:
     return f"{page.title}\n{page.text}\n{page.html[:20000]}"
 
 
+# --- Site-owner name detection (footer copyright / JSON-LD legalName) -------------------------------------
+# A registry_declared candidate whose page names a DIFFERENT legal entity as the site's owner (a group's
+# shared product/marketing site crediting only the parent/a sibling in its footer or JSON-LD, e.g. Xledger
+# Labs AS's registry hjemmeside pointing at xledger.com, whose footer/JSON-LD only ever say "Xledger AS")
+# must not get the bare "live, not parked, unconflicted" registry_declared trust -- this is a weaker, softer
+# signal than a conflicting ORG NUMBER (no digits involved, so it never escalates to `related` on its own
+# the way a conflicting org number does), but it disqualifies the free pass.
+
+_COPYRIGHT_OWNER_RE = re.compile(
+    r"(?:©|\(c\)|copyright)\s*(?:\d{4}\s*[-–]?\s*(?:\d{4})?\s*)?"
+    r"([A-Za-zÆØÅæøå][A-Za-zÆØÅæøå0-9&.,'\-\s]{1,60}?)(?=\s*[.|\n]|\s{2,}|$)"
+)
+
+
+def find_copyright_owner(text: str) -> str | None:
+    match = _COPYRIGHT_OWNER_RE.search(text or "")
+    if not match:
+        return None
+    owner = match.group(1).strip()
+    return owner or None
+
+
+def _find_jsonld_legal_names(nodes: Any) -> list[str]:
+    names: list[str] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            kind = node.get("@type")
+            kinds = set(kind if isinstance(kind, list) else [kind])
+            if kinds & {"Organization", "Corporation", "LocalBusiness"}:
+                for key in ("legalName", "name"):
+                    value = node.get(key)
+                    if isinstance(value, str) and value.strip():
+                        names.append(value.strip())
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(nodes)
+    return names
+
+
+def site_owner_mismatch(our_name: str, owner_names: list[str]) -> str | None:
+    """Return the first `owner_names` entry whose legal-name core differs from `our_name`'s, or None if
+    every named owner matches (or no owner name was found at all -- absence is not a mismatch)."""
+    our_core = _legal_name_core(our_name)
+    if not our_core:
+        return None
+    for owner in owner_names:
+        owner_core = _legal_name_core(owner)
+        if owner_core and owner_core != our_core:
+            return owner
+    return None
+
+
 def assess(
     org_number: str,
     pages: list[PageFetch],
@@ -270,27 +329,46 @@ def assess(
         return Verdict("rejected", None, None, note="homepage is a parked/for-sale placeholder")
 
     signals: list[Signal] = []
-    conflicts: list[Conflict] = []
     our_digits = re.sub(r"\D", "", str(org_number or ""))
 
     # --- org-number scan across all fetched pages (regex text + JSON-LD) ---
+    # A group/holding/investor-relations page routinely lists SEVERAL org numbers (subsidiaries, board
+    # members' other directorships, a parent entity) alongside our own -- e.g. Kitron/Mowi/AF Gruppen's
+    # corporate sites, or DNT Nord-Trondelag's page on the shared dnt.no domain. Our own org number
+    # appearing anywhere on the page is decisive ON ITS OWN, regardless of what else is also on the page.
+    # A DIFFERENT org number is only a genuine conflict (this site belongs to someone else, not merely
+    # "also mentions" someone else) when OUR number is absent from the page AND the other number is
+    # presented as THIS site's owner: a labelled match ("Org.nr:", "organisasjonsnummer", "eies av",
+    # "belongs to org" -- see the broadened _ORGNR_LABEL_RE) or a JSON-LD organisation identifier. A bare
+    # unlabelled 9-digit run elsewhere on the page (a subsidiary in a list, an unrelated reference number
+    # that happens to pass the mod-11 check) is not strong enough evidence of ownership and is discarded.
+    other_org_matches: list[Conflict] = []
+    site_owner_names: list[str] = []
     for page in live_pages:
         for m in find_org_numbers(_page_all_text(page)):
             if m.digits == our_digits:
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
-            else:
-                conflicts.append(Conflict("conflicting_org_number", "different valid organisation number on site", m.digits, page.final_url, m.span))
+            elif m.labeled:
+                other_org_matches.append(Conflict("conflicting_org_number", "different valid organisation number presented as site owner", m.digits, page.final_url, m.span))
+        owner = find_copyright_owner(_page_all_text(page))
+        if owner:
+            site_owner_names.append(owner)
         try:
             import extruct
 
             data = extruct.extract(page.html, base_url=page.final_url, syntaxes=["json-ld"])
-            for m in find_org_number_in_jsonld(data.get("json-ld", [])):
+            jsonld_nodes = data.get("json-ld", []) or []
+            for m in find_org_number_in_jsonld(jsonld_nodes):
                 if m.digits == our_digits:
                     signals.append(Signal("jsonld_org_number", "JSON-LD identifier matches organisation number", page.final_url, m.span))
                 else:
-                    conflicts.append(Conflict("conflicting_org_number", "JSON-LD identifier is a different organisation number", m.digits, page.final_url, m.span))
+                    other_org_matches.append(Conflict("conflicting_org_number", "JSON-LD identifier is a different organisation number", m.digits, page.final_url, m.span))
+            site_owner_names.extend(_find_jsonld_legal_names(jsonld_nodes))
         except Exception:
             pass
+
+    has_our_org_number = any(s.kind in {"org_number_on_source", "jsonld_org_number"} for s in signals)
+    conflicts: list[Conflict] = [] if has_our_org_number else other_org_matches
 
     # --- decisive non-textual sources ---
     if candidate.source == "wikidata_website" and not conflicts:
@@ -360,15 +438,24 @@ def assess(
         word in _normalize("\n".join(_page_all_text(p) for p in live_pages)) for word in (_FRANCHISE_WORDS + _PARENT_WORDS)
     )
 
-    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared,
-    # not a known franchise/chain domain, not reading as a parent/umbrella site with zero org-specific
-    # corroboration, and not showing content topically unrelated to the company (hijacked/re-registered
-    # domain) ---
+    # A different legal entity named as the site's owner (footer "(c) Xledger AS" / JSON-LD legalName)
+    # while our own registered name is a different entity (e.g. "Xledger Labs AS") is the XLEDGER LABS AS
+    # trap: xledger.com is Xledger's shared group/product site, and no page on it ever names Xledger Labs
+    # AS specifically. This is a softer signal than a conflicting ORG NUMBER (no digits, so it never
+    # escalates the verdict to `related` the way `conflicts` does) -- it only disqualifies the bare
+    # registry_declared free pass, the same way umbrella wording does.
+    owner_name_mismatch = site_owner_mismatch(registry_facts.get("name") or "", site_owner_names)
+
+    # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared
+    # (>=2 organisations also registered on this domain -- a sibling/parent entity, not just "any old
+    # coincidence"), not a known franchise/chain domain, not naming a different legal entity as the site's
+    # owner, not reading as a parent/umbrella site with zero org-specific corroboration, and not showing
+    # content topically unrelated to the company (hijacked/re-registered domain) ---
     registry_declared_ok = False
+    shared_domain = website_org_count is not None and website_org_count >= 2
     if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
-        shared_domain = website_org_count is not None and website_org_count >= 3
         unsupported_umbrella = umbrella_wording and not distinct_corroborating
-        if not shared_domain and not unsupported_umbrella:
+        if not shared_domain and not unsupported_umbrella and not owner_name_mismatch:
             registry_declared_ok = True
             signals.append(Signal("registry_declared", "registry-listed hjemmeside is live and unconflicted", homepage.final_url, candidate.url))
 
@@ -400,11 +487,20 @@ def assess(
     if registry_declared_ok:
         return Verdict("exact", "registry_declared", "exact", signals=signals, conflicts=[], note="registry-declared site, live and unconflicted")
 
-    if candidate.source == "registry_website" and not registry_declared_ok and website_org_count and website_org_count >= 3:
+    if candidate.source == "registry_website" and not registry_declared_ok and shared_domain:
         return Verdict(
             "related", None, "parent",
             signals=signals, conflicts=[],
             note=f"registry hjemmeside is shared by {website_org_count} organisations; treated as a shared/parent site",
+        )
+
+    if candidate.source == "registry_website" and not registry_declared_ok and owner_name_mismatch:
+        # Live, unconflicted (no org NUMBER conflict), not a shared domain by our count -- but the page
+        # names a different legal entity as its owner (XLEDGER LABS AS -> xledger.com, footer/JSON-LD
+        # only ever say "Xledger"/"Xledger AS"). Never published as our own website; related at best.
+        return Verdict(
+            "related", None, "brand", signals=signals, conflicts=[],
+            note=f"registry hjemmeside names a different legal entity as site owner ({owner_name_mismatch!r}); treated as brand",
         )
 
     if candidate.source == "registry_website" and not registry_declared_ok and umbrella_wording and not distinct_corroborating:

@@ -270,6 +270,90 @@ def test_namesake_company_without_org_number_match_does_not_resolve_by_name_alon
     assert verdict.status != "exact"
 
 
+def test_our_org_number_decisive_even_when_other_org_numbers_also_present():
+    # Mowi/Kitron/AF Gruppen/DNT-Nord-Trondelag-style trap: a large group/investor-relations page lists
+    # SEVERAL org numbers (subsidiaries, a parent entity) alongside our own. Our own number anywhere on
+    # the page must still be decisive -- a different number elsewhere is not automatically a conflict.
+    other_org = "934567897"
+    html = (
+        f"<html><body>Kitron ASA. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. "
+        f"Subsidiaries include Kitron Sweden AB (org {other_org[:3]} {other_org[3:6]} {other_org[6:]}) "
+        "and others.</body></html>"
+    )
+    p = page("Kitron ASA subsidiaries", html=html, url="https://www.kitron.com/")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(domain="kitron.com", source="wikidata_website"))
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"
+
+
+def test_unlabeled_other_org_number_is_not_a_conflict_and_does_not_block_wikidata():
+    # A bare, unlabelled 9-digit run that happens to pass the mod-11 check (a coincidental reference
+    # number, an unrelated ID) elsewhere on a Wikidata-sourced candidate's homepage must not block the
+    # decisive wikidata signal -- only a LABELLED match or a JSON-LD identifier counts as a genuine
+    # conflict.
+    other_valid_orgnr = "934567897"  # passes mod-11, appears with no "org.nr"/"eies av" label nearby
+    html = f"<html><body>Ref: {other_valid_orgnr[:3]} {other_valid_orgnr[3:6]} {other_valid_orgnr[6:]}. Welcome to Kitron.</body></html>"
+    p = page("Kitron unrelated reference number", html=html, url="https://www.kitron.com/")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(domain="kitron.com", source="wikidata_website"))
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "wikidata_org_number"
+
+
+def test_labeled_other_org_number_without_ours_is_still_a_genuine_conflict():
+    # The precision-preserving counterpart: when OUR number is absent and the OTHER number is clearly
+    # presented as the site's owner (labelled "Org.nr:"), it is still a real conflict -> never exact.
+    other_org = "934567897"
+    html = f"<html><body>This site belongs to Org.nr {other_org[:3]} {other_org[3:6]} {other_org[6:]}, not us.</body></html>"
+    p = page("belongs to someone else", html=html, url="https://www.kitron.com/")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(domain="kitron.com", source="wikidata_website"))
+    assert verdict.status != "exact"
+    assert verdict.status == "related"
+
+
+# --- assess(): XLEDGER LABS AS trap (group/product site crediting a different legal entity) ----------
+
+
+def test_xledger_trap_jsonld_owner_name_mismatch_blocks_registry_declared_exact():
+    # XLEDGER LABS AS's registry hjemmeside is xledger.com, Xledger's shared product/marketing site.
+    # No page on it ever names "Xledger Labs AS" specifically -- JSON-LD only ever says "Xledger". Must
+    # not resolve to exact off bare registry_declared trust.
+    facts = {**REGISTRY_FACTS, "name": "XLEDGER LABS AS", "street": "", "postcode": "", "phones": [], "email": None, "role_holders": []}
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '{"@context":"https://schema.org","@type":"Organization","name":"Xledger",'
+        '"url":"https://xledger.com/"}</script></head>'
+        "<body>Xledger. Cloud ERP for growing businesses.</body></html>"
+    )
+    p = page("Xledger cloud ERP", html=html, url="https://xledger.com/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="xledger.com", source="registry_website"), website_org_count=1)
+    assert verdict.status != "exact"
+    assert verdict.status == "related"
+
+
+def test_xledger_style_site_with_our_own_name_in_jsonld_is_still_exact():
+    # Sanity check: when the JSON-LD name DOES match our registered name, the mismatch guard must not
+    # fire -- registry_declared trust still applies normally.
+    facts = {**REGISTRY_FACTS, "name": "XLEDGER LABS AS"}
+    html = (
+        '<html><head><script type="application/ld+json">'
+        '{"@context":"https://schema.org","@type":"Organization","name":"Xledger Labs AS",'
+        '"url":"https://xledgerlabs.no/"}</script></head><body>Xledger Labs AS.</body></html>'
+    )
+    p = page("Xledger Labs AS", html=html, url="https://xledgerlabs.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="xledgerlabs.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "registry_declared"
+
+
+def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
+    # Coordinator fix: the registry_declared decisive gate now checks website_org_count >= 2 (not 3) --
+    # a domain also registered by even one sibling/parent entity is not decisive on bare trust alone.
+    p = page("Example Company AS leverer tjenester i Oslo.")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="registry_website"), website_org_count=2)
+    assert verdict.status != "exact"
+    assert verdict.status == "related"
+
+
 def test_namesake_company_resolved_by_org_number_match():
     site_text = f"Oen Kuldeteknikk AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. Kontakt oss i Bergen."
     p = page(site_text, url="https://oenkuldeteknikk.no/")

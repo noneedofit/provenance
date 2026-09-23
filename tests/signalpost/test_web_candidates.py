@@ -118,6 +118,23 @@ def test_generic_single_token_name_guess_is_dropped():
     assert not any(c.domain == "bygg.no" for c in cands)
 
 
+def test_generic_industry_word_from_historic_subunit_name_is_dropped():
+    # Bergen Bulktransport AS trap: a subunit's HISTORIC name ("AS Transport AS") strips down to the
+    # single generic industry word "transport", which resolves to some unrelated, already-registered
+    # transport-industry domain far more often than it resolves to us.
+    client = FakeHttpClient(dns={"transport.no", "bergenbulktransport.no"})
+    ctx = make_ctx(
+        "923456783", tier="T2",
+        registry_facts={
+            "name": "BERGEN BULKTRANSPORT AS", "aliases": [],
+            "subunits": [{"name": "AS Transport AS"}],
+        },
+        client=client,
+    )
+    cands = generate_candidates(ctx)
+    assert not any(c.domain == "transport.no" for c in cands)
+
+
 def test_candidates_deduplicated_by_registered_domain():
     ctx = make_ctx(
         "923456783",

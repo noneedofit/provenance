@@ -16,10 +16,15 @@ import tldextract
 from .blocklist import is_marketplace_or_directory
 
 # Words that should not, on their own, drive a name-guess slug (too generic to be a reliable identity guess).
+# Includes bare industry-sector words that show up as a HISTORIC/trade name on their own (e.g. Bergen
+# Bulktransport AS's subunit historic name "AS Transport AS" -> stripped token "transport"): a single
+# generic industry word like this resolves to some unrelated, unaffiliated, already-registered domain far
+# more often than it resolves to us.
 GENERIC_WORDS = {
     "norge", "norway", "holding", "gruppen", "group", "invest", "investering", "eiendom",
     "eiendommer", "drift", "handel", "service", "tjenester", "consulting", "konsulent",
     "bygg", "shop", "butikk", "hus", "senter", "norsk", "nordic", "as", "asa",
+    "transport", "logistikk", "logistics", "elektro", "rens", "vaktmester", "bygg", "montasje",
 }
 
 # Legal-form / generic suffix tokens stripped when building a slug variant "without suffix words".
