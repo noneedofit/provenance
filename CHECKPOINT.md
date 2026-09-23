@@ -53,3 +53,13 @@ Pending external: Builderr reply on JBOX eligibility.
 
 If an agent can't be resumed (new session), relaunch it from its original brief in BUILD_SPEC.md and point it at
 its branch: "check out branch <branch>, read its *-STATUS.md, continue".
+
+## Session 2 (24 Sep) — relaunched (old agent transcripts not resumable across sessions)
+| ID | Role | Where |
+|---|---|---|
+| a95540b1e80007e26 | gold batch 2 relaunch | writes eval/data/gold_chunk_2.jsonl in W7 worktree |
+| a93d72bf610f0252f | gold batch 4 relaunch | writes eval/data/gold_chunk_4.jsonl in W7 worktree |
+| aa73440218cea562f | W3 web continue | worktree agent-adad349271db94046 |
+| a59847804506c3fa6 | W2 caches continue | worktree agent-ae128225d59c085cb |
+W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only, 84 gold orgs): 377 requests,
+0 wrong-company, website recall 0 → W3 must beat this.
