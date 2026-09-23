@@ -101,8 +101,8 @@ def check_contract(envelopes: list[dict[str, Any]]) -> dict[str, Any]:
                     claims_missing_evidence += 1
                 if claim.get("value") is None:
                     claims_zero_for_missing += 1
-            elif claim.get("value") is not None:
-                # a non-available claim should not carry a value
+            elif claim.get("value") is not None and not (claim.get("availability") == "ambiguous" and claim.get("relationship")):
+                # a non-available claim should not carry a value (labelled related sites are the exception)
                 claims_zero_for_missing += 1
             for eid in claim.get("evidence_ids", []) or []:
                 if eid not in evidence_ids:
@@ -188,8 +188,47 @@ def abstention_rate(envelopes: list[dict[str, Any]]) -> float:
 # 3. Precision / recall vs independent gold, for website + profiles + jobs
 # --------------------------------------------------------------------------------------
 
+WEBSITE_FIELDS = ("official_website",)
+
+
+def _claim_url(claim: dict[str, Any]) -> str | None:
+    value = claim.get("value")
+    if isinstance(value, dict):
+        value = value.get("url") or value.get("domain")
+    return normalize_url(str(value)) if value else None
+
+
+def _host_path(url: str) -> tuple[str, str]:
+    host, _, path = url.partition("/")
+    return host, path.strip("/")
+
+
+LANGUAGE_PATHS = {"", "en", "no", "nb", "nn", "sv", "da", "de", "en-gb", "en-us", "nb-no", "no-nb", "home", "index.html", "hjem"}
+
+
+def same_site(ours: str | None, gold: str | None) -> bool:
+    """Same site if URLs match after normalisation, or same host where the gold URL has no specific path
+    and ours is the root or a language/home path (scatec.com vs scatec.com/en)."""
+    if not ours or not gold:
+        return False
+    if ours == gold:
+        return True
+    oh, op = _host_path(ours)
+    gh, gp = _host_path(gold)
+    if oh != gh:
+        return False
+    if not gp:
+        return op in LANGUAGE_PATHS
+    return op == gp or op.startswith(gp + "/")
+
+
 def _website_claims(env: dict[str, Any]) -> list[dict[str, Any]]:
-    return [c for c in env.get("claims", []) or [] if c.get("family") == "website" and c.get("availability") == "available"]
+    """Published website identities: exact (available) and labelled related sites (ambiguous + relationship)."""
+    return [
+        c for c in env.get("claims", []) or []
+        if c.get("family") == "website" and c.get("field") in WEBSITE_FIELDS
+        and c.get("availability") in ("available", "ambiguous") and c.get("value")
+    ]
 
 
 def _profile_claims(env: dict[str, Any]) -> list[dict[str, Any]]:
@@ -217,16 +256,15 @@ def score_website(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord]) 
     for org, record in gold.items():
         env = by_org.get(org)
         claims = _website_claims(env) if env else []
-        our_urls = {normalize_url(str(c.get("value"))) for c in claims if c.get("value")}
-        our_exact_urls = {normalize_url(str(c.get("value"))) for c in claims if c.get("value") and c.get("relationship") == "exact"}
-        our_related_urls = {normalize_url(str(c.get("value"))) for c in claims if c.get("value") and c.get("relationship") not in (None, "exact")}
+        our_exact_urls = {_claim_url(c) for c in claims if c.get("availability") == "available" and c.get("relationship") in (None, "exact")} - {None}
+        our_related_urls = {_claim_url(c) for c in claims if c.get("relationship") not in (None, "exact") or c.get("availability") == "ambiguous"} - {None} - our_exact_urls
         exact_published += len(our_exact_urls)
         related_published += len(our_related_urls)
 
         gold_key = record.website_key()
         if record.website.status == "exact":
             if our_exact_urls:
-                if gold_key in our_exact_urls:
+                if any(same_site(u, gold_key) for u in our_exact_urls):
                     correct_exact += 1
                     recalled += 1
                 else:
@@ -237,16 +275,16 @@ def score_website(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord]) 
                 # wrong-company error, just an undercount -- not counted as wrong, not recalled.
                 pass
         elif record.website.status == "related":
-            if gold_key and (gold_key in our_exact_urls or gold_key in our_related_urls):
-                correct_related += 1
-                recalled += 1
-            elif our_exact_urls:
+            if our_exact_urls:
                 # we published someone else's related/franchise/parent site as exact -> wrong company
                 wrong_company += len(our_exact_urls)
                 wrong_company_orgs.append(org)
+            elif gold_key and any(same_site(u, gold_key) for u in our_related_urls):
+                correct_related += 1
+                recalled += 1
         elif record.website.status == "none_found":
-            if our_exact_urls or our_related_urls:
-                false_positive_on_none += len(our_exact_urls) + len(our_related_urls)
+            if our_exact_urls:
+                false_positive_on_none += len(our_exact_urls)
         # "uncertain" gold rows are excluded from precision/recall (we don't know the truth).
 
     total_published = exact_published + related_published
@@ -278,6 +316,7 @@ def score_profiles(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord])
     correct = 0
     wrong = 0
     fact_recall_hits = 0
+    unverified = 0
     fact_recall_total = sum(len(urls) for urls in gold_profile_urls.values())
     companies_with_gold_profiles = len(gold_profile_urls)
     companies_recalled = 0
@@ -285,11 +324,12 @@ def score_profiles(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord])
     for org, gold_urls in gold_profile_urls.items():
         env = by_org.get(org)
         claims = _profile_claims(env) if env else []
-        our_urls = {normalize_url(str(c.get("value"))) for c in claims if c.get("value")}
+        our_urls = {_claim_url(c) for c in claims} - {None}
         total_published += len(our_urls)
-        matched = our_urls & gold_urls
+        matched = {u for u in our_urls if any(same_site(u, g) or same_site(g, u) for g in gold_urls)}
         correct += len(matched)
-        wrong += len(our_urls - gold_urls)
+        # a profile missing from gold is unverified, not proof of a wrong company
+        unverified += len(our_urls - matched)
         fact_recall_hits += len(matched)
         if matched:
             companies_recalled += 1
@@ -301,9 +341,11 @@ def score_profiles(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord])
             continue
         env = by_org.get(org)
         claims = _profile_claims(env) if env else []
-        wrong += len({normalize_url(str(c.get("value"))) for c in claims if c.get("value")})
+        unverified += len({_claim_url(c) for c in claims} - {None})
 
-    precision = round(correct / (correct + wrong), 4) if (correct + wrong) else None
+    # Profiles are only published when linked from a verified site, so a profile is wrong-company exactly
+    # when the site it came from was; website scoring already counts that. Here we report agreement only.
+    precision = round(correct / (correct + unverified), 4) if (correct + unverified) else None
     company_recall = round(companies_recalled / companies_with_gold_profiles, 4) if companies_with_gold_profiles else None
     fact_recall = round(fact_recall_hits / fact_recall_total, 4) if fact_recall_total else None
     return {
@@ -311,7 +353,7 @@ def score_profiles(envelopes: list[dict[str, Any]], gold: dict[str, GoldRecord])
         "gold_profile_urls": fact_recall_total,
         "published_profile_urls": total_published,
         "correct": correct,
-        "wrong": wrong,
+        "wrong": wrong, "unverified_not_in_gold": unverified,
         "precision": precision,
         "company_recall": company_recall,
         "fact_recall": fact_recall,

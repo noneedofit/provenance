@@ -205,7 +205,8 @@ def test_profiles_precision_recall(tmp_path: Path) -> None:
     result = score_mod.score_profiles(score_mod.read_jsonl(path), gold)
 
     assert result["correct"] == 1
-    assert result["wrong"] == 1
+    assert result["wrong"] == 0
+    assert result["unverified_not_in_gold"] == 1
     assert result["precision"] == pytest.approx(0.5)
     assert result["company_recall"] == pytest.approx(0.5)
 
