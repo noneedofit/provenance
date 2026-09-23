@@ -63,3 +63,12 @@ its branch: "check out branch <branch>, read its *-STATUS.md, continue".
 | a59847804506c3fa6 | W2 caches continue | worktree agent-ae128225d59c085cb |
 W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only, 84 gold orgs): 377 requests,
 0 wrong-company, website recall 0 → W3 must beat this.
+
+## 24 Sep night (autonomous)
+- Gold set complete: 131 companies (74 exact / 16 related / 31 none / 10 uncertain) in eval/data/gold_web.jsonl.
+- W2 caches merged (email_domains, aliases, wikidata built in ../cache). NAV feed cache is stale by design
+  (feed walks from 2023) → replaced by live NAV lookup: arbeidsplassen search by name + feedentry org-number
+  confirmation (agent a1f9fe0b6965c3a99, worktree branch, in progress).
+- Scorer fixed (dict URLs, same-site matching, related-as-exact = wrong, profiles unverified ≠ wrong).
+- Integrated main+W3 on 131 gold: 1,545 requests, website precision 97.8%, recall 35.6%, 1 wrong (Xledger),
+  proxy 40/100 (refresh/UX unmeasured). W3 agent aa73440218cea562f fixing Xledger + big-company recall.
