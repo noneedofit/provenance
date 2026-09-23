@@ -19,7 +19,7 @@ from __future__ import annotations
 # legal entity, unless that entity IS the chain's own registered organisation number.
 FRANCHISE_CHAIN_DOMAINS: frozenset[str] = frozenset({
     "joker.no", "coop.no", "rema.no", "rema1000.no", "kiwi.no", "meny.no", "spar.no", "eurospar.no",
-    "extra.no", "obs.no", "obsbygg.no", "7-eleven.no", "narvesen.no", "circlek.no",
+    "extra.no", "obs.no", "obsbygg.no", "europris.no", "7-eleven.no", "narvesen.no", "circlek.no",
     "mcdonalds.no", "burgerking.no", "peppes.no", "dominos.no", "sats.no", "elixia.no",
     "bestseller.com", "thon.no", "choice.no", "nordicchoicehotels.no", "scandichotels.no",
     "obos.no", "usbl.no", "styrerommet.no",
@@ -31,7 +31,7 @@ MARKETPLACE_BLOCKLIST: frozenset[str] = frozenset({
     "fixit.no", "timma.no", "ledigtime.no", "bestille.no", "mittanbud.no",
     "finn.no", "gulesider.no", "1881.no", "proff.no", "purehelp.no",
     "facebook.com", "instagram.com", "linkedin.com", "linktr.ee", "youtube.com", "tiktok.com", "x.com",
-    "wix.com", "weebly.com", "squarespace.com", "wordpress.com", "google.com", "goo.gl", "bit.ly",
+    "wix.com", "wixsite.com", "weebly.com", "squarespace.com", "wordpress.com", "google.com", "goo.gl", "bit.ly",
 })
 
 # Domains that must never be used as a website candidate at all (union of both lists — a franchise
