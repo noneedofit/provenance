@@ -1,0 +1,407 @@
+"""Budgeted, SSRF-safe HTTP client implementing `signalpost.context.HttpClient`.
+
+Stdlib only (urllib). Every redirect hop and every retry counts against the request budget, exactly like
+an outbound HTTP request would be counted by the competition's request cap. Robots.txt is honoured per
+host (cached) unless the caller passes `respect_robots=False` (official/keyless APIs), and the robots.txt
+fetch itself is charged to the calling org like any other request.
+"""
+from __future__ import annotations
+
+import concurrent.futures
+import gzip
+import json
+import socket
+import threading
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import urllib.robotparser
+from dataclasses import dataclass, field
+from typing import Any
+
+from .context import Response
+from .snapshots import SnapshotStore
+
+try:  # reuse the starter kit's SSRF guard rather than re-implement it
+    from norway_company_agent.website import assert_public_url
+except Exception:  # pragma: no cover - fallback if the starter kit package is ever removed
+    import ipaddress
+
+    def assert_public_url(url: str) -> None:  # type: ignore[no-redef]
+        parsed = urllib.parse.urlparse(url)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        if parsed.scheme not in {"http", "https"} or not host:
+            raise ValueError("Only public HTTP(S) URLs are allowed")
+        if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
+            raise ValueError("Local hosts are blocked")
+        try:
+            addresses = {
+                item[4][0]
+                for item in socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
+            }
+        except socket.gaierror as exc:
+            raise ValueError("Hostname did not resolve") from exc
+        for address in addresses:
+            ip = ipaddress.ip_address(address)
+            if not ip.is_global:
+                raise ValueError("Private, loopback, link-local, multicast, and reserved addresses are blocked")
+
+
+USER_AGENT = "SignalpostResearchAgent/0.1 (+contact in repo README)"
+DEFAULT_HOST_CONCURRENCY = 2
+HOST_CONCURRENCY_OVERRIDES = {
+    "data.brreg.no": 6,
+}
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Disables automatic redirect following so every hop can be budgeted and SSRF-checked."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect())
+
+
+@dataclass
+class RequestLogEntry:
+    purpose: str
+    org: str | None
+    url: str
+    status: int
+    requests_used: int
+    elapsed_ms: int
+    error: str | None = None
+
+
+class Budget:
+    """Thread-safe global request budget with per-org allowances and shared-pool borrowing.
+
+    `allocate(org, n)` grants a soft per-company allowance (the planner's tier estimate). `charge(org, n)`
+    debits both the org's own usage and the global counter; it is allowed to exceed the org's allowance
+    (borrowing from the shared pool) as long as the hard global cap is not exceeded. `remaining(org)`
+    reports how much the org can still spend without the caller needing to know the borrowing rule.
+    """
+
+    def __init__(self, hard_cap: int = 1900):
+        self.hard_cap = hard_cap
+        self._lock = threading.Lock()
+        self._used_total = 0
+        self._org_allocated: dict[str | None, int] = {}
+        self._org_used: dict[str | None, int] = {}
+
+    def allocate(self, org: str | None, n: int) -> None:
+        with self._lock:
+            self._org_allocated[org] = self._org_allocated.get(org, 0) + n
+
+    def charge(self, org: str | None, n: int = 1) -> bool:
+        with self._lock:
+            if self._used_total + n > self.hard_cap:
+                return False
+            self._used_total += n
+            self._org_used[org] = self._org_used.get(org, 0) + n
+            return True
+
+    def remaining(self, org: str | None = None) -> int:
+        with self._lock:
+            global_remaining = max(0, self.hard_cap - self._used_total)
+            allocated = self._org_allocated.get(org)
+            if allocated is None:
+                return global_remaining
+            org_remaining = allocated - self._org_used.get(org, 0)
+            return max(0, min(org_remaining, global_remaining)) if org_remaining > 0 else global_remaining
+
+    def used_total(self) -> int:
+        with self._lock:
+            return self._used_total
+
+    def org_used(self, org: str | None) -> int:
+        with self._lock:
+            return self._org_used.get(org, 0)
+
+
+def _utc_now() -> str:
+    from .models import utc_now
+
+    return utc_now()
+
+
+def _sha256(body: bytes) -> str:
+    from .models import sha256_text
+
+    return sha256_text(body)
+
+
+class BudgetedHttpClient:
+    """Stdlib HttpClient implementation: manual redirects, retries, robots, SSRF guard, snapshots."""
+
+    def __init__(
+        self,
+        budget: Budget,
+        *,
+        snapshots: SnapshotStore | None = None,
+        dns_timeout: float = 3.0,
+    ):
+        self.budget = budget
+        self.snapshots = snapshots
+        self.dns_timeout = dns_timeout
+
+        self._request_log: list[RequestLogEntry] = []
+        self._log_lock = threading.Lock()
+
+        self._host_semaphores: dict[str, threading.Semaphore] = {}
+        self._host_sem_lock = threading.Lock()
+
+        self._robots_cache: dict[tuple[str, str], urllib.robotparser.RobotFileParser | None] = {}
+        self._robots_lock = threading.Lock()
+        self._robots_host_locks: dict[tuple[str, str], threading.Lock] = {}
+
+        self._dns_cache: dict[str, bool] = {}
+        self._dns_lock = threading.Lock()
+        self._dns_executor = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="signalpost-dns")
+
+    # -- public API (context.HttpClient protocol) -------------------------------------------------
+
+    def remaining(self, org: str | None = None) -> int:
+        return self.budget.remaining(org)
+
+    def dns_resolves(self, hostname: str) -> bool:
+        with self._dns_lock:
+            cached = self._dns_cache.get(hostname)
+            if cached is not None:
+                return cached
+        ok = False
+        try:
+            future = self._dns_executor.submit(socket.getaddrinfo, hostname, None)
+            future.result(timeout=self.dns_timeout)
+            ok = True
+        except Exception:
+            ok = False
+        with self._dns_lock:
+            self._dns_cache[hostname] = ok
+        return ok
+
+    def get(
+        self,
+        url: str,
+        *,
+        org: str | None = None,
+        purpose: str = "",
+        accept: str = "*/*",
+        max_bytes: int = 2_000_000,
+        timeout: float = 10.0,
+        respect_robots: bool = True,
+        max_redirects: int = 4,
+        snapshot: bool = True,
+    ) -> Response:
+        return self._request(
+            "GET", url, org=org, purpose=purpose, accept=accept, max_bytes=max_bytes, timeout=timeout,
+            respect_robots=respect_robots, max_redirects=max_redirects, snapshot=snapshot, body=None,
+        )
+
+    def post_json(
+        self, url: str, payload: Any, *, org: str | None = None, purpose: str = "", timeout: float = 20.0
+    ) -> Response:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        return self._request(
+            "POST", url, org=org, purpose=purpose, accept="application/json", max_bytes=2_000_000,
+            timeout=timeout, respect_robots=False, max_redirects=0, snapshot=True, body=body,
+        )
+
+    @property
+    def request_log(self) -> list[RequestLogEntry]:
+        with self._log_lock:
+            return list(self._request_log)
+
+    # -- internals ----------------------------------------------------------------------------------
+
+    def _log(self, entry: RequestLogEntry) -> None:
+        with self._log_lock:
+            self._request_log.append(entry)
+
+    def _semaphore_for(self, host: str) -> threading.Semaphore:
+        with self._host_sem_lock:
+            sem = self._host_semaphores.get(host)
+            if sem is None:
+                sem = threading.Semaphore(HOST_CONCURRENCY_OVERRIDES.get(host, DEFAULT_HOST_CONCURRENCY))
+                self._host_semaphores[host] = sem
+            return sem
+
+    def _fail(
+        self, url: str, redirect_chain: list[str], error: str, *, org: str | None, purpose: str,
+        status: int = 0, requests_used: int = 0, started: float | None = None,
+    ) -> Response:
+        elapsed_ms = int((time.monotonic() - started) * 1000) if started else 0
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=url, status=status, requests_used=requests_used, elapsed_ms=elapsed_ms, error=error))
+        return Response(
+            url=url, final_url=redirect_chain[-1] if redirect_chain else url, redirect_chain=redirect_chain,
+            status=status, headers={}, body=b"", retrieved_at=_utc_now(), content_sha256="",
+            elapsed_ms=elapsed_ms, requests_used=requests_used, error=error,
+        )
+
+    def _robots_allowed(self, url: str, *, org: str | None, timeout: float) -> tuple[bool, int]:
+        """Returns (allowed, requests_charged_for_robots_fetch)."""
+        parsed = urllib.parse.urlparse(url)
+        key = (parsed.scheme, parsed.hostname or "")
+        with self._robots_lock:
+            cached = self._robots_cache.get(key)
+            if key in self._robots_cache:
+                return (True if cached is None else cached.can_fetch(USER_AGENT, url)), 0
+            host_lock = self._robots_host_locks.setdefault(key, threading.Lock())
+
+        with host_lock:
+            with self._robots_lock:
+                if key in self._robots_cache:
+                    cached = self._robots_cache[key]
+                    return (True if cached is None else cached.can_fetch(USER_AGENT, url)), 0
+            robots_url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, "/robots.txt", "", "", ""))
+            charged = 0
+            parser: urllib.robotparser.RobotFileParser | None = urllib.robotparser.RobotFileParser()
+            if not self.budget.charge(org, 1):
+                # No budget to even check robots: fail closed is unhelpful, so cache "allow" but do not
+                # charge (the caller's own GET charge, done next, is what will report budget_exhausted).
+                with self._robots_lock:
+                    self._robots_cache[key] = None
+                return True, 0
+            charged = 1
+            started = time.monotonic()
+            try:
+                sem = self._semaphore_for(parsed.hostname or "")
+                with sem:
+                    request = urllib.request.Request(robots_url, headers={"User-Agent": USER_AGENT, "Accept": "text/plain"})
+                    with _OPENER.open(request, timeout=timeout) as resp:
+                        raw = resp.read(200_000)
+                        status = resp.status
+                parser.parse(raw.decode("utf-8", "replace").splitlines())
+                elapsed_ms = int((time.monotonic() - started) * 1000)
+                self._log(RequestLogEntry(purpose="robots", org=org, url=robots_url, status=status, requests_used=1, elapsed_ms=elapsed_ms))
+            except Exception as exc:
+                elapsed_ms = int((time.monotonic() - started) * 1000)
+                self._log(RequestLogEntry(purpose="robots", org=org, url=robots_url, status=0, requests_used=1, elapsed_ms=elapsed_ms, error=type(exc).__name__))
+                parser = None  # robots.txt unavailable: default to allow (same policy as the starter kit)
+            with self._robots_lock:
+                self._robots_cache[key] = parser
+            return (True if parser is None else parser.can_fetch(USER_AGENT, url)), charged
+
+    def _do_http(self, method: str, url: str, *, accept: str, timeout: float, max_bytes: int, body: bytes | None):
+        """One raw HTTP attempt. Returns (status, headers, raw_body, final_url, error)."""
+        headers = {"User-Agent": USER_AGENT, "Accept": accept, "Accept-Encoding": "gzip"}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(url, data=body, method=method, headers=headers)
+        try:
+            with _OPENER.open(request, timeout=timeout) as resp:
+                raw = resp.read(max_bytes + 1)
+                return resp.status, dict(resp.headers.items()), raw, resp.geturl(), None
+        except urllib.error.HTTPError as exc:
+            raw = b""
+            try:
+                raw = exc.read(max_bytes + 1)
+            except Exception:
+                pass
+            return exc.code, dict(exc.headers.items()) if exc.headers else {}, raw, url, None
+        except (TimeoutError, socket.timeout):
+            return 0, {}, b"", url, "timeout"
+        except urllib.error.URLError as exc:
+            reason = str(getattr(exc, "reason", exc))
+            error = "dns" if "not known" in reason or "nodename" in reason else "network_error"
+            return 0, {}, b"", url, error
+        except Exception as exc:  # pragma: no cover - defensive
+            return 0, {}, b"", url, f"{type(exc).__name__}: {str(exc)[:120]}"
+
+    def _request(
+        self, method: str, url: str, *, org: str | None, purpose: str, accept: str, max_bytes: int,
+        timeout: float, respect_robots: bool, max_redirects: int, snapshot: bool, body: bytes | None,
+    ) -> Response:
+        started = time.monotonic()
+        redirect_chain: list[str] = []
+        current_url = url
+        total_requests_used = 0
+        hops = 0
+
+        while True:
+            redirect_chain.append(current_url)
+            try:
+                assert_public_url(current_url)
+            except ValueError as exc:
+                return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+
+            if respect_robots:
+                allowed, robots_charged = self._robots_allowed(current_url, org=org, timeout=timeout)
+                total_requests_used += robots_charged
+                if robots_charged and self.budget.remaining(org) < 0:
+                    pass  # informational only; charge() already enforced the hard cap
+                if not allowed:
+                    return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+
+            if not self.budget.charge(org, 1):
+                return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+            total_requests_used += 1
+
+            parsed_host = urllib.parse.urlparse(current_url).hostname or ""
+            sem = self._semaphore_for(parsed_host)
+            hop_started = time.monotonic()
+            with sem:
+                status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body)
+
+            retryable = error == "timeout" or status == 429 or status >= 500
+            if retryable:
+                if not self.budget.charge(org, 1):
+                    return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                total_requests_used += 1
+                with sem:
+                    status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body)
+
+            hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
+
+            if error:
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error))
+                return Response(
+                    url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=headers,
+                    body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
+                    requests_used=total_requests_used, error=error,
+                )
+
+            lowered_headers = {k.lower(): v for k, v in headers.items()}
+            if status in (301, 302, 303, 307, 308):
+                location = lowered_headers.get("location")
+                if location and hops < max_redirects:
+                    current_url = urllib.parse.urljoin(current_url, location)
+                    hops += 1
+                    continue
+                # No location, or redirect budget exhausted: treat as terminal (report the redirect itself).
+                error_final = None if not location else "too_many_redirects"
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+                return Response(
+                    url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=lowered_headers,
+                    body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
+                    requests_used=total_requests_used, error=error_final,
+                )
+            break
+
+        truncated_body = raw[:max_bytes]
+        if lowered_headers.get("content-encoding", "").lower() == "gzip":
+            try:
+                truncated_body = gzip.decompress(truncated_body)
+            except Exception:
+                pass  # leave as-is if decompression fails on a truncated stream
+
+        error_final = "http_4xx" if 400 <= status < 500 else ("http_5xx" if status >= 500 else None)
+        content_sha256 = _sha256(truncated_body)
+        retrieved_at = _utc_now()
+        snapshot_ref = None
+        if snapshot and self.snapshots is not None and 200 <= status < 300:
+            snapshot_ref = self.snapshots.put(
+                truncated_body, url=final_hop_url or current_url, retrieved_at=retrieved_at,
+                content_type=lowered_headers.get("content-type"),
+            )
+
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+        return Response(
+            url=url, final_url=final_hop_url or current_url, redirect_chain=redirect_chain, status=status,
+            headers=lowered_headers, body=truncated_body, retrieved_at=retrieved_at, content_sha256=content_sha256,
+            elapsed_ms=elapsed_ms, requests_used=total_requests_used, error=error_final, snapshot_ref=snapshot_ref,
+        )
