@@ -455,6 +455,8 @@ def score_budget(report: Optional[dict[str, Any]]) -> dict[str, Any]:
         return {"checked": False, "reason": "no --report run-report.json supplied"}
     total_requests = report.get("total_requests") or report.get("requests_total")
     runtime_ms = report.get("runtime_ms") or (report.get("runtime") or {}).get("total_ms")
+    if runtime_ms is None and report.get("runtime_s") is not None:
+        runtime_ms = int(float(report["runtime_s"]) * 1000)
     within_requests = total_requests is not None and total_requests <= BUDGET_MAX_REQUESTS
     within_runtime = runtime_ms is not None and runtime_ms <= BUDGET_MAX_RUNTIME_MS
     return {

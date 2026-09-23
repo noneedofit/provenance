@@ -100,6 +100,9 @@ def load_gold(paths: list[str | Path]) -> dict[str, GoldRecord]:
                 if not line:
                     continue
                 raw = json.loads(line)
+                website = raw.get("website") or {}
+                if website.get("relationship") == "exact":  # labellers sometimes restate the status here
+                    website["relationship"] = None
                 record = GoldRecord.model_validate(raw)
                 records[record.organisation_number] = record
     return records
