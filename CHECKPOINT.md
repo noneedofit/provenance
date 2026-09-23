@@ -35,14 +35,16 @@ Site: `uv run python -m signalpost.viewer.build --envelopes out/x/envelopes.json
 5. Submission prep (repo, manifest of 1,000, run command, cost $0) — target v1 ~4 Oct.
 Pending external: Builderr reply on JBOX eligibility.
 
+## Paused 23 Sep 2026 (user session limit). Resume order: batch 4 → batch 2 → W3 → W2 → W7 merge.
+
 ## Agent registry (resume with SendMessage to the ID; each keeps its full context)
 | ID | Role | Worktree branch | Last known state |
 |---|---|---|---|
-| ae128225d59c085cb | W2 caches | worktree-agent-ae128225d59c085cb | running: prepare build + tests, asked to WIP-commit |
-| adad349271db94046 | W3 web identity | worktree-agent-adad349271db94046 | running: 150-co probe + trap regressions, asked to WIP-commit |
-| a52fa5a05ea0afa83 | W7 eval + gold (owns batch agents) | worktree-agent-a52fa5a05ea0afa83 | running: waiting on gold batches 2 & 4, asked to WIP-commit |
-| a37f7f246cbaf25f4 | gold-label batch (2 or 4, launched by W7) | writes into W7 worktree eval/data/ | running |
-| ae865681d581710b5 | gold-label batch (2 or 4, launched by W7) | writes into W7 worktree eval/data/ | running |
+| ae128225d59c085cb | W2 caches | worktree-agent-ae128225d59c085cb | PAUSED — committed f82728e (+ docs/caches-STATUS.md) |
+| adad349271db94046 | W3 web identity | worktree-agent-adad349271db94046 | PAUSED — WIP e9c173b; was wiring franchise-domain gate into verify.py |
+| a52fa5a05ea0afa83 | W7 eval + gold (owns batch agents) | worktree-agent-a52fa5a05ea0afa83 | PAUSED — committed cb8963e (docs/eval-STATUS.md); merge batches 2 & 4 when they finish |
+| a37f7f246cbaf25f4 | gold-label batch 2 (dev staffed, remaining 25) | writes into W7 worktree eval/data/ | PAUSED mid-research, nothing written yet |
+| ae865681d581710b5 | gold-label batch 4 (staffed, no registry website) | writes into W7 worktree eval/data/ | PAUSED right before writing its file — resume first |
 | ae9b7198a1ad94738 | W1 core | merged | done |
 | a4b12181a63b2a55b | W4 activity | merged | done |
 | a8fabd4eec4370c17 | W5 refresh + summary | merged | done |
