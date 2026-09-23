@@ -22,9 +22,9 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "legal_form": ("legal_form", "organisation_form"),
     "founded_date": ("founded_date", "registration_date", "stiftelsesdato"),
     "status": ("status", "registration_status"),
-    "nace_label": ("nace_label", "nace_description", "industry_label"),
+    "nace_label": ("nace_label", "nace", "nace_description", "industry_label"),
     "statutory_purpose": ("statutory_purpose", "vedtektsfestet_formaal", "purpose"),
-    "municipality": ("municipality", "business_municipality"),
+    "municipality": ("municipality", "business_municipality", "business_address"),
     "employees": ("employees", "registered_employees"),
     "revenue": ("revenue",),
     "operating_result": ("operating_result",),
@@ -77,6 +77,23 @@ def _current_claims(envelope: Envelope, family: str, field_key: str | None = Non
 def _single(envelope: Envelope, family: str, field_key: str) -> Claim | None:
     claims = _current_claims(envelope, family, field_key)
     return claims[0] if claims else None
+
+
+def _display(value: Any) -> str:
+    """Human-readable text for registry values that arrive as structured dicts."""
+    if isinstance(value, dict):
+        for key in ("label", "count", "name", "municipality", "city", "url", "title"):
+            if value.get(key) not in (None, ""):
+                return str(value[key])
+        return ", ".join(str(v) for v in value.values() if v not in (None, ""))
+    if isinstance(value, list):
+        return ", ".join(_display(v) for v in value)
+    return str(value)
+
+
+def _clip(text: str, limit: int = 200) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
 
 
 def _scalar(value: Any) -> Any:
@@ -170,12 +187,16 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
         claim_ids = []
         name = envelope.legal_name or "The company"
         if nace is not None:
-            parts.append(f"is registered under the industry code \"{nace.value}\"")
+            parts.append(f"is registered in the industry \"{_display(nace.value)}\"")
             claim_ids.append(nace.claim_id)
         if purpose is not None:
-            parts.append(f"its registered statutory purpose is \"{purpose.value}\"")
+            parts.append(f"its statutory purpose reads \"{_clip(purpose.value)}\"")
             claim_ids.append(purpose.claim_id)
-        return SummarySentence(text=f"{name} " + " and ".join(parts) + ".", claim_ids=claim_ids)
+        if nace is not None:
+            text = f"{name} " + "; ".join(parts) + "."
+        else:
+            text = f"According to the register, {parts[0].replace('its statutory purpose reads', 'the statutory purpose of ' + name + ' reads')}."
+        return SummarySentence(text=text, claim_ids=claim_ids)
     return None
 
 
@@ -189,13 +210,13 @@ def _sentence_legal_form(envelope: Envelope) -> SummarySentence | None:
     parts = []
     claim_ids = []
     if form is not None:
-        parts.append(f"is a {form.value}")
+        parts.append(f"is a {_display(form.value)} ({form.value.get('code')})" if isinstance(form.value, dict) and form.value.get('code') else f"is a {_display(form.value)}")
         claim_ids.append(form.claim_id)
     if founded is not None:
         parts.append(f"founded {founded.value}")
         claim_ids.append(founded.claim_id)
     if municipality is not None:
-        parts.append(f"registered in {municipality.value}")
+        parts.append(f"registered in {_display(municipality.value).title()}")
         claim_ids.append(municipality.claim_id)
     return SummarySentence(text=f"{name} " + ", ".join(parts) + ".", claim_ids=claim_ids)
 
@@ -209,7 +230,7 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
     parts = []
     claim_ids = []
     if employees is not None:
-        parts.append(f"has {employees.value} registered employees")
+        parts.append(f"has {_display(employees.value)} registered employees")
         claim_ids.append(employees.claim_id)
     if revenue is not None:
         period = _period_label(revenue) or "its latest filed year"

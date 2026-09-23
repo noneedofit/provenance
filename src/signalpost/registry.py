@@ -225,7 +225,7 @@ def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, sn
             "code": row.get("naeringskode1.kode"), "label": row.get("naeringskode1.beskrivelse"),
         }, evidence_ids=[eid])
     employees = _bulk_int(row, "antallAnsatte")
-    if _bulk_bool(row, "harRegistrertAntallAnsatte"):
+    if _bulk_bool(row, "harRegistrertAntallAnsatte") and employees is not None:
         builder.add_claim(family="identity", field="registered_employees", value={
             "count": employees, "registered_at": row.get("registreringsdatoAntallAnsatteEnhetsregisteret") or None,
         }, evidence_ids=[eid])
@@ -284,7 +284,7 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
     nace = body.get("naeringskode1")
     if nace:
         builder.add_claim(family="identity", field="nace", value={"code": nace.get("kode"), "label": nace.get("beskrivelse")}, evidence_ids=[ev(f"{span_prefix}.naeringskode1")])
-    if body.get("harRegistrertAntallAnsatte"):
+    if body.get("harRegistrertAntallAnsatte") and body.get("antallAnsatte") is not None:
         builder.add_claim(family="identity", field="registered_employees", value={
             "count": body.get("antallAnsatte"), "registered_at": body.get("registreringsdatoAntallAnsatteEnhetsregisteret"),
         }, evidence_ids=[ev(f"{span_prefix}.antallAnsatte")])
