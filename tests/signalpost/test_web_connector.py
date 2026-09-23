@@ -70,6 +70,38 @@ def test_connector_marks_related_site_ambiguous_not_exact():
     assert claim.relationship != "exact"
 
 
+class _FakeEmailDomains:
+    """Matches the documented Caches API (BUILD_SPEC.md): org_count(domain) -> int."""
+
+    def __init__(self, counts: dict[str, int]):
+        self.counts = counts
+
+    def org_count(self, domain: str) -> int:
+        return self.counts.get(domain, 1)
+
+
+class _FakeCaches:
+    def __init__(self, email_domains=None):
+        self.email_domains = email_domains
+
+
+def test_connector_uses_caches_org_count_to_reject_shared_registry_domain():
+    # A registry-declared domain used by >=3 organisations (per ctx.caches.email_domains.org_count, the
+    # documented Caches API method) must not resolve to `exact` even with no conflicting org number.
+    html = "<html><body>Avarn Security operates across the Nordics. Part of the Avarn Group.</body></html>"
+    client = FakeHttpClient(pages={"https://www.avarn.no/": FakePage(html)})
+    caches = _FakeCaches(email_domains=_FakeEmailDomains({"avarn.no": 6}))
+    ctx = make_ctx(
+        OUR_ORG, tier="T2", client=client, caches=caches,
+        registry_facts={"name": "AVARN SECURITY AS", "website": "www.avarn.no"},
+    )
+    result = WebConnector().run(ctx)
+    assert result.families["website"].availability != "available"
+    claim = next((c for c in result.claims if c.family == "website" and c.field == "official_website"), None)
+    if claim is not None:
+        assert claim.relationship != "exact"
+
+
 def test_connector_stops_at_budget_exhaustion():
     client = FakeHttpClient(pages={}, remaining=0)
     ctx = make_ctx(OUR_ORG, tier="T2", client=client, registry_facts={"name": "EXAMPLE AS", "website": "example.no"})

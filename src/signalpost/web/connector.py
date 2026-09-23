@@ -23,10 +23,24 @@ def _registry_facts(ctx: CompanyContext) -> dict[str, Any]:
 
 
 def _website_org_count(ctx: CompanyContext, domain: str) -> int | None:
+    """How many organisations this domain is registered to (BUILD_SPEC.md "Identity rules": a website
+    domain used by >=3 orgs is a shared/parent site, never `exact` on registry_declared trust alone).
+
+    `caches.email_domains.org_count(domain)` (BUILD_SPEC.md "Caches API") is the only documented counter
+    for "how many orgs use this domain" and is built from the bulk file's website *and* email columns
+    together, so it doubles as the website-domain shared-count here. `None`-safe: caches may be absent
+    (no --caches passed) or, in an older/partial cache build, may not expose the method at all.
+    """
     caches = getattr(ctx, "caches", None)
-    if caches is not None and getattr(caches, "email_domains", None):
+    if caches is None or not getattr(caches, "email_domains", None):
+        return None
+    email_domains = caches.email_domains
+    for method_name in ("org_count", "website_org_count"):
+        method = getattr(email_domains, method_name, None)
+        if method is None:
+            continue
         try:
-            return caches.email_domains.website_org_count(domain)
+            return method(domain)
         except Exception:
             return None
     return None
