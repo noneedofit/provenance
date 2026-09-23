@@ -739,7 +739,8 @@ def registry_facts(
         website = normalize_website(bulk_row.get("hjemmeside"))
         historic = []
 
-    phones = [normalize_digits(phone)] if phone else []
+    phone_values = [entity_body.get("telefon"), entity_body.get("mobil")] if entity_body else [bulk_row.get("telefon"), bulk_row.get("mobil")]
+    phones = sorted({normalize_digits(p) for p in phone_values if p and normalize_digits(p)})
     role_holders: list[str] = []
     if builder is not None:
         for claim in builder.claims:
