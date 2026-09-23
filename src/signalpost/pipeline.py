@@ -1,0 +1,300 @@
+"""Batch orchestration: build a CompanyContext per org, run connectors, assemble one Envelope each.
+
+Public entry point: `run_batch(...)`. Connectors run in order [registry, web, activity]; web/activity are
+imported lazily so the pipeline works standalone before those workstreams land. Exactly one envelope is
+emitted per input organisation number, in input order, even when a company crashes.
+"""
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any, Callable
+
+from . import registry
+from .context import CompanyContext
+from .http import Budget, BudgetedHttpClient
+from .models import (
+    FAMILIES,
+    SECTIONS,
+    Envelope,
+    FamilyState,
+    Operations,
+    RunInfo,
+    Summary,
+    utc_now,
+)
+from .planner import classify
+from .snapshots import SnapshotStore
+
+DEFAULT_MAX_REQUESTS = 1900
+DEFAULT_DEADLINE_S = 2400  # 40 minutes
+DEFAULT_WORKERS = 12
+
+
+def _default_connectors() -> list[Any]:
+    connectors: list[Any] = [registry.RegistryConnector()]
+    try:
+        from signalpost.web.connector import WebConnector  # type: ignore
+
+        connectors.append(WebConnector())
+    except ImportError:
+        pass
+    try:
+        from signalpost.activity.connector import ActivityConnector  # type: ignore
+
+        connectors.append(ActivityConnector())
+    except ImportError:
+        pass
+    return connectors
+
+
+def _load_caches(caches_dir: str | None) -> Any:
+    if not caches_dir:
+        return None
+    try:
+        from signalpost.caches import Caches  # type: ignore
+
+        return Caches.load(caches_dir)
+    except ImportError:
+        return None
+    except Exception:
+        return None
+
+
+def _load_previous(state_dir: Path, org: str) -> dict[str, Any] | None:
+    path = state_dir / "profiles" / f"{org}.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            try:
+                os.remove(tmp_name)
+            except OSError:
+                pass
+
+
+def _legal_name(claims: list) -> str | None:
+    for claim in claims:
+        if claim.family == "identity" and claim.field == "legal_name" and claim.availability == "available":
+            return claim.value
+    return None
+
+
+class _CompanyOutcome:
+    __slots__ = ("index", "org", "envelope", "deadline_hit", "budget_exhausted")
+
+    def __init__(self, index: int, org: str, envelope: Envelope, deadline_hit: bool, budget_exhausted: bool):
+        self.index = index
+        self.org = org
+        self.envelope = envelope
+        self.deadline_hit = deadline_hit
+        self.budget_exhausted = budget_exhausted
+
+
+def run_batch(
+    orgs: list[str],
+    *,
+    output_dir: str,
+    state_dir: str,
+    run_id: str,
+    bulk_path: str | None = None,
+    caches_dir: str | None = None,
+    max_requests: int = DEFAULT_MAX_REQUESTS,
+    deadline_s: int = DEFAULT_DEADLINE_S,
+    workers: int = DEFAULT_WORKERS,
+    connectors: list[Any] | None = None,
+    bulk_rows: dict[str, dict[str, Any]] | None = None,
+    progress_cb: Callable[[int, int], None] | None = None,
+) -> dict[str, Any]:
+    """Run the full pipeline for `orgs`, writing envelopes.jsonl / run-report.json / requests.jsonl.
+
+    Returns a small summary dict (also used to build run-report.json). `bulk_rows` lets callers (mainly
+    tests) inject bulk rows directly instead of a bulk CSV path.
+    """
+    t_start = time.monotonic()
+    started_at = utc_now()
+
+    output_path = Path(output_dir)
+    state_path = Path(state_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    state_path.mkdir(parents=True, exist_ok=True)
+
+    org_list = list(orgs)
+    if bulk_rows is not None:
+        bulk = {org: bulk_rows.get(org, {}) for org in org_list}
+    elif bulk_path:
+        bulk = registry.load_bulk(bulk_path, org_list)
+    else:
+        bulk = {}
+
+    caches = _load_caches(caches_dir)
+    budget = Budget(hard_cap=max_requests)
+    snapshots = SnapshotStore(state_path)
+    client = BudgetedHttpClient(budget, snapshots=snapshots)
+    conn_list = connectors if connectors is not None else _default_connectors()
+
+    deadline_at = t_start + deadline_s
+    results: list[_CompanyOutcome | None] = [None] * len(org_list)
+    done_count = 0
+    done_lock = threading.Lock()
+
+    def process(index: int, org: str) -> _CompanyOutcome:
+        now = utc_now()
+        deadline_hit = time.monotonic() > deadline_at
+        budget_exhausted = False
+        errors: list[dict[str, Any]] = []
+        claims_by_id: dict[str, Any] = {}
+        evidence_by_id: dict[str, Any] = {}
+        families: dict[str, FamilyState] = {}
+        changes: list[Any] = []
+        summary = Summary()
+        try:
+            row = bulk.get(org, {})
+            tier_result = classify(row, caches=caches)
+            budget.allocate(org, tier_result.allowance)
+            ctx = CompanyContext(
+                org=org, run_id=run_id, now=now, tier=tier_result.tier, bulk=row, caches=caches,
+                client=client, snapshots=snapshots, shared={}, previous=_load_previous(state_path, org),
+            )
+            if not deadline_hit:
+                for connector in conn_list:
+                    if time.monotonic() > deadline_at:
+                        deadline_hit = True
+                        break
+                    try:
+                        result = connector.run(ctx)
+                    except Exception as exc:  # a connector crash never drops the company
+                        errors.append({"connector": getattr(connector, "name", str(connector)), "error": f"{type(exc).__name__}: {exc}"})
+                        continue
+                    for claim in result.claims:
+                        claims_by_id[claim.claim_id] = claim
+                    for ev in result.evidence:
+                        evidence_by_id[ev.evidence_id] = ev
+                    for fam_name, state in result.families.items():
+                        families[fam_name] = state
+                    ctx.shared.update(result.shared)
+                    errors.extend(result.errors)
+
+            if client.remaining(org) <= 0:
+                budget_exhausted = True
+
+            for fam in FAMILIES:
+                if fam not in families:
+                    reason = "deadline" if deadline_hit else ("request_budget" if budget_exhausted else "not_run")
+                    families[fam] = FamilyState(family=fam, availability="failed", reason=reason)
+
+            envelope = Envelope(
+                organisation_number=org,
+                legal_name=_legal_name(list(claims_by_id.values())),
+                run=RunInfo(
+                    run_id=run_id, started_at=started_at, completed_at=None,
+                    terminal_status="partial" if (deadline_hit or budget_exhausted or errors) else "completed",
+                    tier=tier_result.tier,
+                ),
+                families=families,
+                claims=list(claims_by_id.values()),
+                evidence=list(evidence_by_id.values()),
+                changes=changes,
+                summary=summary,
+                errors=errors,
+            )
+
+            try:
+                from . import synthesis  # type: ignore
+
+                envelope.summary = synthesis.build_summary(envelope)
+            except ImportError:
+                pass
+            except Exception as exc:
+                errors.append({"stage": "synthesis", "error": f"{type(exc).__name__}: {exc}"})
+
+            try:
+                from . import refresh  # type: ignore
+
+                refresh.apply_refresh(envelope, str(state_path))
+            except ImportError:
+                for claim in envelope.claims:
+                    claim.first_observed_at = claim.first_observed_at or now
+                    claim.last_observed_at = now
+            except Exception as exc:
+                errors.append({"stage": "refresh", "error": f"{type(exc).__name__}: {exc}"})
+                for claim in envelope.claims:
+                    claim.first_observed_at = claim.first_observed_at or now
+                    claim.last_observed_at = now
+
+            envelope.errors = errors
+            envelope.sections = {
+                section: [c.claim_id for c in envelope.claims if c.family in fams]
+                for section, fams in SECTIONS.items()
+            }
+            envelope.run.completed_at = utc_now()
+            org_requests = budget.org_used(org)
+            envelope.operations = Operations(requests=org_requests, bytes=0, runtime_ms=int((time.monotonic() - t_start) * 1000), third_party_cost_usd=0.0)
+            return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
+        except Exception as exc:  # last-resort: still emit exactly one envelope for this org
+            fam_states = {fam: FamilyState(family=fam, availability="failed", reason="crash") for fam in FAMILIES}
+            envelope = Envelope(
+                organisation_number=org,
+                run=RunInfo(run_id=run_id, started_at=started_at, completed_at=utc_now(), terminal_status="failed"),
+                families=fam_states,
+                errors=[{"stage": "pipeline", "error": f"{type(exc).__name__}: {exc}"}],
+                sections={section: [] for section in SECTIONS},
+            )
+            return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = {pool.submit(process, i, org): i for i, org in enumerate(org_list)}
+        for future in as_completed(futures):
+            outcome = future.result()
+            results[outcome.index] = outcome
+            with done_lock:
+                done_count += 1
+                if progress_cb:
+                    progress_cb(done_count, len(org_list))
+
+    envelopes = [r.envelope for r in results if r is not None]
+    deadline_hits = sum(1 for r in results if r and r.deadline_hit)
+    budget_exhausted_count = sum(1 for r in results if r and r.budget_exhausted)
+
+    envelopes_path = output_path / "envelopes.jsonl"
+    _atomic_write(envelopes_path, "\n".join(env.model_dump_json() for env in envelopes) + ("\n" if envelopes else ""))
+
+    requests_log_path = output_path / "requests.jsonl"
+    log_lines = [
+        json.dumps({
+            "purpose": e.purpose, "org": e.org, "url": e.url, "status": e.status,
+            "requests_used": e.requests_used, "elapsed_ms": e.elapsed_ms, "error": e.error,
+        }, ensure_ascii=False)
+        for e in client.request_log
+    ]
+    _atomic_write(requests_log_path, "\n".join(log_lines) + ("\n" if log_lines else ""))
+
+    from . import report as report_mod
+
+    completed_at = utc_now()
+    run_report = report_mod.build_report(
+        envelopes, client.request_log, started_at=started_at, completed_at=completed_at,
+        runtime_s=time.monotonic() - t_start, deadline_hits=deadline_hits,
+        budget_exhausted_count=budget_exhausted_count, cache_versions=getattr(caches, "meta", None) if caches else None,
+    )
+    _atomic_write(output_path / "run-report.json", json.dumps(run_report, ensure_ascii=False, indent=2))
+
+    return run_report
