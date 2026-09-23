@@ -16,6 +16,7 @@ from signalpost.models import Envelope, FAMILIES  # noqa: E402
 from signalpost.viewer import build, helpers, render  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "viewer" / "envelopes.jsonl"
+REAL_FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "viewer" / "real_registry.jsonl"
 
 
 @pytest.fixture(scope="module")
@@ -277,6 +278,133 @@ def test_all_availability_states_have_labels_and_render_without_error():
     html = render.render_company_page(envelope)
     assert "Blocked" in html
     assert "robots_disallowed" in html
+
+
+# --------------------------------------------------------------------------------------- real pipeline output
+#
+# tests/fixtures/viewer/real_registry.jsonl holds 5 companies taken verbatim from a real run of the
+# registry connector (see the coordinator's fixtures-real/registry-only-20.jsonl). Real claim values are
+# often structured (dicts/lists/bools) rather than plain strings, e.g. identity/legal_form =
+# {"code": "AS", "label": "Aksjeselskap"}, identity/nace = {"code": .., "label": ..},
+# identity/registered_employees = {"count": .., "registered_at": ..}, identity/business_address /
+# postal_address = {street, postcode, city, municipality, country} (municipality lives only here, there is
+# no separate top-level municipality claim), leadership/role = {"role_code", "role_label", "name"},
+# locations/workplace = {organisation_number, name, street, postcode, city, employees, nace},
+# financials/<metric> = {"amount", "currency"}, financials/accounting_type and audit_status are opaque
+# dicts, financial_history/filed_years is a list of year strings, and identity carries historic_names
+# (list), registered_website/registry_email/registry_phone (strings), status, founded_date,
+# vat_registered (bool) and a long free-text statutory_purpose. This used to crash render_directory_card
+# with "TypeError: sequence item 0: expected str instance, dict found" because every render path assumed
+# scalar string values.
+
+
+@pytest.fixture(scope="module")
+def real_raw_envelopes() -> list[dict]:
+    lines = [l for l in REAL_FIXTURES.read_text(encoding="utf-8").splitlines() if l.strip()]
+    return [json.loads(l) for l in lines]
+
+
+@pytest.fixture(scope="module")
+def real_site_dir(tmp_path_factory) -> Path:
+    out = tmp_path_factory.mktemp("real_site")
+    build.build_site(REAL_FIXTURES, out)
+    return out
+
+
+def test_real_fixtures_validate_against_envelope_model(real_raw_envelopes):
+    assert len(real_raw_envelopes) == 5
+    for raw in real_raw_envelopes:
+        Envelope.model_validate(raw)
+
+
+def test_real_fixtures_contain_structured_values(real_raw_envelopes):
+    """Sanity-check the fixture actually exercises the shapes described above, so this test suite would
+    have caught the original crash."""
+    field_types: dict[tuple[str, str], set[str]] = {}
+    for e in real_raw_envelopes:
+        for c in e["claims"]:
+            field_types.setdefault((c["family"], c["field"]), set()).add(type(c["value"]).__name__)
+    assert field_types.get(("identity", "legal_form")) == {"dict"}
+    assert field_types.get(("identity", "nace")) == {"dict"}
+    assert "dict" in field_types.get(("identity", "business_address"), set())
+    assert "list" in field_types.get(("identity", "historic_names"), set()) | field_types.get(("financial_history", "filed_years"), set())
+    assert "dict" in field_types.get(("leadership", "role"), set())
+    assert "dict" in field_types.get(("financials", "revenue"), set())
+    assert "bool" in field_types.get(("identity", "vat_registered"), set())
+
+
+def test_real_site_builds_without_crashing(real_site_dir, real_raw_envelopes):
+    assert (real_site_dir / "index.html").is_file()
+    assert (real_site_dir / "compare.html").is_file()
+    for e in real_raw_envelopes:
+        org = e["organisation_number"]
+        assert (real_site_dir / "companies" / f"{org}.html").is_file()
+
+
+def test_real_directory_card_has_no_raw_dict_repr(real_site_dir):
+    """The original crash was building directory cards from structured values; guard against the same
+    bug returning as a rendered "{'code': ...}" / "{'amount': ...}" Python-repr leaking into HTML."""
+    index_html = (real_site_dir / "index.html").read_text(encoding="utf-8")
+    assert "{'code'" not in index_html
+    assert "{'label'" not in index_html
+    assert "{'amount'" not in index_html
+
+
+def test_real_company_pages_render_structured_fields_readably(real_site_dir):
+    # GUSTAVSSON INVEST AS: dict legal_form/nace, no registered_employees claim at all.
+    html = (real_site_dir / "companies" / "928173909.html").read_text(encoding="utf-8")
+    assert "Aksjeselskap (AS)" in html
+    assert "Frisering og barbering" in html
+    assert "{'" not in html  # no raw Python dict repr (str(dict)) leaked into the page
+
+    # DYREBESKYTTELSEN NORGE: historic_names list, long statutory_purpose (clipped + expandable),
+    # registered_website as a real link, vat_registered bool, a workplace, board + CEO roles.
+    html = (real_site_dir / "companies" / "971277475.html").read_text(encoding="utf-8")
+    assert "STIFTELSEN DYREBESKYTTELSEN NORGE" in html  # historic_names joined readably
+    assert 'href="https://www.dyrebeskyttelsen.no"' in html
+    assert "show full text" in html  # long statutory_purpose is clipped with an expand toggle
+    assert "Vat registered" in html and ("Yes" in html or "No" in html)
+    assert "Åshild Roaldset" in html  # CEO name from a structured leadership/role dict
+    assert "board chair" in html.lower() or "Styrets leder" in html
+
+    # HALDEN LASTEBILSENTRAL AS: locations/workplace dict, financial_history/filed_years list,
+    # accounting_type/audit_status opaque dicts, multiple structured leadership roles.
+    html = (real_site_dir / "companies" / "935756030.html").read_text(encoding="utf-8")
+    assert "HALDEN LASTEBILSENTRAL A/L" in html  # workplace name
+    assert "1788 HALDEN" in html  # workplace address formatted as "street, postcode city"
+    assert re.search(r"20\d\d.{0,3}20\d\d", html)  # filed_years rendered as a year range, not a raw list
+    assert "Small enterprise" in html  # accounting_type dict rendered via generic key:value fallback
+
+    # SAMEIET SOLÅSVEIEN 5: a housing co-op (ESEK legal form), no separate municipality claim — must be
+    # derived from business_address.
+    html = (real_site_dir / "companies" / "920861172.html").read_text(encoding="utf-8")
+    assert "Eierseksjonssameie" in html
+    assert "STAVANGER" in html
+
+    # AUTO SHOP NORWAY AS: negative annual result.
+    html = (real_site_dir / "companies" / "935852048.html").read_text(encoding="utf-8")
+    assert "-" in html  # negative money value rendered, not dropped
+
+
+def test_real_directory_row_municipality_derived_from_address(real_site_dir):
+    """None of the 5 real fixtures has a bare identity/municipality claim — it must come from
+    business_address/postal_address instead, both in the directory row JSON and the CSV."""
+    data = json.loads((real_site_dir / "data" / "index.json").read_text(encoding="utf-8"))
+    rows = {r["org"]: r for r in data["companies"]}
+    assert rows["928173909"]["municipality"] == "OSLO"
+    assert rows["920861172"]["municipality"] == "STAVANGER"
+    csv_text = (real_site_dir / "directory.csv").read_text(encoding="utf-8")
+    reader = csv.DictReader(io.StringIO(csv_text))
+    csv_rows = {r["org"]: r for r in reader}
+    assert csv_rows["928173909"]["municipality"] == "OSLO"
+
+
+def test_real_legal_form_filter_options_are_plain_codes(real_site_dir):
+    """Directory filter <option> values must be plain scalars (e.g. "AS", "ESEK"), never a Python dict
+    repr, so the <select> and the client-side JS comparison both work."""
+    index_html = (real_site_dir / "index.html").read_text(encoding="utf-8")
+    assert '<option value="AS">AS</option>' in index_html
+    assert '<option value="ESEK">ESEK</option>' in index_html
 
 
 # --------------------------------------------------------------------------------------- CLI

@@ -10,9 +10,9 @@ from typing import Any
 
 from .helpers import (
     AVAILABILITY_CLASS, AVAILABILITY_LABELS, FAMILY_LABELS, SECTION_LABELS, COVERAGE_FAMILIES,
-    esc, fmt_date, fmt_money, fmt_value, label_from_field, org_registry_api_url, org_registry_search_url,
-    coverage_counts, coverage_score, employee_band, claims_by_family, evidence_by_id, field_value, fields_values,
-    short_hash,
+    esc, fmt_date, fmt_money, fmt_value, display_value, label_from_field, org_registry_api_url,
+    org_registry_search_url, coverage_counts, coverage_score, employee_band, claims_by_family, evidence_by_id,
+    field_value, fields_values, first_available, plain_scalar, address_text, short_hash,
 )
 
 SITE_TITLE = "Signalpost"
@@ -77,11 +77,30 @@ def build_row(envelope: dict, page_url: str) -> dict:
     legal_name = envelope.get("legal_name") or org
     identity = by_family.get("identity", [])
     status = _val(field_value(identity, "identity", "status"))
-    legal_form = _val(field_value(identity, "identity", "legal_form"))
+
+    # Field shapes vary by connector version: real registry claims carry structured dicts
+    # ({"code":.., "label":..} for legal_form/nace, {"count":..} for employees, no bare "municipality"
+    # field at all — it lives inside business_address/postal_address). plain_scalar() pulls a filter- and
+    # CSV-friendly plain value out of either shape; older/synthetic claims that are already plain strings
+    # pass through unchanged.
+    legal_form = plain_scalar(_val(first_available(identity, "identity", "legal_form")), prefer=("code", "label"))
+
+    nace_value = _val(first_available(identity, "identity", "nace"))
+    if isinstance(nace_value, dict):
+        nace_code = nace_value.get("code")
+        nace_label = nace_value.get("label")
+    else:
+        nace_code = _val(field_value(identity, "identity", "nace_code"))
+        nace_label = _val(field_value(identity, "identity", "nace_description"))
+
     municipality = _val(field_value(identity, "identity", "municipality"))
-    nace_code = _val(field_value(identity, "identity", "nace_code"))
-    nace_label = _val(field_value(identity, "identity", "nace_description"))
-    employees = _val(field_value(identity, "identity", "employees_registered"))
+    if not municipality:
+        addr = _val(first_available(identity, "identity", "business_address", "postal_address"))
+        if isinstance(addr, dict):
+            municipality = addr.get("municipality") or addr.get("city")
+
+    employees_value = _val(first_available(identity, "identity", "registered_employees", "employees_registered"))
+    employees = employees_value.get("count") if isinstance(employees_value, dict) else employees_value
 
     fin = by_family.get("financials", [])
     revenue_claim = field_value(fin, "financials", "revenue")
@@ -393,16 +412,32 @@ def render_company_page(envelope: dict) -> str:
 def _render_header(envelope: dict, by_family: dict, row: dict) -> str:
     org = envelope["organisation_number"]
     identity = by_family.get("identity", [])
+
+    legal_form_value = _val(first_available(identity, "identity", "legal_form"))
+    legal_form_html = display_value("legal_form", legal_form_value) if legal_form_value is not None else None
+
+    nace_value = _val(first_available(identity, "identity", "nace"))
+    if nace_value is not None:
+        nace_html = display_value("nace", nace_value)
+    elif row["nace_code"] or row["nace_label"]:
+        nace_html = esc(f"{row['nace_code']} {row['nace_label']}".strip())
+    else:
+        nace_html = None
+
+    address_value = _val(first_available(identity, "identity", "business_address", "postal_address"))
+    address_html = display_value("business_address", address_value) if address_value is not None else None
+
     facts = [
-        ("Status", row["status"]),
-        ("Legal form", row["legal_form"]),
-        ("Municipality", row["municipality"]),
-        ("Industry (NACE)", f"{row['nace_code']} {row['nace_label']}".strip() if row["nace_code"] else row["nace_label"]),
-        ("Employees (registered)", row["employees"]),
-        ("Business address", _val_or_none(field_value(identity, "identity", "business_address"))),
+        ("Status", esc(row["status"]) if row["status"] else None),
+        ("Legal form", legal_form_html),
+        ("Municipality", esc(row["municipality"]) if row["municipality"] else None),
+        ("Industry (NACE)", nace_html),
+        ("Employees (registered)", esc(row["employees"]) if row["employees"] is not None else None),
+        ("Business address", address_html),
     ]
+    _not_available = '<span class="muted">not available</span>'
     facts_html = "".join(
-        f"<dt>{esc(k)}</dt><dd>{esc(v) if v not in (None, '') else '<span class=\"muted\">not available</span>'}</dd>"
+        f"<dt>{esc(k)}</dt><dd>{v if v not in (None, '') else _not_available}</dd>"
         for k, v in facts
     )
     brand = row.get("brand_name")
@@ -441,16 +476,44 @@ def _render_summary(summary: dict, footnote) -> str:
     return f'<ul class="summary-list">{items}</ul>{unknowns_html}'
 
 
+# Fields rendered with a bespoke formatter rather than the generic display_value() fallback.
+_DATE_IDENTITY_FIELDS = {"founded_date"}
+_LONG_TEXT_IDENTITY_FIELDS = {"statutory_purpose"}
+_CLIP_LEN = 220
+
+
+def _clip_expandable(claim_id: str, text: str) -> str:
+    """Long free-text fields (e.g. statutory purpose) get a short excerpt plus a native, keyboard- and
+    print-friendly expand toggle — no JS required."""
+    if len(text) <= _CLIP_LEN:
+        return esc(text)
+    excerpt = text[:_CLIP_LEN].rsplit(" ", 1)[0] + "…"
+    return (
+        f'{esc(excerpt)} <details class="source-toggle" style="margin-left:4px">'
+        f'<summary>show full text</summary><div class="evidence-drawer">{esc(text)}</div></details>'
+    )
+
+
+def _identity_value_html(claim: dict) -> str:
+    field, value = claim["field"], claim["value"]
+    if claim.get("availability") != "available":
+        return f'<span class="badge {AVAILABILITY_CLASS[claim["availability"]]}">{esc(AVAILABILITY_LABELS[claim["availability"]])}</span>'
+    if field in _DATE_IDENTITY_FIELDS and isinstance(value, str):
+        return fmt_date(value)
+    if field == "registered_website" and isinstance(value, str) and value:
+        return f'<a href="{esc(value)}" target="_blank" rel="noopener noreferrer">{esc(value)}</a>'
+    if field in _LONG_TEXT_IDENTITY_FIELDS and isinstance(value, str):
+        return _clip_expandable(claim["claim_id"], value)
+    return display_value(field, value)
+
+
 def _render_identity_section(by_family: dict, ev_by_id: dict) -> str:
     rows = []
-    handled = {"legal_name", "status", "legal_form", "nace_code", "nace_description", "municipality",
-               "business_address", "employees_registered", "brand_name"}
     for c in by_family.get("identity", []):
         if c.get("status", "current") != "current":
             continue
         label = label_from_field(c["field"])
-        value_html = fmt_value(c["field"], c["value"]) if c.get("availability") == "available" else \
-            f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
+        value_html = _identity_value_html(c)
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
         rows.append(fact_row(c["claim_id"], label, value_html, src, c.get("note")))
     group_rows = []
@@ -476,13 +539,22 @@ def _render_financials_section(by_family: dict, ev_by_id: dict) -> str:
         rows.append(fact_row(c["claim_id"], label, value_html, src))
     latest_block = "".join(rows) or '<p class="muted">No filed accounts available.</p>'
 
-    history = [c for c in by_family.get("financial_history", []) if c.get("field") == "revenue"]
-    spark = _sparkline(history)
+    history_all = [c for c in by_family.get("financial_history", []) if c.get("status", "current") == "current"]
+    # older/synthetic fixtures store one "revenue" claim per year (value_key=year); the real connector
+    # may instead (or additionally) report which years have filings via a single "filed_years" list claim.
+    revenue_history = [c for c in history_all if c.get("field") == "revenue" and c.get("value_key")]
+    other_history = [c for c in history_all if c not in revenue_history]
+    spark = _sparkline(revenue_history)
     hist_rows = []
-    for c in sorted(history, key=lambda c: c.get("value_key") or "", reverse=True):
+    for c in sorted(revenue_history, key=lambda c: c.get("value_key") or "", reverse=True):
         value_html = fmt_value(c["field"], c["value"])
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
         hist_rows.append(fact_row(c["claim_id"], f"Revenue {esc(c.get('value_key') or '')}", value_html, src))
+    for c in other_history:
+        value_html = fmt_value(c["field"], c["value"]) if c.get("availability") == "available" else \
+            f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
+        src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
+        hist_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]), value_html, src))
     hist_html = "".join(hist_rows) or '<p class="muted">No earlier filed years available.</p>'
     return f'<div class="section">{latest_block}<h3>History &amp; trend</h3>{spark}{hist_html}</div>'
 
@@ -520,14 +592,28 @@ def _sparkline(history: list[dict]) -> str:
     )
 
 
+def _role_label_and_value(c: dict) -> tuple[str, str]:
+    """Leadership `role` claims carry either a plain name string with a human role note (older/synthetic
+    shape) or a structured {"role_code", "role_label", "name"} dict (real registry connector)."""
+    value = c["value"]
+    if c.get("availability") != "available":
+        badge = f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
+        return (c.get("note") or label_from_field(c["field"])), badge
+    if c["field"] == "role" and isinstance(value, dict):
+        role_label = value.get("role_label") or value.get("role_code") or "Role"
+        return role_label, esc(value.get("name") or "")
+    if c["field"] == "roles_last_changed" and isinstance(value, str):
+        return label_from_field(c["field"]), fmt_date(value)
+    return (c.get("note") or label_from_field(c["field"])), display_value(c["field"], value)
+
+
 def _render_leadership_locations(by_family: dict, ev_by_id: dict) -> str:
     roles = [c for c in by_family.get("leadership", []) if c.get("status", "current") == "current"]
     role_rows = []
     for c in roles:
-        value_html = fmt_value(c["field"], c["value"]) if c.get("availability") == "available" else \
-            f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
+        label, value_html = _role_label_and_value(c)
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        role_rows.append(fact_row(c["claim_id"], c.get("note") or label_from_field(c["field"]), value_html, src))
+        role_rows.append(fact_row(c["claim_id"], label, value_html, src))
     role_html = "".join(role_rows) or '<p class="muted">No leadership roles available.</p>'
 
     locs = [c for c in by_family.get("locations", []) if c.get("status", "current") == "current"]
@@ -675,10 +761,16 @@ def build_profile_json(envelope: dict, by_family: dict, ev_by_id: dict, row: dic
         return out
 
     description = next((c for c in by_family.get("description", []) if c.get("availability") == "available"), None)
-    leadership = [
-        {"name": c["value"], "role": c.get("note"), "evidence": ev_list(c.get("evidence_ids", []))}
-        for c in by_family.get("leadership", []) if c.get("availability") == "available"
-    ]
+    leadership = []
+    for c in by_family.get("leadership", []):
+        if c.get("field") != "role" or c.get("availability") != "available":
+            continue
+        value = c["value"]
+        if isinstance(value, dict):
+            name, role = value.get("name"), value.get("role_label") or value.get("role_code")
+        else:
+            name, role = value, c.get("note")
+        leadership.append({"name": name, "role": role, "evidence": ev_list(c.get("evidence_ids", []))})
     revenue_claim = next((c for c in by_family.get("financials", []) if c["field"] == "revenue" and c.get("availability") == "available"), None)
     result_claim = next((c for c in by_family.get("financials", []) if c["field"] == "annual_result" and c.get("availability") == "available"), None)
     financials = None
