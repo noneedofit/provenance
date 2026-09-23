@@ -1,6 +1,6 @@
 # Signalpost agent — build spec (orchestrator-owned)
 
-Read `research/PLAN.md` (one level up: `../research/PLAN.md`) for the why. This file is the what.
+Read `docs/PLAN.md` for the why (research, source catalogue, probe results in `tests/fixtures/website-probe-150.json`). This file is the what.
 Contract files owned by the orchestrator (do NOT change without asking): `src/signalpost/models.py`,
 `src/signalpost/context.py`, this file.
 
