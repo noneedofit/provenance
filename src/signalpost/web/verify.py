@@ -261,7 +261,8 @@ def assess(
         if email and _normalize(email) in norm_joined:
             signals.append(Signal("registry_email", "registry email address found on site", homepage.final_url, email))
 
-        for person in registry_facts.get("role_names") or []:
+        role_persons = registry_facts.get("role_holders") or registry_facts.get("role_names") or []
+        for person in role_persons:
             if person and _normalize(person) in norm_joined:
                 signals.append(Signal("role_name", "registered CEO/board member name found on site", homepage.final_url, person))
                 break

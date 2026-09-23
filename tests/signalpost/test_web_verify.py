@@ -26,7 +26,7 @@ REGISTRY_FACTS = {
     "email": "post@example.no",
     "email_domain": "example.no",
     "website": "example.no",
-    "role_names": ["Ola Nordmann"],
+    "role_holders": ["Ola Nordmann"],
     "subunits": [],
 }
 

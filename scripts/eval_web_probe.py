@@ -138,7 +138,7 @@ def run(entries: list[dict], *, per_company_budget: int) -> dict:
         registry_facts = {
             "name": name, "aliases": [], "street": "", "postcode": "", "city": "",
             "phones": [], "email": None, "email_domain": None,
-            "website": entry.get("reg_site") or None, "role_names": [], "subunits": [],
+            "website": entry.get("reg_site") or None, "role_holders": [], "subunits": [],
         }
         client = LiveHttpClient(per_company_budget=per_company_budget)
         ctx = CompanyContext(org=org, run_id="eval", now=utc_now(), tier=tier, bulk={}, registry={},
