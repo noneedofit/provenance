@@ -288,12 +288,14 @@ def run_batch(
     _atomic_write(requests_log_path, "\n".join(log_lines) + ("\n" if log_lines else ""))
 
     from . import report as report_mod
+    from .validate import validate_envelopes
 
+    validation = validate_envelopes(envelopes, list(orgs))
     completed_at = utc_now()
     run_report = report_mod.build_report(
         envelopes, client.request_log, started_at=started_at, completed_at=completed_at,
         runtime_s=time.monotonic() - t_start, deadline_hits=deadline_hits,
-        budget_exhausted_count=budget_exhausted_count, cache_versions=getattr(caches, "meta", None) if caches else None,
+        budget_exhausted_count=budget_exhausted_count, validation=validation, cache_versions=getattr(caches, "meta", None) if caches else None,
     )
     _atomic_write(output_path / "run-report.json", json.dumps(run_report, ensure_ascii=False, indent=2))
 
