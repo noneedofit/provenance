@@ -6,48 +6,78 @@
 
 ## Modules
 
-- **`nav_live.py`** (`NavLiveConnector`, `name="nav"`, `families=()`) - live, keyless lookup against the
-  real NAV arbeidsplassen APIs, run by the pipeline *before* `web` (order: registry -> nav -> web ->
-  activity; see `pipeline.py`). Fixes the staleness of the cached feed index (that cache is an
-  append-only event log walked forward from mid-2023 - reaching today's ads needs a multi-hour walk, see
-  gap 6 below and `caches/nav.py`'s module docstring). Two calls, both verified live:
-  1. `GET arbeidsplassen.nav.no/stillinger/api/search?q=<name>&size=100` (keyless, robots.txt allows
-     everything) - full-text search returning `hits.hits[]._source` with `uuid`, `title`, `businessName`,
-     `employer.name`, `published`, `status`, but no organisation number.
-  2. `GET pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}` with header `Authorization: Bearer <token>` -
-     confirms `ad_content.employer.orgnr`. The token is the last non-empty line of
-     `GET pam-stilling-feed.nav.no/api/publicToken` (plain 401 without it, measured live); fetched once
-     per connector instance (i.e. once per run) and cached behind a lock, refreshed once on a 401.
-     `BudgetedHttpClient.get()` gained an additive `headers: dict[str, str] | None = None` kwarg
-     (default `None`, every other call site unaffected) purely to carry this header - not part of
-     `context.HttpClient`'s declared protocol, but Python's structural typing doesn't enforce that, and
-     it keeps the request on the budgeted/robots/SSRF/snapshot path instead of a raw `urllib` call.
+- **`nav_feed.py`** (`NavFeedIndex`, `walk_feed`) - a shared, once-per-run "active ads" index built by
+  walking NAV's feed API (`pam-stilling-feed.nav.no/api/v1/feed`) forward from `now - window_days`
+  (default 60) instead of NAV's search API. History: an earlier version of `nav_live.py` queried
+  `arbeidsplassen.nav.no/stillinger/api/search` once per company; that endpoint rate-limits per IP hard
+  enough that a live 131-company gold-set run measured 93 companies ending `jobs=failed`
+  ("nav_search_rate_limited") and zero verified postings - per-company search cannot work at batch
+  scale. The fix (measured live 2026-09-24): `GET /api/v1/feed` with header
+  `If-Modified-Since: <HTTP-date>` jumps straight to the page containing that time instead of the feed's
+  2023 start; each page has ~1,000 items (measured: 9 pages covered 3 days, 3,349 unique ads, 1,920
+  ACTIVE), so walking from `now - 60d` reaches the live tip in roughly 180 requests / ~10 minutes - a
+  one-time run-level cost, not a per-company one. `NavFeedIndex` is a small sqlite table
+  (`<state-dir>/nav_feed_index.sqlite`) of currently-ACTIVE ads keyed by uuid, with a normalized
+  business-name column for matching and a `nav_feed_cursor` table holding the last page id reached -
+  mirrors `caches/nav.py`'s `build_full`/cursor pattern exactly, just seeded by `If-Modified-Since`
+  instead of page 1. A later run with the *same* `--state-dir` resumes from that cursor (re-fetches the
+  last page, since NAV may have appended a new one after it, then continues via `next_id`) instead of
+  re-walking the whole window - a few pages per day once caught up. A later, non-ACTIVE event for a uuid
+  (the feed is an append-only event log) removes it from the index - supersession, not overwrite-in-place.
+  Bounded by `max_pages` (default 200) and `max_seconds` (default 720s / 12 min); if the walk doesn't
+  reach the live tip within those bounds, the index is left `partial` (`NavFeedIndex.is_complete() ==
+  False`) and callers must say so rather than reporting a confident zero. Every feed-page request is
+  charged to `org=None` (the shared pool), same convention as `caches/nav.py`'s `sync_incremental` and
+  this package's own NAV public-token fetch - it never touches a company's own allowance or the registry
+  reserve (`http.Budget`'s reserve only shields purposes prefixed `registry_`).
 
-  Query names: the legal name (from `ctx.shared["registry_facts"]["name"]`, bulk `navn` fallback) with
-  its trailing Norwegian legal-form token stripped (AS/ASA/SA/DA/ANS/KS/...), plus up to 2 distinct
-  subunit trade names for tier T2/T3 (`registry_facts["subunits"]`). Only tiers T1-T3 run this, and only
-  when `ctx.client.remaining(ctx.org) >= 1`; T0 and budget-exhausted companies get `nav_checked` state
-  `not_applicable` / `failed` and make zero requests.
-
-  Candidate filter (before any detail fetch): a search hit's normalized `employer.name` (`businessName`
-  as a secondary match only when `employer.name` is empty) must equal the normalized legal name or a
-  normalized subunit name - normalization is `_common.norm_title` (casefold, strip diacritics/punctuation,
-  strip legal-form tokens, collapse whitespace), reused as-is from the ATS/NAV title-matching code already
-  in this package. `total_matching_hits` counts every name-matched hit (any status); only `ACTIVE` ones,
-  newest `published` first, get detail-fetched, capped at T1: 3, T2: 5, T3: 8. An ad is only "verified"
-  (published as `nav_ads`) if `ad_content.employer.orgnr` equals `ctx.org` or a subunit organisation
-  number - a name match with a different confirmed org number is recorded in evidence but never
-  published as this company's job claim.
+- **`nav_live.py`** (`NavLiveConnector`, `name="nav"`, `families=()`) - run by the pipeline *before*
+  `web` (order: registry -> nav -> web -> activity; see `pipeline.py`).
+  - **`prepare(client, state_dir)`**: builds/resumes the shared `NavFeedIndex` via `nav_feed.walk_feed`,
+    exactly once per connector instance (idempotent, thread-safe - a second/concurrent call is a no-op
+    once the first has started). `pipeline.run_batch` calls this once, in a background thread, right
+    after constructing the shared `HttpClient` and *before* submitting any company to the worker pool,
+    so the walk overlaps with the first companies' registry work instead of purely blocking the run;
+    `run()` also calls it lazily (blocking) as a same-thread fallback for standalone use / tests that
+    build a `CompanyContext` directly without going through `pipeline.py`.
+  - **`run(ctx)`** (tiers T1-T3 only; T0 and budget-exhausted companies get `nav_checked` state
+    `not_applicable` / `failed` and touch neither the index nor any HTTP request): waits for the shared
+    index to be ready, then matches its currently-ACTIVE ads by normalized business name - no HTTP,
+    purely a local sqlite lookup - against the union of the legal name (`ctx.shared["registry_facts"]
+    ["name"]`, bulk `navn` fallback, trailing Norwegian legal-form token stripped for readability but not
+    for matching), `registry_facts["aliases"]`, `registry_facts["subunits"][*]["name"]`, and
+    `ctx.caches.aliases.names(org)` trade names when a caches instance is available - normalization is
+    `_common.norm_title` (casefold, strip diacritics/punctuation/legal-form tokens, collapse whitespace),
+    the same function `nav_feed.NavFeedIndex` uses to index each ad's business name, so an exact
+    normalized match is required (no fuzzy scoring). `nav_total_matching_hits` counts every match
+    (verified or not); the newest-changed (`sistEndret`) matches, capped at T1: 3, T2: 5, T3: 8, get a
+    `GET pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}` fetch with `Authorization: Bearer <token>` -
+    the token is the last non-empty line of `GET .../api/publicToken` (plain 401 without it, measured
+    live), fetched once and cached behind a lock, refreshed once on a 401.
+    `BudgetedHttpClient.get()` gained an additive `headers: dict[str, str] | None = None` kwarg (default
+    `None`, every other call site unaffected) purely to carry this header and `If-Modified-Since` - not
+    part of `context.HttpClient`'s declared protocol, but Python's structural typing doesn't enforce
+    that, and it keeps both on the budgeted/robots/SSRF/snapshot request path instead of a raw `urllib`
+    call. An ad is only "verified" (published as `nav_ads`) if `ad_content.employer.orgnr` equals
+    `ctx.org` or a subunit organisation number - a name match with a different confirmed org number is
+    recorded in evidence but never published as this company's job claim. The earlier per-company search
+    endpoint, its throttle, and its 3-consecutive-429 circuit breaker were removed entirely in this
+    rewrite (not kept behind a flag): they cannot work at batch scale (see above), so there was nothing
+    worth preserving as an option.
 
   Publishes to `ctx.shared` (no claims, no FamilyState - `nav_jobs.py` turns this into claims):
   `nav_ads` (verified ad dicts: uuid, title, employer_name, employer_orgnr, employer_homepage, published,
   expires, application_due, work_locations, ad_url, feedentry_url, retrieved_at, content_sha256,
   snapshot_ref, evidence_id), `nav_homepages` (deduped `{homepage, uuid}` from verified ads, for `web` to
   use as candidates), `nav_checked` (`{checked, state: "ok"|"not_applicable"|"failed", reason,
-  checked_at}`), `nav_total_matching_hits`, `nav_search_evidence_ids` (so a zero-ads run still has
-  evidence to cite). Evidence: one per search call and one per feedentry fetch, `source_class
-  "public_job_feed"`, `access_policy "NLOD-2.0 (NAV)"`, span = the JSON path/value of
-  `hits.total.value`/`q` (search) or `ad_content.employer.orgnr` (feedentry).
+  checked_at, index_complete}` - `reason` names an incomplete/partial feed index explicitly on a
+  zero-match result, so a company is never told "no postings" when the index simply hasn't reached that
+  part of the feed yet), `nav_total_matching_hits`, `nav_search_evidence_ids` (one shared "feed index
+  build" evidence id, from `prepare()`, reused across every company so a zero-ads run still has evidence
+  to cite on `jobs/active_postings_count`). Evidence: one per feedentry fetch plus that one shared
+  feed-index-build evidence, `source_class "public_job_feed"`, `access_policy "NLOD-2.0 (NAV)"`, span =
+  `active_ads_indexed=...; window_days=...; complete=...` (index) or the JSON path/value of
+  `ad_content.employer.orgnr` (feedentry).
 
 - **`nav_jobs.py`** - `collect(ctx)` prefers the live path (`ctx.shared["nav_checked"]` present, i.e.
   `NavLiveConnector` ran for this company) and falls back to the cached NAV (arbeidsplassen.no) ad feed
@@ -113,12 +143,14 @@
 
 `connector.py` gates every HTTP-using stage (ATS, feeds, YouTube) on: a verified site present, tier
 `!= "T0"`, and `ctx.client.remaining(ctx.org) >= 1`. NAV's cache path never touches HTTP; NAV's live path
-(`nav_live.py`, tiers T1-T3 only) makes at most 1 search request (T1) or 3 (T2/T3, legal name + ≤2
-subunit names) plus at most 3/5/8 feedentry detail fetches (T1/T2/T3) - worst case 11 requests at T3,
-well inside that tier's ~45-request allowance, leaving room for `web`/`registry`. The public-token fetch
-is charged to `org=None` (the shared pool, not any one company's allowance), matching `caches/nav.py`'s
-existing `sync_incremental` convention for the same feed family. YouTube resolves at most 2 linked
-channels and reads at most 5 videos each; feeds/news collect at most 10 dated items total.
+(`nav_live.py`, tiers T1-T3 only) spends nothing per company on matching (a local sqlite lookup against
+the shared `NavFeedIndex`) and at most 3/5/8 feedentry detail fetches per company (T1/T2/T3) - a few
+requests, well inside any tier's allowance, leaving room for `web`/`registry`. The run-level cost is the
+one-time (or, with a persistent `--state-dir`, effectively one-time-ever) feed walk: up to `max_pages`
+(200) requests bounded by `max_seconds` (720s), charged to `org=None` (the shared pool, not any one
+company's allowance or the registry reserve), matching `caches/nav.py`'s existing `sync_incremental`
+convention for the same feed family. YouTube resolves at most 2 linked channels and reads at most 5
+videos each; feeds/news collect at most 10 dated items total.
 
 ## Known gaps / things the orchestrator should be aware of
 
@@ -150,17 +182,27 @@ channels and reads at most 5 videos each; feeds/news collect at most 10 dated it
    response in this environment. `tests/fixtures/activity/news_article.html` and `careers_generic.html`
    are also hand-built (a JS-rendered real Norwegian news page and no easily-found live Jobbnorge-style
    page were available in the time budget) - both are representative, not captured-live, fixtures.
-6. **~~No live NAV fixture~~ - resolved**: `nav_live.py` now hits the real NAV search + feedentry APIs
-   directly, with trimmed real captured responses under `tests/fixtures/nav_live/` and unit tests in
-   `tests/signalpost/test_activity_nav_live.py`. `nav_jobs.py`'s cache path (`_collect_cache`, the
-   original implementation) is still only tested against a fake `caches.nav`, since caches remain W2's
-   contract and this doesn't change that.
+6. **~~No live NAV fixture~~ - resolved**: `nav_live.py`/`nav_feed.py` hit the real NAV feed + feedentry
+   APIs directly, with a trimmed real captured feedentry response under `tests/fixtures/nav_live/` and
+   unit tests in `tests/signalpost/test_activity_nav_live.py` / `test_activity_nav_feed.py`.
+   `nav_jobs.py`'s cache path (`_collect_cache`, the original implementation) is still only tested
+   against a fake `caches.nav`, since caches remain W2's contract and this doesn't change that.
 7. **`BudgetedHttpClient.get()` gained an additive `headers` kwarg** (`http.py`, default `None`) so
-   `nav_live.py` can send `Authorization: Bearer <token>` to NAV's feedentry endpoint while staying on
-   the budgeted/robots/SSRF/snapshot request path. This is not declared on `context.HttpClient`'s
-   Protocol (that file is the orchestrator's contract) - Python doesn't enforce Protocol signatures at
-   runtime, so it works, but the orchestrator may want to add `headers` to the formal protocol if another
-   workstream needs the same capability.
+   `nav_feed.py`/`nav_live.py` can send `Authorization: Bearer <token>` and `If-Modified-Since` while
+   staying on the budgeted/robots/SSRF/snapshot request path. This is not declared on
+   `context.HttpClient`'s Protocol (that file is the orchestrator's contract) - Python doesn't enforce
+   Protocol signatures at runtime, so it works, but the orchestrator may want to add `headers` to the
+   formal protocol if another workstream needs the same capability.
+8. **`nav_live.py`'s per-company search implementation was rate-limit-bound at batch scale** (see the
+   `nav_feed.py` module docstring and the "History" paragraph under `nav_live.py` above) and has been
+   replaced by the shared feed-index approach; this is noted here so anyone reading old run reports that
+   mention `nav_search_rate_limited` or `nav_live_search` understands why those don't appear any more.
+9. **Feedentry 404s on old/import-sourced ads**: a live run against the earlier search-based
+   implementation observed a company (Bergene Holm AS) whose search hits all 404'd on feedentry -
+   NAV's search index apparently retains some ads whose feedentry record has since been removed. The
+   feed-index approach can hit the same thing for any uuid it indexes; `nav_live.py` already handles it
+   correctly (a 404 is recorded in `errors` and the ad is simply never verified/published), so this is a
+   noted behavior, not an open bug.
 
 ## Live measurement
 
@@ -178,46 +220,20 @@ Norwegian businesses), one YouTube channel link found and correctly blocked by Y
 fabricated date (see gap 4). Run it yourself with:
 `uv run --with beautifulsoup4 --with lxml --with pydantic python scripts/eval_activity_live.py`
 
-### `nav_live.py` live measurement (real pipeline runs, 2026-09-24)
+### `nav_live.py` v1 (per-company search) live measurement - superseded, kept for history
 
-Run via the actual CLI (`uv run python -m signalpost run ...`) against 15 staffed (T1-T3) companies
-including 919858400 (Atrium People AS) and 979543883 (DIPS AS). Two connector-correctness findings,
-confirmed end to end:
-- **Møller Bil Bergen AS** (834083922, T3): 4 name-matched hits, 3 verified (org number confirmed) ->
-  `jobs` `available`, 3 `jobs/job_posting` claims plus `jobs/active_postings_count`
-  `{verified: 3, name_matched_total: 4}`.
-- **Norsk Scania AS** (879263662, T3): 2 matched, 2 verified -> `available`, 2 postings.
-- Most others (DIPS AS, Vinmonopolet, Norwegian Air Shuttle AOC, Würth Norge, Intrum, Hansa Borg, JM
-  Norge, Bertel O. Steen Lastebil og Buss): search succeeded, 0 name-matched hits -> correctly
-  `not_available` "checked NAV arbeidsplassen: no active postings for this org number", not a silent
-  zero.
-- **Bergene Holm AS** (812750062, T3): 4 name-matched ACTIVE hits, but every one of their feedentry
-  fetches returned 404 (measured live - the search index apparently retains hits whose feedentry
-  record has since been removed/archived, seen only for this company in this run). Correctly published
-  as 0 verified ads (never guesses an org number from a 404), not a false positive.
-- **Atrium People AS** (919858400): classified tier **T0** by the planner (bulk `antallAnsatte` is
-  empty/0 for this org - it staffs projects via contractors/subunits rather than registering direct
-  employees), so `NavLiveConnector` correctly makes zero requests and reports `not_applicable`
-  ("not searched: no registered staff or web footprint") - this is the planner's tier signal working as
-  designed (BUILD_SPEC's tiers are bulk-only signals), not a `nav_live.py` bug; a separate direct
-  search+feedentry check (outside the pipeline, same code path) against 919858400 confirms the connector
-  itself does find and verify Atrium People's live NAV ads (orgnr 919858400, homepage
-  www.atriumpeople.no) when it's allowed to run - see `tests/fixtures/nav_live/`, captured from this
-  exact company.
+The paragraphs below describe the *first* implementation (per-company `arbeidsplassen.nav.no` search),
+kept only so old run artifacts that mention `nav_live_search` / `nav_search_rate_limited` have an
+explanation. That implementation has been removed; see "History" under `nav_live.py` above and the fresh
+feed-index measurement in the next section for the current behavior.
 
-**Rate limiting was the dominant effect across full 15-company batch runs.** The search endpoint
-(`arbeidsplassen.nav.no/stillinger/api/search`, CDN/WAF-fronted) 429'd the large majority of requests in
-two full-batch runs (429 rate ~90% and ~85% of search attempts respectively) despite the
-`_throttle_search` spacing (`MIN_SEARCH_INTERVAL_S=3.0`) and bounded retry-with-backoff - almost
-certainly because this same sandbox's egress IP had already been driving repeated manual `curl` probes
-against the same endpoint earlier in the same session while verifying the API shape, which appears to
-trip a ban that decays over several minutes rather than a simple per-second token bucket (a clean
-2-company run issued shortly after a ~15-minute gap succeeded 100%: Würth Norge AS and Hansa Borg AS
-both got a real `200` search response with a genuine 0-match result). Companies whose every search
-attempt 429'd (OneSubsea Processing AS, Spenncon AS, Framo Fusa AS in the affected runs) correctly
-surfaced `jobs` `failed` reason `"nav_live_search: http_4xx"` rather than a false `not_available` -
-this exercised the safety net added specifically for this failure mode (see `nav_live.py`: if every
-search attempt errors, `nav_checked` state is `failed`, never `ok` with an empty result). Total requests
-for the 15-company batch stayed well inside the 2,000 cap (155-303 depending on the run's retry/429
-count) and completed in 2-7 minutes; a production run against a cold IP (no prior manual probing) should
-see a search success rate close to the clean 2-company run's 100%.
+A 2026-09-24 run against 15 staffed (T1-T3) companies confirmed the matching/verification logic end to
+end when search succeeded (Møller Bil Bergen AS: 4 matched/3 verified; Norsk Scania AS: 2 matched/2
+verified; several others correctly 0-matched with a real `200` response). But a *separate*, larger run
+against the 131-company gold set measured the endpoint's real batch-scale behavior: 93 companies ended
+`jobs=failed` ("nav_search_rate_limited") and zero companies had any verified posting - the search
+endpoint's per-IP rate limit trips almost immediately under the pipeline's normal concurrency, no matter
+how much a single connector throttles or retries its own requests. That measurement is what motivated
+the feed-index rewrite.
+
+### `nav_live.py` / `nav_feed.py` (feed-index) live measurement

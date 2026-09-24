@@ -69,9 +69,10 @@ def _work_locations_text(locations: list) -> str | None:
 
 
 def _collect_live(ctx, shared: dict) -> dict:
-    """Build job claims from `NavLiveConnector`'s `ctx.shared["nav_ads"]` / `nav_checked` (live NAV
-    search + feedentry lookup, see `nav_live.py`). Preferred over the cached-feed path whenever
-    `nav_checked` is present, i.e. `NavLiveConnector` ran for this company's tier and budget.
+    """Build job claims from `NavLiveConnector`'s `ctx.shared["nav_ads"]` / `nav_checked` (the shared
+    feed-index match + feedentry-confirm lookup, see `nav_live.py` / `nav_feed.py`). Preferred over the
+    cached-feed path whenever `nav_checked` is present, i.e. `NavLiveConnector` ran for this company's
+    tier and budget.
     """
     result: dict = {
         "claims": [], "evidence": [], "checked": False, "error": None,
@@ -138,7 +139,10 @@ def _collect_live(ctx, shared: dict) -> dict:
         result["family_availability"] = "available"
     else:
         result["family_availability"] = "not_available"
-        result["family_reason"] = "checked NAV arbeidsplassen: no active postings for this org number"
+        # Use NavLiveConnector's own reason when it has one (e.g. it names a partial feed-index window,
+        # which BUILD_SPEC requires we say honestly rather than reporting a confident zero) - only fall
+        # back to a generic reason if it didn't supply one.
+        result["family_reason"] = reason or "checked NAV arbeidsplassen: no active postings for this org number"
     return result
 
 

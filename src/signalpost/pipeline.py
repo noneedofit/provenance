@@ -2,9 +2,12 @@
 
 Public entry point: `run_batch(...)`. Connectors run in order [registry, nav, web, activity]; nav/web/activity
 are imported lazily so the pipeline works standalone before those workstreams land. `nav` (live NAV
-arbeidsplassen search+feedentry) runs before `web` so the website module can use NAV-confirmed employer
-homepages as candidates; `activity` runs last and turns `nav`'s `ctx.shared["nav_ads"]` into job claims.
-Exactly one envelope is emitted per input organisation number, in input order, even when a company crashes.
+arbeidsplassen jobs, backed by a shared feed index - see `activity/nav_feed.py`) runs before `web` so the
+website module can use NAV-confirmed employer homepages as candidates; `activity` runs last and turns
+`nav`'s `ctx.shared["nav_ads"]` into job claims. Any connector defining `.prepare(client, state_dir)` (nav
+does) gets it called once, in a background thread, before per-company processing starts - see the
+"prepare_threads" block below. Exactly one envelope is emitted per input organisation number, in input
+order, even when a company crashes.
 """
 from __future__ import annotations
 
@@ -168,6 +171,24 @@ def run_batch(
             tier = "T2"
         budget.reserve(org, {"T0": 4, "T1": 5}.get(tier, 5))
 
+    # Any connector that defines `.start_prepare(client, state_dir)` gets it called exactly once, here,
+    # before per-company processing starts (e.g. NavLiveConnector's shared NAV feed index walk - a
+    # one-time, run-level cost, not a per-company one). `start_prepare` claims the "prepare" slot
+    # synchronously (on this thread) before starting the actual work in the background, which is what
+    # guarantees no company thread can race ahead of us and build its own throwaway (state_dir=None)
+    # copy - see `nav_live.NavLiveConnector.start_prepare`'s docstring. Running the work itself in the
+    # background lets registry calls for the first companies overlap with it; a company whose pipeline
+    # reaches a not-yet-ready connector blocks on that connector's own readiness signal, not on this
+    # thread. Joined (bounded by `deadline_s`) after the batch finishes so run-report reflects the
+    # connector's final state either way.
+    prepare_threads: list[threading.Thread] = []
+    for connector in conn_list:
+        start_prepare = getattr(connector, "start_prepare", None)
+        if callable(start_prepare):
+            t = start_prepare(client, str(state_path))
+            if t is not None:
+                prepare_threads.append(t)
+
     deadline_at = t_start + deadline_s
     results: list[_CompanyOutcome | None] = [None] * len(org_list)
     done_count = 0
@@ -290,6 +311,9 @@ def run_batch(
                 done_count += 1
                 if progress_cb:
                     progress_cb(done_count, len(org_list))
+
+    for t in prepare_threads:
+        t.join(timeout=max(1.0, deadline_at - time.monotonic()))
 
     envelopes = [r.envelope for r in results if r is not None]
     deadline_hits = sum(1 for r in results if r and r.deadline_hit)
