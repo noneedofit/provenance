@@ -82,4 +82,4 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
 - Docs written (README, AGENT, CRAWLERS, IDENTITY_RESOLUTION, DATA_SCHEMA, REFRESH, EVAL, LIMITATIONS, SOURCES).
 - Submission manifest: submission/manifest-1000.jsonl (800 random + 200 staffed-with-website), runner
   scripts/run_submission_batches.sh; profiles generating into submission/profiles/submission-20260924/.
-- Waiting on user: author rewrite + GitHub push, <CONTACT> in README, email to Builderr, JBOX reply.
+- User (24 Sep): no contact details anywhere; no GitHub push yet (no repo); Builderr no reply on JBOX. Author rewrite still needed before any future push. Hand-checks use Haiku agents.

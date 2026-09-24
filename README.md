@@ -177,7 +177,3 @@ addresses before connecting.
 ## Expected cost per 100-company run
 
 **$0.** No third-party API spend; `run-report.json`'s `third_party_cost_usd` is always `0.0`.
-
-## Contact
-
-`<CONTACT>`
