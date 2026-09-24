@@ -471,7 +471,8 @@ def _render_summary(summary: dict, footnote) -> str:
     unknowns_html = ""
     if unknowns:
         unknowns_html = (
-            '<p class="unknowns"><strong>Not established:</strong> ' + esc("; ".join(unknowns)) + "</p>"
+            '<div class="unknowns"><strong>Not established</strong><ul>'
+            + "".join(f"<li>{esc(u)}</li>" for u in unknowns) + "</ul></div>"
         )
     return f'<ul class="summary-list">{items}</ul>{unknowns_html}'
 
