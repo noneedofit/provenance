@@ -259,10 +259,10 @@ class BudgetedHttpClient:
 
     def _fail(
         self, url: str, redirect_chain: list[str], error: str, *, org: str | None, purpose: str,
-        status: int = 0, requests_used: int = 0, started: float | None = None,
+        status: int = 0, requests_used: int = 0, started: float | None = None, already_logged: int = 0,
     ) -> Response:
         elapsed_ms = int((time.monotonic() - started) * 1000) if started else 0
-        self._log(RequestLogEntry(purpose=purpose, org=org, url=url, status=status, requests_used=requests_used, elapsed_ms=elapsed_ms, error=error))
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=url, status=status, requests_used=requests_used - already_logged, elapsed_ms=elapsed_ms, error=error))
         return Response(
             url=url, final_url=redirect_chain[-1] if redirect_chain else url, redirect_chain=redirect_chain,
             status=status, headers={}, body=b"", retrieved_at=_utc_now(), content_sha256="",
@@ -351,24 +351,26 @@ class BudgetedHttpClient:
         current_url = url
         total_requests_used = 0
         hops = 0
+        robots_logged = 0
 
         while True:
             redirect_chain.append(current_url)
             try:
                 assert_public_url(current_url)
             except ValueError as exc:
-                return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 
             if respect_robots:
                 allowed, robots_charged = self._robots_allowed(current_url, org=org, timeout=timeout)
                 total_requests_used += robots_charged
+                robots_logged += robots_charged  # already logged by _robots_allowed under purpose "robots"
                 if robots_charged and self.budget.remaining(org) < 0:
                     pass  # informational only; charge() already enforced the hard cap
                 if not allowed:
-                    return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                    return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 
             if not self.budget.charge(org, 1, purpose=purpose):
-                return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
             total_requests_used += 1
 
             parsed_host = urllib.parse.urlparse(current_url).hostname or ""
@@ -380,7 +382,7 @@ class BudgetedHttpClient:
             retryable = error == "timeout" or status == 429 or status >= 500
             if retryable:
                 if not self.budget.charge(org, 1, purpose=purpose):
-                    return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                    return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
                 total_requests_used += 1
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
@@ -388,7 +390,7 @@ class BudgetedHttpClient:
             hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
 
             if error:
-                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error))
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error))
                 return Response(
                     url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=headers,
                     body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
@@ -404,7 +406,7 @@ class BudgetedHttpClient:
                     continue
                 # No location, or redirect budget exhausted: treat as terminal (report the redirect itself).
                 error_final = None if not location else "too_many_redirects"
-                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error_final))
                 return Response(
                     url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=lowered_headers,
                     body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
@@ -430,7 +432,7 @@ class BudgetedHttpClient:
             )
 
         elapsed_ms = int((time.monotonic() - started) * 1000)
-        self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error_final))
         return Response(
             url=url, final_url=final_hop_url or current_url, redirect_chain=redirect_chain, status=status,
             headers=lowered_headers, body=truncated_body, retrieved_at=retrieved_at, content_sha256=content_sha256,

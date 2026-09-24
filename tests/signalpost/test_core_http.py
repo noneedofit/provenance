@@ -166,3 +166,15 @@ def test_registry_reserve_cannot_be_spent_by_optional_sources():
     assert not budget.charge("C", 1, purpose="web_homepage")
     budget.release("A")  # A's 2 unused reserve go back to the pool
     assert budget.charge("C", 1, purpose="web_homepage")
+
+
+def test_request_log_total_matches_budget_with_robots_and_redirects(server):
+    # The run report sums the request log; robots.txt fetches must not be counted twice.
+    port = server.server_address[1]
+    budget = Budget(hard_cap=100)
+    client = BudgetedHttpClient(budget)
+    client.get(f"http://127.0.0.1:{port}/redirect-a", org="orgE", purpose="test", respect_robots=True)
+    client.get(f"http://127.0.0.1:{port}/blocked", org="orgE", purpose="test", respect_robots=True)
+    client.get(f"http://127.0.0.1:{port}/flaky", org="orgE", purpose="test", respect_robots=True)
+    log = client.request_log() if callable(client.request_log) else client.request_log
+    assert sum(e.requests_used for e in log) == budget.used_total()
