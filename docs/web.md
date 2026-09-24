@@ -128,7 +128,7 @@ domain signal), never an exception.
 ## Tests
 
 `tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_crawl.py`,
-`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 60 tests, no network (fake
+`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 72 tests, no network (fake
 `HttpClient` in `tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
 `docs/PLAN.md` §3 and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
 `MECCA AS -> thon.no` (parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not
@@ -136,9 +136,11 @@ domain signal), never an exception.
 even without a conflicting org number), `GAASA AS -> gaasa.no` (hijacked registry domain, casino-affiliate
 spam, `rejected`), `JOKER AS -> joker.no` (franchise-chain gate blocks a sea-fishing company's namesake
 from resolving to the grocery chain's domain) plus an unlisted-domain variant that only the
-topic/industry-mismatch guard catches, `wixsite.com`/marketplace-domain candidate suppression, and
+topic/industry-mismatch guard catches, `wixsite.com`/`odoo.com`/marketplace-domain candidate suppression,
 `samfundet.no`/`hav.no`-style parent/umbrella registry-declared sites with and without corroboration
-(plus the valid DNT-Nord-Trøndelag-subpage-with-our-org-number exact case on the same kind of domain).
+(plus the valid DNT-Nord-Trøndelag-subpage-with-our-org-number exact case on the same kind of domain),
+and the orchestrator QA fixes below (Xledger owner-name mismatch, our-org-number-decisive-despite-other-
+numbers, source-priority dedup, hijack-marker word boundary, second-copyright-line owner match).
 
 Run: `uv run --with pytest pytest -q tests/signalpost`.
 
@@ -161,9 +163,25 @@ availability breakdown, requests/company), plus a "manual review" list of every 
 
 ### Results (150-company probe, live run, `--per-company-budget 15`)
 
-See the run log for the exact per-company breakdown. Headline numbers and the manual-review outcome are
-in the final report of the commit that added this script — re-run the script to reproduce, since it
-depends on live sites' current content.
+Raw per-company output saved at `tests/fixtures/web/probe-results.json` (predates the orchestrator QA
+fix round below — request counts/verdict mix are representative, not exact, since live sites' content
+changes and several identity-rule fixes landed afterward). Per-stratum summary:
+
+| Stratum | n | available | ambiguous | not_available | candidates tried | requests/company (mean / p50 / max) |
+|---|---|---|---|---|---|---|
+| small | 50 | 18 | 4 | 28 | 61 | 2.7 / 2 / 7 |
+| none | 50 | 10 | 5 | 35 | 64 | 2.0 / 2 / 6 |
+| large | 50 | 18 | 6 | 26 | 66 | 3.2 / 3 / 15 |
+
+`not_available` bundles `rejected` + no-candidates + unreachable (the probe script's summary doesn't
+split them further; `web_attempts` in the saved JSON has the per-candidate verdict for any company).
+
+### Gold-set QA (131 independently-labelled companies, `eval/data/gold_web.jsonl`, real pipeline run)
+
+More authoritative than the 150-probe above: exercises the full `signalpost run` pipeline (registry +
+web connectors, real caches) and scores against `eval.score`, not just the web connector in isolation.
+See "Orchestrator QA fixes" in the final report for the full before/after table — precision went
+97.8% → 100% (1 wrong-company → 0), company recall 34.4% → 43.3%.
 
 ## Known gaps / follow-ups
 
