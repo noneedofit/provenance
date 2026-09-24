@@ -41,7 +41,7 @@ company websites are sometimes left `not_available` or `ambiguous` rather than p
 evidence found doesn't clear that bar — e.g. a registry-declared site on a domain shared by exactly 2
 organisations with no org-number-bearing page crawled (see the gold-set QA misses documented in
 `docs/web.md`). Company-website company recall against the 131-company gold set:
-`<GOLD_RESULTS>`. No wrong-company website was published against gold at last measurement
+51.1% (24 Sep 2026; see EVAL.md). No wrong-company website was published against gold at last measurement
 (`wrong_company_publications: 0`).
 
 ## JS-only sites are not rendered

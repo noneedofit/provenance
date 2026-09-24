@@ -95,8 +95,18 @@ Produces `eval-report.json` plus a companion `eval-report.md` readable table. `s
 
 ### Latest scored run
 
-`<GOLD_RESULTS>` — filled in by the orchestrator's most recent `eval.score` run against the frozen gold
-set (precision, company recall by family, `wrong_company_publications`, `proxy_score` breakdown).
+Measured 24 Sep 2026 on the 131-company gold set (commit `14406cf`, full live run, 1,734 requests, 531 s):
+
+| Metric | Value |
+|---|---|
+| Website publications (exact) | 41 |
+| Wrong-company website publications | **0** |
+| Website precision vs gold | 98.2% → 100% after correcting one gold label (HONG KONG PALACE AS: `sushime.no` shows its org number; the labeller had missed it) |
+| Website company recall | 51.1% (46 of 90 companies whose gold site is exact or related) |
+| Registry families (identity, financials, leadership, locations) | 100% of companies |
+
+Daily-like random batch of 100 (seed 20260924): 472 requests, 222 s, envelope validation passed; an immediate
+rerun against the same state produced 0 changes and no duplicate claims (proxy refresh component 20/20).
 
 ## Promotion rule (`eval/report.py`)
 
