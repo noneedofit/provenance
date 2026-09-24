@@ -9,6 +9,9 @@ Public API used by other workstreams:
 """
 from __future__ import annotations
 
+import threading
+import time
+
 import csv
 import gzip
 import io
@@ -30,6 +33,20 @@ BRREG_ENTITY = "https://data.brreg.no/enhetsregisteret/api/enheter/{org}"
 BRREG_ROLES = BRREG_ENTITY + "/roller"
 BRREG_SUBUNITS = "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet={org}&size=100"
 BRREG_ACCOUNTS = "https://data.brreg.no/regnskapsregisteret/regnskap/{org}"
+# The filed-years endpoint is documented at roughly 30 requests/minute; space calls across all threads.
+_HISTORY_MIN_INTERVAL_S = 1.0
+_history_lock = threading.Lock()
+_history_last = [0.0]
+
+
+def _history_slot() -> None:
+    with _history_lock:
+        wait = _HISTORY_MIN_INTERVAL_S - (time.monotonic() - _history_last[0])
+        if wait > 0:
+            time.sleep(wait)
+        _history_last[0] = time.monotonic()
+
+
 BRREG_ACCOUNT_YEARS = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/{org}/aar"
 BULK_DOWNLOAD_URL = "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
 
@@ -661,8 +678,9 @@ class RegistryConnector:
         elif "financials" not in families:
             families["financials"] = FamilyState(family="financials", availability="failed", reason="not_run")
 
-        # -------- financial_history (T2+ only) --------
-        if tier in ("T2", "T3") and client is not None:
+        # -------- financial_history (every filing company; one cheap call) --------
+        if client is not None:
+            _history_slot()
             resp = client.get(BRREG_ACCOUNT_YEARS.format(org=org), org=org, purpose="registry_financial_history", accept="application/json", respect_robots=False)
             if resp.error == "budget_exhausted":
                 families["financial_history"] = FamilyState(family="financial_history", availability="failed", reason="request_budget")

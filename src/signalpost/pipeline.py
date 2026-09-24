@@ -166,7 +166,7 @@ def run_batch(
             tier = classify(bulk.get(org, {}), caches=caches).tier
         except Exception:  # a malformed row is handled (and reported) per company below
             tier = "T2"
-        budget.reserve(org, {"T0": 3, "T1": 4}.get(tier, 5))
+        budget.reserve(org, {"T0": 4, "T1": 5}.get(tier, 5))
 
     deadline_at = t_start + deadline_s
     results: list[_CompanyOutcome | None] = [None] * len(org_list)
