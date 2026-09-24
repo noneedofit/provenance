@@ -45,12 +45,16 @@ SUFFIX_WORDS = LEGAL_FORM_WORDS | {
 # real brand, and the full-token variant that would have caught it never got a turn). Daily100-batch
 # measurement: this raises the request budget by roughly 20% of web_homepage requests (well within the
 # 1700-request global cap -- see docs/web.md).
-MAX_NAME_GUESSES = 10
+MAX_NAME_GUESSES = 6
 
 # T0 (shell-classified) companies get a much smaller name-guess cap rather than none at all -- see the
 # comment at the T0 branch in generate_candidates(). Small enough that it's a negligible fraction of T0's
 # ~5-request tier allowance even before the DNS prefilter thins it further.
-T0_MAX_NAME_GUESSES = 2
+# Kept small (not 0): a gold-set A/B measurement showed name guesses generally add negligible net exact
+# recall for their added request cost (nearly all of this branch's own gold hits already reach `exact`
+# through registry/wikidata/NAV signals, not a bare name guess), so this stays conservative -- enough to
+# rescue an occasional under-described-in-bulk small business, not a broad budget spend.
+T0_MAX_NAME_GUESSES = 1
 
 
 def _slug_tokens(value: str) -> list[str]:

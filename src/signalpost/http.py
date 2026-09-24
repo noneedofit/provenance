@@ -425,7 +425,16 @@ class BudgetedHttpClient:
             # while still serving plain HTTP fine -- genuinely reachable, real content. Downgrade to
             # http:// once, on the FIRST hop only (never mid-redirect-chain, and never more than once per
             # request), charged as one more budgeted request like the existing timeout/5xx retry above.
-            if error == "ssl_error" and not tried_http_fallback and len(redirect_chain) == 1 and current_url.startswith("https://"):
+            # Scoped to `web_homepage` only (not secondary/sitemap/robots/official-registry purposes):
+            # the homepage is the one page whose loss kills the whole candidate outright, so it is the
+            # only place the extra request is worth spending -- a secondary page's own SSL failure just
+            # means one fewer page of corroboration text, not a dead candidate, and official registry
+            # APIs essentially never hit this. Keeps the fix's request-budget footprint small (a gold-set
+            # measurement without this scoping pushed the batch over the request cap).
+            if (
+                error == "ssl_error" and not tried_http_fallback and len(redirect_chain) == 1
+                and current_url.startswith("https://") and purpose == "web_homepage"
+            ):
                 tried_http_fallback = True
                 if self.budget.charge(org, 1, purpose=purpose):
                     total_requests_used += 1
