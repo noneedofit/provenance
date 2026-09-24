@@ -365,7 +365,12 @@ def assess(
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
             elif m.labeled:
                 other_org_matches.append(Conflict("conflicting_org_number", "different valid organisation number presented as site owner", m.digits, page.final_url, m.span))
-        site_owner_names.extend(find_copyright_owners(_page_all_text(page)))
+        # `_page_all_text` only scans the first 20000 chars of html for cost reasons, but a copyright
+        # notice can sit well past that on a heavy page-builder site (Four Season Spa AS's own page is
+        # 170KB+, and the real footer line is around char 130000 -- neither in the head nor literally in
+        # the last few KB). A plain regex search costs nothing extra even on the full untruncated html,
+        # so copyright-owner detection scans the whole page rather than a fixed-size prefix/suffix.
+        site_owner_names.extend(find_copyright_owners(f"{page.title}\n{page.text}\n{page.html or ''}"))
         try:
             import extruct
 
