@@ -73,11 +73,30 @@ class Candidate:
     rank: int = 0
 
 
+# Priority when the SAME domain is produced by more than one source (e.g. Kitron/Mowi/AF Gruppen: the
+# registry hjemmeside and the Wikidata P856 website are the same domain). Lower wins. A Wikidata- or
+# NAV-sourced candidate is independently tied to OUR org number already, so verify.assess() can treat it
+# as decisive even when the bare registry_declared path for that same domain would be blocked (shared
+# domain, parent/umbrella wording, hijacked content) -- collapsing to "whichever came first" would throw
+# that decisive signal away and silently fall back to the weaker, blockable registry_declared path.
+_SOURCE_PRIORITY = {
+    "wikidata_website": 0,
+    "nav_employer_homepage": 0,
+    "registry_website": 1,
+    "registry_email_domain": 2,
+    "subunit_website": 3,
+    "subunit_email_domain": 3,
+    "name_guess": 4,
+}
+
+
 def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
-    seen: set[str] = set()
-    ordered: list[Candidate] = []
+    """Domain-dedupe, keeping the single most decisive source per domain (see _SOURCE_PRIORITY) rather
+    than simply the first one generated. Preserves first-seen order for the winning domain."""
+    best: dict[str, Candidate] = {}
+    order: list[str] = []
     for cand in candidates:
-        if not cand.domain or cand.domain in seen:
+        if not cand.domain:
             continue
         if is_marketplace_or_directory(cand.domain):
             # Directories, booking/scheduling platforms and generic site-builder hosts are never a
@@ -85,8 +104,12 @@ def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
             # booking-platform URL entered as "hjemmeside" by mistake, or an email address on a free
             # site-builder subdomain). BUILD_SPEC.md: directories aren't evidence.
             continue
-        seen.add(cand.domain)
-        ordered.append(cand)
+        if cand.domain not in best:
+            best[cand.domain] = cand
+            order.append(cand.domain)
+        elif _SOURCE_PRIORITY.get(cand.source, 99) < _SOURCE_PRIORITY.get(best[cand.domain].source, 99):
+            best[cand.domain] = cand
+    ordered = [best[d] for d in order]
     return ordered
 
 

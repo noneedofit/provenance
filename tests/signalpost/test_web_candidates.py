@@ -135,6 +135,22 @@ def test_generic_industry_word_from_historic_subunit_name_is_dropped():
     assert not any(c.domain == "transport.no" for c in cands)
 
 
+def test_same_domain_from_registry_and_wikidata_keeps_the_wikidata_source():
+    # Kitron/Mowi/AF Gruppen/Norske Skog pattern: the registry hjemmeside and the Wikidata P856 website
+    # are the SAME domain. Domain-dedup must keep the Wikidata-sourced candidate (independently tied to
+    # our org number, decisive even when the domain is also shared by sibling entities) rather than
+    # silently downgrading to the registry_website source, which a shared-domain/umbrella check could
+    # block.
+    caches = FakeCaches(wikidata=FakeWikidata({"923456783": {"websites": ["https://kitron.com/"]}}))
+    ctx = make_ctx(
+        "923456783", registry_facts={"name": "KITRON ASA", "website": "www.kitron.com"}, caches=caches,
+    )
+    cands = generate_candidates(ctx)
+    kitron = [c for c in cands if c.domain == "kitron.com"]
+    assert len(kitron) == 1
+    assert kitron[0].source == "wikidata_website"
+
+
 def test_candidates_deduplicated_by_registered_domain():
     ctx = make_ctx(
         "923456783",
