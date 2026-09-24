@@ -361,6 +361,24 @@ def test_xledger_style_site_with_our_own_name_in_jsonld_is_still_exact():
     assert verdict.identity_basis == "registry_declared"
 
 
+def test_second_copyright_line_matching_our_name_prevents_false_owner_mismatch():
+    # FOUR SEASON SPA AS gold-set recall bug: the page has TWO copyright lines -- a shared booking-widget
+    # vendor's own footer line ("(c) 2000-2026 Destino AS") ABOVE the site's own line further down
+    # ("Copyright (c) 2015-2023 Four Season Spa AS"). find_copyright_owners() must collect BOTH, and
+    # site_owner_mismatch() must not flag a mismatch just because the FIRST one found isn't ours.
+    facts = {**REGISTRY_FACTS, "name": "FOUR SEASON SPA AS"}
+    html = (
+        "<html><body>Welcome to Four Season Spa. "
+        "<footer>(c) 2000-2026 Destino AS. All rights reserved.</footer>"
+        "<div>Copyright (c) 2015-2023 Four Season Spa AS. All rights reserved.</div>"
+        "</body></html>"
+    )
+    p = page("Four Season Spa", html=html, url="https://www.fourseasonspa.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="fourseasonspa.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "registry_declared"
+
+
 def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
     # Coordinator fix: the registry_declared decisive gate now checks website_org_count >= 2 (not 3) --
     # a domain also registered by even one sibling/parent entity is not decisive on bare trust alone.

@@ -24,7 +24,7 @@ def test_marketplace_and_directory_hosts_are_never_candidates():
     for domain in (
         "fixit.no", "timma.no", "ledigtime.no", "bestille.no", "mittanbud.no", "finn.no",
         "gulesider.no", "1881.no", "proff.no", "purehelp.no", "facebook.com", "instagram.com",
-        "linktr.ee",
+        "linktr.ee", "odoo.com", "myshopify.com",
     ):
         assert is_marketplace_or_directory(domain), domain
 

@@ -276,12 +276,12 @@ _COPYRIGHT_OWNER_RE = re.compile(
 )
 
 
-def find_copyright_owner(text: str) -> str | None:
-    match = _COPYRIGHT_OWNER_RE.search(text or "")
-    if not match:
-        return None
-    owner = match.group(1).strip()
-    return owner or None
+def find_copyright_owners(text: str) -> list[str]:
+    """All copyright-line owner names on a page, not just the first -- a page can legitimately carry
+    more than one (e.g. a shared booking-widget/template vendor's own footer copyright line ABOVE the
+    site's own "Copyright (c) ... Four Season Spa AS" line further down). Returning only the first match
+    would flag a mismatch off the vendor's name and miss our own, correct one lower on the page."""
+    return [m.group(1).strip() for m in _COPYRIGHT_OWNER_RE.finditer(text or "") if m.group(1).strip()]
 
 
 def _find_jsonld_legal_names(nodes: Any) -> list[str]:
@@ -307,16 +307,23 @@ def _find_jsonld_legal_names(nodes: Any) -> list[str]:
 
 
 def site_owner_mismatch(our_name: str, owner_names: list[str]) -> str | None:
-    """Return the first `owner_names` entry whose legal-name core differs from `our_name`'s, or None if
-    every named owner matches (or no owner name was found at all -- absence is not a mismatch)."""
+    """Return an owner name if NONE of `owner_names` matches `our_name`'s legal-name core, or None if at
+    least one does (or no owner name was found at all -- absence is not a mismatch). A page can name
+    more than one entity (a template/booking-widget vendor's own footer line, e.g. "Destino AS", ABOVE
+    the site's own "Four Season Spa AS" copyright line) -- only flag a mismatch when our own name is
+    named NOWHERE on the page, not merely when it isn't the first name found."""
     our_core = _legal_name_core(our_name)
     if not our_core:
         return None
+    named_others: list[str] = []
     for owner in owner_names:
         owner_core = _legal_name_core(owner)
-        if owner_core and owner_core != our_core:
-            return owner
-    return None
+        if not owner_core:
+            continue
+        if owner_core == our_core:
+            return None
+        named_others.append(owner)
+    return named_others[0] if named_others else None
 
 
 def assess(
@@ -358,9 +365,7 @@ def assess(
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
             elif m.labeled:
                 other_org_matches.append(Conflict("conflicting_org_number", "different valid organisation number presented as site owner", m.digits, page.final_url, m.span))
-        owner = find_copyright_owner(_page_all_text(page))
-        if owner:
-            site_owner_names.append(owner)
+        site_owner_names.extend(find_copyright_owners(_page_all_text(page)))
         try:
             import extruct
 
