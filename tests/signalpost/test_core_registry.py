@@ -138,3 +138,19 @@ def test_load_bulk_gzip_and_plain(tmp_path: Path):
         dst.write(src.read())
     rows_gz = registry.load_bulk(str(gz_path), ["222222222"])
     assert rows_gz["222222222"]["navn"] == "Beta AS"
+
+
+def test_registry_facts_fall_back_to_bulk_contact_fields_when_live_entity_lacks_them():
+    from signalpost.context import CompanyContext
+    from signalpost.registry import registry_facts
+
+    ctx = CompanyContext(
+        org="123456785", run_id="t", now="2026-09-24T00:00:00Z", tier="T2",
+        bulk={"navn": "X AS", "epostadresse": "post@example-firma.no", "telefon": "22 33 44 55",
+              "mobil": "912 34 567", "hjemmeside": "www.example-firma.no"},
+        registry={"entity": {"navn": "X AS", "forretningsadresse": {"adresse": ["Gate 1"], "postnummer": "0150", "poststed": "OSLO"}}},
+    )
+    facts = registry_facts(ctx)
+    assert facts["email_domain"] == "example-firma.no"
+    assert set(facts["phones"]) == {"22334455", "91234567"}
+    assert facts["website"] and "example-firma.no" in facts["website"]

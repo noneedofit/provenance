@@ -739,7 +739,12 @@ def registry_facts(
         website = normalize_website(bulk_row.get("hjemmeside"))
         historic = []
 
-    phone_values = [entity_body.get("telefon"), entity_body.get("mobil")] if entity_body else [bulk_row.get("telefon"), bulk_row.get("mobil")]
+    # The live entity API omits contact fields (e-mail, phone, often homepage); the bulk snapshot has them.
+    email = email or bulk_row.get("epostadresse") or None
+    website = website or normalize_website(bulk_row.get("hjemmeside"))
+    phone_values = [bulk_row.get("telefon"), bulk_row.get("mobil")]
+    if entity_body:
+        phone_values += [entity_body.get("telefon"), entity_body.get("mobil")]
     phones = sorted({normalize_digits(p) for p in phone_values if p and normalize_digits(p)})
     role_holders: list[str] = []
     if builder is not None:
