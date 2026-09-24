@@ -92,43 +92,52 @@ class WebConnector:
 
         client = getattr(ctx, "client", None)
 
-        # The registry itself declaring a hjemmeside is a strong, independent claim -- if THAT candidate
-        # can't be confirmed (unreachable, parked, rejected, or merely ambiguous), a different candidate
-        # reached later needs a decisive signal to reach `exact`, not bare 2-signal corroboration alone
-        # (BUILD_SPEC.md "Identity rules" / the DACON SERVICES AS trap: a name-guessed sibling/coincidence
-        # domain can genuinely show a matching address+phone on its own contact page while the
-        # registry-declared site sits behind a broken SSL cert -- corroboration can't tell "same company,
-        # second domain" apart from "different company, same office/phone history" here).
-        has_registry_declared = any(c.source == "registry_website" for c in cand_list)
-        registry_declared_unconfirmed = False
+        # A DECISIVE-sourced candidate (registry hjemmeside, Wikidata, NAV) is a strong, independent
+        # claim -- if one EXISTS but can't be confirmed (unreachable, parked, rejected, or merely
+        # ambiguous, including a transient fetch failure on an otherwise-correct candidate), a different,
+        # weaker candidate reached later needs a decisive signal to reach `exact`, not bare 2-signal
+        # corroboration alone. Two traps found on the gold set:
+        # - DACON SERVICES AS: a name-guessed sibling/coincidence domain can genuinely show a matching
+        #   address+phone on its own contact page while the registry-declared site sits behind a broken
+        #   SSL cert -- corroboration can't tell "same company, second domain" apart from "different
+        #   company, same office/phone history" here.
+        # - AF GRUPPEN ASA: the correct wikidata_website candidate (afgruppen.no) hit a transient network
+        #   failure in one run of a live batch; without this guard, a LATER name-guessed candidate
+        #   (afgruppen.com, a plausible-looking but wrong international/investor domain) had enough
+        #   corroborating signals of its own to reach exact and get published instead -- a live-network
+        #   flake turning into a wrong-company publication. Checking ALL of DECISIVE_SOURCES (not just
+        #   registry_website) closes this: any of them being unconfirmed raises the bar for what's left.
+        has_decisive_source = any(c.source in DECISIVE_SOURCES for c in cand_list)
+        decisive_source_unconfirmed = False
+
+        def _mark_unconfirmed(cand: Candidate) -> None:
+            nonlocal decisive_source_unconfirmed
+            if cand.source in DECISIVE_SOURCES:
+                decisive_source_unconfirmed = True
 
         for cand in ordered:
             require_decisive = (
-                has_registry_declared and registry_declared_unconfirmed
+                has_decisive_source and decisive_source_unconfirmed
                 and cand.source not in DECISIVE_SOURCES
             )
             if client is not None and client.remaining(org) <= 0:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "skipped", "reason": "request_budget"})
-                if cand.source == "registry_website":
-                    registry_declared_unconfirmed = True
+                _mark_unconfirmed(cand)
                 continue
             try:
                 crawl_result = crawl_candidate(ctx, cand)
             except Exception as exc:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "error", "reason": f"{type(exc).__name__}: {exc}"[:200]})
-                if cand.source == "registry_website":
-                    registry_declared_unconfirmed = True
+                _mark_unconfirmed(cand)
                 continue
 
             if crawl_result.fatal_error:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "unreachable", "reason": crawl_result.fatal_error})
-                if cand.source == "registry_website":
-                    registry_declared_unconfirmed = True
+                _mark_unconfirmed(cand)
                 continue
             if crawl_result.parked:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "rejected", "reason": "parked_or_placeholder"})
-                if cand.source == "registry_website":
-                    registry_declared_unconfirmed = True
+                _mark_unconfirmed(cand)
                 continue
 
             website_org_count = _website_org_count(ctx, cand.domain) if cand.source == "registry_website" else None
@@ -142,9 +151,8 @@ class WebConnector:
                 "note": verdict.note, "signals": [s.kind for s in verdict.signals],
                 "conflicts": [c.org_number for c in verdict.conflicts],
             })
-
-            if cand.source == "registry_website" and verdict.status != "exact":
-                registry_declared_unconfirmed = True
+            if verdict.status != "exact":
+                _mark_unconfirmed(cand)
 
             if verdict.status == "exact":
                 exact_pages = crawl_result.pages

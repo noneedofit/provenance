@@ -80,9 +80,18 @@ class _FakeEmailDomains:
         return self.counts.get(domain, 1)
 
 
+class _FakeWikidata:
+    def __init__(self, data):
+        self.data = data
+
+    def lookup(self, org):
+        return self.data.get(org)
+
+
 class _FakeCaches:
-    def __init__(self, email_domains=None):
+    def __init__(self, email_domains=None, wikidata=None):
         self.email_domains = email_domains
+        self.wikidata = wikidata
 
 
 def test_connector_uses_caches_org_count_to_reject_shared_registry_domain():
