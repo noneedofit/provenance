@@ -51,6 +51,7 @@ class HttpClient(Protocol):
         respect_robots: bool = True,    # official APIs may pass False; company sites must pass True
         max_redirects: int = 4,
         snapshot: bool = True,          # store raw body in the snapshot store
+        headers: dict[str, str] | None = None,  # extra request headers (e.g. NAV feed bearer token)
     ) -> Response: ...
 
     def post_json(self, url: str, payload: Any, *, org: str | None = None, purpose: str = "", timeout: float = 20.0) -> Response: ...
