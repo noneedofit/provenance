@@ -63,14 +63,15 @@ class ActivityConnector:
         # ---- reviews: always not_available, no source exists ----
         families["reviews"] = FamilyState(family="reviews", availability="not_available", reason=REVIEWS_REASON)
 
-        # ---- jobs: NAV (no HTTP) ----
+        # ---- jobs: NAV (live search+feedentry when NavLiveConnector ran; else the cached feed index) ----
         nav_result = nav_jobs.collect(ctx)
+        nav_is_live = nav_result.get("source") == "live"
         claims.extend(nav_result["claims"])
         evidence.extend(nav_result["evidence"])
         if nav_result.get("error"):
             errors.append({"stage": "nav_jobs", "error": nav_result["error"]})
         if nav_result["checked"]:
-            jobs_sources.append("nav_arbeidsplassen_cache")
+            jobs_sources.append("nav_arbeidsplassen_live" if nav_is_live else "nav_arbeidsplassen_cache")
 
         active_nav_titles = {norm_title(c.value["title"]) for c in nav_result["claims"] if c.value and c.value.get("title")}
 
@@ -91,8 +92,9 @@ class ActivityConnector:
 
         job_posting_claims = [c for c in claims if c.family == "jobs" and c.field == "job_posting"]
 
-        # ---- jobs: recent_hiring summary (NAV-derived, single-valued) ----
-        if nav_result["checked"]:
+        # ---- jobs: recent_hiring summary (cache-path only; the live path publishes
+        # jobs/active_postings_count instead, built in nav_jobs._collect_live) ----
+        if nav_result["checked"] and not nav_is_live:
             if nav_result["recent_count"] > 0:
                 claims.append(make_claim(
                     org=ctx.org, family="jobs", field="recent_hiring",
@@ -111,6 +113,16 @@ class ActivityConnector:
             families["jobs"] = FamilyState(
                 family="jobs", availability="available", sources_checked=jobs_sources,
                 claim_count=len([c for c in claims if c.family == "jobs" and c.availability == "available"]),
+            )
+        elif nav_result.get("family_availability"):
+            # Live path: not_available / not_applicable / failed, as decided by NavLiveConnector's
+            # tier/budget gate or a zero-verified-ads search (see nav_jobs._collect_live).
+            reason = nav_result.get("family_reason")
+            if reason and ats_provider:
+                reason += f"; checked {ats_provider} careers feed: no postings"
+            families["jobs"] = FamilyState(
+                family="jobs", availability=nav_result["family_availability"], reason=reason,
+                sources_checked=jobs_sources, claim_count=0,
             )
         elif nav_result["checked"]:
             built_at = _cache_built_at(ctx) or "unknown"

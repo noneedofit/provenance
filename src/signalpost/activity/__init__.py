@@ -2,5 +2,6 @@
 from __future__ import annotations
 
 from .connector import ActivityConnector
+from .nav_live import NavLiveConnector
 
-__all__ = ["ActivityConnector"]
+__all__ = ["ActivityConnector", "NavLiveConnector"]

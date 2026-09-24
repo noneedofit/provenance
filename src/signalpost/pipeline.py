@@ -1,8 +1,10 @@
 """Batch orchestration: build a CompanyContext per org, run connectors, assemble one Envelope each.
 
-Public entry point: `run_batch(...)`. Connectors run in order [registry, web, activity]; web/activity are
-imported lazily so the pipeline works standalone before those workstreams land. Exactly one envelope is
-emitted per input organisation number, in input order, even when a company crashes.
+Public entry point: `run_batch(...)`. Connectors run in order [registry, nav, web, activity]; nav/web/activity
+are imported lazily so the pipeline works standalone before those workstreams land. `nav` (live NAV
+arbeidsplassen search+feedentry) runs before `web` so the website module can use NAV-confirmed employer
+homepages as candidates; `activity` runs last and turns `nav`'s `ctx.shared["nav_ads"]` into job claims.
+Exactly one envelope is emitted per input organisation number, in input order, even when a company crashes.
 """
 from __future__ import annotations
 
@@ -38,6 +40,12 @@ DEFAULT_WORKERS = 12
 
 def _default_connectors() -> list[Any]:
     connectors: list[Any] = [registry.RegistryConnector()]
+    try:
+        from signalpost.activity.nav_live import NavLiveConnector  # type: ignore
+
+        connectors.append(NavLiveConnector())
+    except ImportError:
+        pass
     try:
         from signalpost.web.connector import WebConnector  # type: ignore
 
