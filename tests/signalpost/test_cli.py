@@ -24,3 +24,17 @@ def test_run_builds_shared_domain_cache_when_none_supplied(tmp_path, monkeypatch
     # Second call reuses what exists: no rebuild, no requests.
     built.clear()
     assert cli._ensure_caches(cache_dir, "bulk.csv") == (cache_dir, 0) and not built
+
+
+def test_run_falls_back_to_bundled_wikidata_snapshot(tmp_path, monkeypatch):
+    from signalpost import cli
+    import signalpost.caches.email_domains as ed
+    import signalpost.caches.wikidata as wd
+
+    monkeypatch.setattr(ed, "build", lambda bulk, d: (d / "email_domains.sqlite").write_text("x") and {})
+    def boom(cache_dir):
+        raise RuntimeError("HTTP Error 429")
+    monkeypatch.setattr(wd, "build", boom)
+    cache_dir, used = cli._ensure_caches(str(tmp_path / "c"), "bulk.csv")
+    assert used == 1
+    assert (tmp_path / "c" / "wikidata.sqlite").stat().st_size > 100_000

@@ -82,8 +82,14 @@ def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, in
             store.update_meta_part(cache_dir, "wikidata", info)
             requests_used += 1 + int(info.get("raw_binding_count") or 0) // 20_000
         except Exception as exc:
-            print(f"wikidata cache build failed ({exc}); continuing without it", file=sys.stderr)
             requests_used += 1
+            snapshot = Path(__file__).parent / "caches" / "snapshot" / "wikidata.sqlite"
+            if snapshot.exists():
+                import shutil
+                shutil.copyfile(snapshot, cache_dir / "wikidata.sqlite")
+                print(f"wikidata query failed ({exc}); using the bundled snapshot (CC0)", file=sys.stderr)
+            else:
+                print(f"wikidata cache build failed ({exc}); continuing without it", file=sys.stderr)
     return str(cache_dir), requests_used
 
 
