@@ -11,6 +11,7 @@ import concurrent.futures
 import gzip
 import json
 import socket
+import ssl
 import threading
 import time
 import urllib.error
@@ -62,7 +63,28 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect())
+def _build_https_handler() -> urllib.request.HTTPSHandler:
+    """Verify against certifi's CA bundle rather than the interpreter's OS-default trust store.
+
+    `ssl.create_default_context()` with no `cafile` falls back to whatever `SSL_CERT_FILE` /
+    `ssl.get_default_verify_paths()` resolves to on the host -- on a dev machine with several Python
+    installs (e.g. an Anaconda env exporting `SSL_CERT_FILE`) that can point at a stale or unrelated CA
+    bundle missing a current intermediate cert, so a perfectly valid, live company site fails with
+    `CERTIFICATE_VERIFY_FAILED` and gets misclassified as `network_error` -- a real recall bug found by
+    comparing this client's failures against `curl`/a plain `certifi`-backed context on the same host
+    (freshwater.no and others: genuinely reachable, wrongly marked unreachable). `certifi` is already a
+    pinned transitive dependency (via `requests`/`trafilatura`), so this needs no pyproject.toml change.
+    """
+    try:
+        import certifi
+
+        context = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # pragma: no cover - certifi always present in this project's lockfile
+        context = ssl.create_default_context()
+    return urllib.request.HTTPSHandler(context=context)
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect(), _build_https_handler())
 
 
 @dataclass
