@@ -276,12 +276,35 @@ _COPYRIGHT_OWNER_RE = re.compile(
 )
 
 
+# Legal-form tokens that make a copyright-line match look like an actual registered company rather than
+# a web designer / theme-vendor credit line ("(c) 2020 Daniel Eden" -- a real false positive found while
+# scanning a full page: a personal name near an unrelated "copyright"-shaped string on a WordPress theme
+# credit). Broader than `_legal_name_core`'s Norwegian-only suffix set since a copyright line can name a
+# non-Norwegian vendor too; the point here is only "does this look like a company at all", not matching.
+_COMPANY_SUFFIX_TOKENS = {
+    "as", "asa", "ans", "da", "enk", "iks", "sa", "sam", "sti", "stiftelsen", "nuf",
+    "ab", "oy", "aps", "ltd", "llc", "inc", "gmbh", "plc", "spa", "srl", "nv", "bv", "co", "corp",
+}
+
+
+def _looks_like_company_name(name: str) -> bool:
+    tokens = {t for t in re.findall(r"[a-z0-9]+", _normalize(name))}
+    return bool(tokens & _COMPANY_SUFFIX_TOKENS)
+
+
 def find_copyright_owners(text: str) -> list[str]:
-    """All copyright-line owner names on a page, not just the first -- a page can legitimately carry
-    more than one (e.g. a shared booking-widget/template vendor's own footer copyright line ABOVE the
-    site's own "Copyright (c) ... Four Season Spa AS" line further down). Returning only the first match
-    would flag a mismatch off the vendor's name and miss our own, correct one lower on the page."""
-    return [m.group(1).strip() for m in _COPYRIGHT_OWNER_RE.finditer(text or "") if m.group(1).strip()]
+    """All copyright-line owner names on a page that look like an actual company (carry a legal-form
+    suffix token), not just the first -- a page can legitimately carry more than one (e.g. a shared
+    booking-widget/template vendor's own footer copyright line ABOVE the site's own "Copyright (c) ...
+    Four Season Spa AS" line further down). Returning only the first match would flag a mismatch off the
+    vendor's name and miss our own, correct one lower on the page. Filtering to names that look like a
+    company (rather than every "(c) <text>"-shaped string) avoids false-flagging a web designer / theme
+    credit line ("(c) 2020 Daniel Eden") as a conflicting site owner."""
+    return [
+        m.group(1).strip()
+        for m in _COPYRIGHT_OWNER_RE.finditer(text or "")
+        if m.group(1).strip() and _looks_like_company_name(m.group(1))
+    ]
 
 
 def _find_jsonld_legal_names(nodes: Any) -> list[str]:

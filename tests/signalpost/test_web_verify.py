@@ -379,6 +379,38 @@ def test_second_copyright_line_matching_our_name_prevents_false_owner_mismatch()
     assert verdict.identity_basis == "registry_declared"
 
 
+def test_copyright_owner_far_down_a_long_page_is_still_found():
+    # The same trap, but confirming the fix scans the WHOLE page, not a fixed prefix/suffix window --
+    # Four Season Spa AS's real page is 170KB+ with the true copyright line far past any small cutoff.
+    padding = "<div>filler content here padding out the page well past any small fixed window</div>" * 400
+    facts = {**REGISTRY_FACTS, "name": "FOUR SEASON SPA AS"}
+    html = (
+        f"<html><body>{padding}"
+        "<div>Copyright (c) 2015-2023 Four Season Spa AS. All rights reserved.</div></body></html>"
+    )
+    assert len(html) > 30000
+    p = page("Four Season Spa", html=html, url="https://www.fourseasonspa.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="fourseasonspa.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "registry_declared"
+
+
+def test_theme_designer_credit_line_is_not_treated_as_a_conflicting_owner():
+    # TRONDER RENHOLD AS regression found while fixing the above: scanning the whole page for "(c) <text>"
+    # -shaped strings can also pick up an unrelated WordPress theme/designer credit line ("(c) 2020 Daniel
+    # Eden") that happens to match the regex shape but is not a company name at all. Must not block
+    # registry_declared trust.
+    facts = {**REGISTRY_FACTS, "name": "TRØNDER RENHOLD AS", "street": "", "postcode": "", "phones": [], "email": None, "role_holders": []}
+    html = (
+        "<html><body>Tronder Renhold - profesjonelt renhold. "
+        "<footer>(c) 2020 Daniel Eden. Theme design.</footer></body></html>"
+    )
+    p = page("Tronder Renhold renhold", html=html, url="https://trdrenhold.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="trdrenhold.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "registry_declared"
+
+
 def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
     # Coordinator fix: the registry_declared decisive gate now checks website_org_count >= 2 (not 3) --
     # a domain also registered by even one sibling/parent entity is not decisive on bare trust alone.
