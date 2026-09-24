@@ -85,28 +85,50 @@ class Budget:
     reports how much the org can still spend without the caller needing to know the borrowing rule.
     """
 
+    RESERVED_PURPOSE_PREFIX = "registry_"
+
     def __init__(self, hard_cap: int = 1900):
         self.hard_cap = hard_cap
         self._lock = threading.Lock()
         self._used_total = 0
         self._org_allocated: dict[str | None, int] = {}
         self._org_used: dict[str | None, int] = {}
+        # Requests held back for official registry calls, so optional sources can never starve them.
+        self._reserved: dict[str | None, int] = {}
+        self._reserved_total = 0
+
+    def reserve(self, org: str | None, n: int) -> None:
+        """Hold back n requests for `org`'s official registry calls (purpose prefix `registry_`)."""
+        with self._lock:
+            self._reserved[org] = self._reserved.get(org, 0) + n
+            self._reserved_total += n
+
+    def release(self, org: str | None) -> None:
+        """Return whatever is left of an org's registry reserve to the shared pool."""
+        with self._lock:
+            self._reserved_total -= self._reserved.pop(org, 0)
 
     def allocate(self, org: str | None, n: int) -> None:
         with self._lock:
             self._org_allocated[org] = self._org_allocated.get(org, 0) + n
 
-    def charge(self, org: str | None, n: int = 1) -> bool:
+    def charge(self, org: str | None, n: int = 1, purpose: str = "") -> bool:
         with self._lock:
-            if self._used_total + n > self.hard_cap:
+            own_reserve = self._reserved.get(org, 0) if purpose.startswith(self.RESERVED_PURPOSE_PREFIX) else 0
+            ceiling = self.hard_cap - (self._reserved_total - own_reserve)
+            if self._used_total + n > ceiling:
                 return False
+            if own_reserve:
+                used_from_reserve = min(own_reserve, n)
+                self._reserved[org] = own_reserve - used_from_reserve
+                self._reserved_total -= used_from_reserve
             self._used_total += n
             self._org_used[org] = self._org_used.get(org, 0) + n
             return True
 
     def remaining(self, org: str | None = None) -> int:
         with self._lock:
-            global_remaining = max(0, self.hard_cap - self._used_total)
+            global_remaining = max(0, self.hard_cap - self._used_total - self._reserved_total)
             allocated = self._org_allocated.get(org)
             if allocated is None:
                 return global_remaining
@@ -265,7 +287,7 @@ class BudgetedHttpClient:
             robots_url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, "/robots.txt", "", "", ""))
             charged = 0
             parser: urllib.robotparser.RobotFileParser | None = urllib.robotparser.RobotFileParser()
-            if not self.budget.charge(org, 1):
+            if not self.budget.charge(org, 1, purpose="robots"):
                 # No budget to even check robots: fail closed is unhelpful, so cache "allow" but do not
                 # charge (the caller's own GET charge, done next, is what will report budget_exhausted).
                 with self._robots_lock:
@@ -345,7 +367,7 @@ class BudgetedHttpClient:
                 if not allowed:
                     return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
 
-            if not self.budget.charge(org, 1):
+            if not self.budget.charge(org, 1, purpose=purpose):
                 return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
             total_requests_used += 1
 
@@ -357,7 +379,7 @@ class BudgetedHttpClient:
 
             retryable = error == "timeout" or status == 429 or status >= 500
             if retryable:
-                if not self.budget.charge(org, 1):
+                if not self.budget.charge(org, 1, purpose=purpose):
                     return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
                 total_requests_used += 1
                 with sem:

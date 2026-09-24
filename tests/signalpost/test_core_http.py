@@ -151,3 +151,18 @@ def test_dns_resolves_caches_result():
     client = BudgetedHttpClient(budget)
     assert client.dns_resolves("localhost") is True
     assert "localhost" in client._dns_cache
+
+
+def test_registry_reserve_cannot_be_spent_by_optional_sources():
+    from signalpost.http import Budget
+
+    budget = Budget(hard_cap=10)
+    budget.reserve("A", 3)
+    budget.reserve("B", 3)
+    spent = sum(budget.charge("C", 1, purpose="nav_live_search") for _ in range(10))
+    assert spent == 4  # 10 - 6 reserved
+    assert budget.charge("A", 1, purpose="registry_entity")
+    assert budget.charge("B", 1, purpose="registry_roles")
+    assert not budget.charge("C", 1, purpose="web_homepage")
+    budget.release("A")  # A's 2 unused reserve go back to the pool
+    assert budget.charge("C", 1, purpose="web_homepage")

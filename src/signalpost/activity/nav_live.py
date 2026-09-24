@@ -94,6 +94,12 @@ def _normalize_homepage(value: Any) -> str | None:
     return value.rstrip("/")
 
 
+# Circuit breaker: the search host rate-limits by IP. Once it answers 429 this many times in a row, stop
+# searching for the rest of the run (jobs -> failed "rate-limited") instead of burning the request budget.
+BREAKER_CONSECUTIVE_429 = 3
+MAX_SEARCHES_PER_RUN = 60
+
+
 class NavLiveConnector:
     name = "nav"
     families: tuple[str, ...] = ()
@@ -110,6 +116,10 @@ class NavLiveConnector:
         # wall-clock throttling - see the module docstring's "Rate limiting" note for why it exists.
         self._min_search_interval = min_search_interval
         self._search_retry_delays = search_retry_delays
+        self._breaker_lock = threading.Lock()
+        self._consecutive_429 = 0
+        self._searches = 0
+        self.tripped_reason: str | None = None
 
     # -- search throttling ---------------------------------------------------------------------------
 
@@ -126,17 +136,34 @@ class NavLiveConnector:
                 time.sleep(wait)
             self._last_search_ts = time.monotonic()
 
+    def _breaker_open(self) -> str | None:
+        with self._breaker_lock:
+            return self.tripped_reason
+
+    def _record_search(self, status: int) -> None:
+        with self._breaker_lock:
+            self._searches += 1
+            self._consecutive_429 = self._consecutive_429 + 1 if status == 429 else 0
+            if self._consecutive_429 >= BREAKER_CONSECUTIVE_429:
+                self.tripped_reason = "nav_search_rate_limited"
+            elif self._searches >= MAX_SEARCHES_PER_RUN and not self.tripped_reason:
+                self.tripped_reason = "nav_search_run_cap"
+
     def _search(self, ctx: CompanyContext, url: str):
         client = ctx.client
         delays = (0.0, *self._search_retry_delays)
+        resp = None
         for attempt, delay in enumerate(delays):
+            if self._breaker_open():
+                return resp
             if delay:
                 time.sleep(delay)
             self._throttle_search()
             resp = client.get(url, org=ctx.org, purpose="nav_live_search", accept="application/json", respect_robots=True)
+            self._record_search(resp.status)
             if resp.status != 429 or attempt == len(delays) - 1:
                 return resp
-        return resp  # pragma: no cover - loop always returns above
+        return resp
 
     # -- token -------------------------------------------------------------------------------------
 
@@ -239,6 +266,9 @@ class NavLiveConnector:
                 break
             url = f"{SEARCH_URL}?q={urllib.parse.quote(q)}&size=100"
             resp = self._search(ctx, url)
+            if resp is None:  # circuit breaker open: no request was made
+                errors.append({"stage": "nav_live_search", "query": q, "error": self._breaker_open() or "nav_search_disabled"})
+                break
             if resp.error:
                 errors.append({"stage": "nav_live_search", "query": q, "error": resp.error})
                 continue

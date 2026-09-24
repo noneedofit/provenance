@@ -159,6 +159,15 @@ def run_batch(
     client = BudgetedHttpClient(budget, snapshots=snapshots)
     conn_list = connectors if connectors is not None else _default_connectors()
 
+    # Reserve every company's official registry calls up front (entity, roles, accounts; subunits and
+    # filing years from T1/T2), so optional sources such as job search can never starve official data.
+    for org in org_list:
+        try:
+            tier = classify(bulk.get(org, {}), caches=caches).tier
+        except Exception:  # a malformed row is handled (and reported) per company below
+            tier = "T2"
+        budget.reserve(org, {"T0": 3, "T1": 4}.get(tier, 5))
+
     deadline_at = t_start + deadline_s
     results: list[_CompanyOutcome | None] = [None] * len(org_list)
     done_count = 0
@@ -192,6 +201,9 @@ def run_batch(
                     except Exception as exc:  # a connector crash never drops the company
                         errors.append({"connector": getattr(connector, "name", str(connector)), "error": f"{type(exc).__name__}: {exc}"})
                         continue
+                    finally:
+                        if getattr(connector, "name", "") == "registry":
+                            budget.release(org)
                     for claim in result.claims:
                         claims_by_id[claim.claim_id] = claim
                     for ev in result.evidence:
@@ -201,6 +213,7 @@ def run_batch(
                     ctx.shared.update(result.shared)
                     errors.extend(result.errors)
 
+            budget.release(org)
             if client.remaining(org) <= 0:
                 budget_exhausted = True
 

@@ -214,3 +214,30 @@ def test_live_fixture_search_and_feedentry_shape():
 
     assert result.shared["nav_checked"]["state"] == "ok"
     assert result.shared["nav_total_matching_hits"] >= 1
+
+
+def test_circuit_breaker_stops_searching_after_consecutive_429s():
+    from signalpost.activity import nav_live
+    from signalpost.context import Response
+
+    class Always429:
+        def __init__(self):
+            self.calls = 0
+
+        def get(self, url, **kwargs):
+            self.calls += 1
+            return Response(url=url, final_url=url, redirect_chain=[url], status=429, headers={}, body=b"",
+                            retrieved_at="2026-09-24T00:00:00Z", content_sha256="", elapsed_ms=1,
+                            requests_used=1, error="http_4xx")
+
+        def remaining(self, org=None):
+            return 100
+
+    connector = nav_live.NavLiveConnector(min_search_interval=0, search_retry_delays=())
+    client = Always429()
+    for _ in range(nav_live.BREAKER_CONSECUTIVE_429):
+        connector._search(type("C", (), {"client": client, "org": "1"})(), "https://example.test/search")
+    assert connector.tripped_reason == "nav_search_rate_limited"
+    calls = client.calls
+    assert connector._search(type("C", (), {"client": client, "org": "1"})(), "https://example.test/search") is None
+    assert client.calls == calls
