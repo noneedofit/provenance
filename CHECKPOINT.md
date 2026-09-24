@@ -72,3 +72,14 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
 - Scorer fixed (dict URLs, same-site matching, related-as-exact = wrong, profiles unverified ≠ wrong).
 - Integrated main+W3 on 131 gold: 1,545 requests, website precision 97.8%, recall 35.6%, 1 wrong (Xledger),
   proxy 40/100 (refresh/UX unmeasured). W3 agent aa73440218cea562f fixing Xledger + big-company recall.
+
+## 24 Sep daytime (autonomous)
+- Fixed: NAV 429 storm starved registry → per-company registry budget reserve + NAV circuit breaker.
+- Fixed: registry_facts now uses bulk e-mail/phones/homepage (live API omits them).
+- Merged W3 + recall branch: gold (131) website precision ~98–100%, recall 51%, 0 wrong-company;
+  daily-like 100: ~470 requests, ~3–4 min, refresh rerun 0 changes (refresh 20/20 on proxy).
+- Gold label corrected: HONG KONG PALACE AS → sushime.no (org number on site).
+- Docs written (README, AGENT, CRAWLERS, IDENTITY_RESOLUTION, DATA_SCHEMA, REFRESH, EVAL, LIMITATIONS, SOURCES).
+- Submission manifest: submission/manifest-1000.jsonl (800 random + 200 staffed-with-website), runner
+  scripts/run_submission_batches.sh; profiles generating into submission/profiles/submission-20260924/.
+- Waiting on user: author rewrite + GitHub push, <CONTACT> in README, email to Builderr, JBOX reply.
