@@ -526,6 +526,12 @@ def assess(
     }
     corroborating = [s for s in signals if s.kind in corroborating_kinds]
     distinct_corroborating = {s.kind for s in corroborating}
+    # "Hard" signals require matching a specific, hard-to-coincidentally-satisfy piece of registry data
+    # (our exact legal name in <title>, the registry e-mail text itself, or the e-mail's domain). "Soft"
+    # signals (address, phone, a board member's name) are page CONTENT that can genuinely, coincidentally
+    # match on a page that isn't entity-specific -- a shared office after an acquisition, a former
+    # tenant's address, a person who moved employer. See the name_guess guard below.
+    STRONG_CORROBORATING_KINDS = {"legal_name_match", "registry_email", "email_domain_match"}
 
     # A parent/umbrella or franchise/chain page (group site, "our brands", "our stores", housing
     # manager, franchise/chain wording) is exactly the "flagged as a franchise/parent site" carve-out in
@@ -635,6 +641,26 @@ def assess(
                     ">=2 corroborating signals, but the registry's own declared hjemmeside could not be "
                     "confirmed for this org -- a name-derived guess needs a decisive signal (not "
                     "corroboration alone) while the authoritative site remains unconfirmed"
+                ),
+            )
+        if candidate.source == "name_guess" and not (distinct_corroborating & STRONG_CORROBORATING_KINDS):
+            # ORBOTECH NORWAY AS trap: a name-guess with NO independent basis of its own (unlike
+            # registry_website/wikidata/nav) landed on a corporate group's brand site after an
+            # acquisition (formerly "MK Salg AS"), and the group's Norway landing page genuinely carries
+            # the same office address and a board member's name (the business/personnel were absorbed
+            # into the group, not a coincidence, but also not evidence this page is entity-specific
+            # rather than the group's shared page -- gold: "no Orbotech Norway-specific domain or
+            # org-number page was found"). "Soft" content signals (address/phone/role-name) alone can
+            # coincidentally satisfy 2-of-3 for a parent/group page after an M&A/office-sharing event;
+            # require at least one "hard" signal (exact legal name in <title>, registry e-mail text, or
+            # e-mail-domain match) before trusting a bare name-guess.
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note=(
+                    ">=2 corroborating signals but all are address/phone/role-name (no legal-name or "
+                    "e-mail match) on a name-derived guess with no independent basis of its own -- too "
+                    "weak on their own for a company that could be sharing an office/personnel with an "
+                    "unrelated or parent entity"
                 ),
             )
         return Verdict("exact", "corroborated", "exact", signals=signals, conflicts=[], note=">=2 independent corroborating signals, no conflict")

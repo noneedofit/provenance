@@ -486,6 +486,38 @@ def test_require_decisive_does_not_block_a_decisive_org_number_match():
     assert verdict.identity_basis == "org_number_on_source"
 
 
+# --- assess(): name-guess "soft signals only" guard (ORBOTECH NORWAY AS trap) ------------------------
+
+
+def test_name_guess_with_only_soft_signals_stays_ambiguous():
+    # ORBOTECH NORWAY AS trap: a name-guess (no independent basis of its own, unlike registry_website/
+    # wikidata/nav) landed on a corporate group's brand site after an acquisition. The group's country
+    # landing page genuinely carries the SAME office address and a board member's name -- both "soft"
+    # content signals that can coincidentally satisfy 2-of-N on a page that isn't entity-specific (a
+    # shared office post-acquisition). Neither a legal-name-in-title match nor an e-mail match is
+    # present, so this must not resolve to exact.
+    facts = {**REGISTRY_FACTS, "name": "ORBOTECH NORWAY AS", "street": "Industrivegen 4", "postcode": "7820", "role_holders": ["Mats Kvamso"], "phones": [], "email": None}
+    html = "<html><body>Orbotech. Industrivegen 4, 7820. Kontaktperson: Mats Kvamso.</body></html>"
+    p = page("Orbotech cleaning robots", html=html, url="https://orbotech.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="orbotech.no", source="name_guess"))
+    assert verdict.status == "ambiguous"
+    signal_kinds = {s.kind for s in verdict.signals}
+    assert signal_kinds == {"registered_address", "role_name"}
+
+
+def test_name_guess_with_one_strong_signal_still_reaches_exact():
+    # The same soft-signal page, but WITH a registry-email match too ("hard" per
+    # STRONG_CORROBORATING_KINDS) -- the guard only blocks an all-soft combination, not a genuinely
+    # well-corroborated match.
+    facts = {**REGISTRY_FACTS, "name": "ORBOTECH NORWAY AS", "street": "Industrivegen 4", "postcode": "7820", "role_holders": ["Mats Kvamso"], "phones": [], "email": "post@orbotech.no"}
+    html = "<html><body>Orbotech. Industrivegen 4, 7820. Kontaktperson: Mats Kvamso. post@orbotech.no</body></html>"
+    p = page("Orbotech cleaning robots", html=html, url="https://orbotech.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="orbotech.no", source="name_guess"))
+    assert verdict.status == "exact"
+
+
+
+
 def test_namesake_company_resolved_by_org_number_match():
     site_text = f"Oen Kuldeteknikk AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. Kontakt oss i Bergen."
     p = page(site_text, url="https://oenkuldeteknikk.no/")
@@ -533,14 +565,16 @@ def test_industry_mismatch_guard_blocks_corroboration_on_unlisted_namesake_domai
 
 def test_industry_mismatch_guard_does_not_block_same_industry_corroboration():
     # Sanity check: the guard must not suppress a genuine match just because NACE is set -- a fishing
-    # company's own site, describing fishing, with 2 corroborating signals, is still exact.
+    # company's own site, describing fishing, with 2 corroborating signals, is still exact. One of the
+    # two signals is registry_email (a "hard" signal per STRONG_CORROBORATING_KINDS), so the name_guess
+    # soft-signal guard (address/phone/role-name only) doesn't apply here either.
     facts = {
         **REGISTRY_FACTS, "name": "BRIS AS", "street": "Kaiveien 3", "postcode": "8063",
-        "phones": ["12345678"], "nace": "03.11",
+        "email": "post@bris.no", "phones": [], "nace": "03.11",
     }
     html = (
         "<html><head><title>Bris AS</title></head><body>Bris AS driver fiskebat og fangst av fisk i "
-        "Lofoten. Kaiveien 3 8063. Ring 12345678.</body></html>"
+        "Lofoten. Kaiveien 3 8063. Kontakt: post@bris.no.</body></html>"
     )
     p = page("Bris AS fiskebat", html=html, url="https://bris.no/")
     verdict = assess(OUR_ORG, [p], facts, cand(domain="bris.no", source="name_guess"))
