@@ -95,3 +95,9 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
   (0 requests) and Wikidata (1 request, bundled CC0 snapshot fallback, 9358654).
 - Gold after fixes: fresh cache dir 0 wrong / precision 100% / recall 47% (Wikidata 429'd; snapshot now
   covers it); full caches 0 wrong / 100% / 51.6%, 1,751 requests, 5.7 min.
+- Summary wording fixed (b03a57b); viewer unknowns as list (f2385e5); mobile UX checked OK.
+- Jobs: per-company NAV search is rate-limited after ~30 searches/run (gold: 93 failed, 0 found) on any IP.
+  Found pam-stilling-feed supports `If-Modified-Since` → jump to a date; 1,000 items/page, ~3 s/page.
+  Agent a1f9fe0b6965c3a99 (branch nav-feed) building a 60-day active-ads index per run + incremental state.
+- Agent affbf3a3399a469c6 (Sonnet, worktree <workspace>/wt-recall2, branch recall2): website recall.
+  Found HTTPS verification failing on OS trust store → certifi fix (f593747).
