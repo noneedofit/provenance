@@ -358,7 +358,17 @@ class BudgetedHttpClient:
             return 0, {}, b"", url, "timeout"
         except urllib.error.URLError as exc:
             reason = str(getattr(exc, "reason", exc))
-            error = "dns" if "not known" in reason or "nodename" in reason else "network_error"
+            if "not known" in reason or "nodename" in reason:
+                error = "dns"
+            elif isinstance(getattr(exc, "reason", None), ssl.SSLError) or "SSL" in reason or "certificate" in reason.lower():
+                # A small, live Norwegian business site not uncommonly has a broken/expired cert, a
+                # hostname mismatch (shared/default hosting cert), or a server that rejects modern TLS on
+                # the bare domain while still serving plain HTTP fine -- genuinely reachable, real content,
+                # just misconfigured TLS. Tagging this distinctly (not the generic "network_error" bucket)
+                # lets `_request` retry once over plain http:// instead of silently dropping the candidate.
+                error = "ssl_error"
+            else:
+                error = "network_error"
             return 0, {}, b"", url, error
         except Exception as exc:  # pragma: no cover - defensive
             return 0, {}, b"", url, f"{type(exc).__name__}: {str(exc)[:120]}"
@@ -373,6 +383,7 @@ class BudgetedHttpClient:
         current_url = url
         total_requests_used = 0
         hops = 0
+        tried_http_fallback = False
 
         while True:
             redirect_chain.append(current_url)
@@ -408,6 +419,21 @@ class BudgetedHttpClient:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
             hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
+
+            # A live small-business (or occasionally larger) site can have a broken/expired cert, a
+            # hostname-mismatched shared-hosting cert, or reject modern TLS on the bare domain entirely
+            # while still serving plain HTTP fine -- genuinely reachable, real content. Downgrade to
+            # http:// once, on the FIRST hop only (never mid-redirect-chain, and never more than once per
+            # request), charged as one more budgeted request like the existing timeout/5xx retry above.
+            if error == "ssl_error" and not tried_http_fallback and len(redirect_chain) == 1 and current_url.startswith("https://"):
+                tried_http_fallback = True
+                if self.budget.charge(org, 1, purpose=purpose):
+                    total_requests_used += 1
+                    current_url = "http://" + current_url[len("https://"):]
+                    redirect_chain.append(current_url)
+                    with sem:
+                        status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
+                    hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
 
             if error:
                 self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error))
