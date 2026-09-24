@@ -1,0 +1,260 @@
+"""Orchestrates candidates -> crawl -> verify -> extract into a ConnectorResult.
+
+Tries candidates in provenance order, stops at the first `exact` verdict. Publishes claims for the
+`website`, `profiles` and `description` families, plus `shared` state consumed by W4 (activity/jobs).
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from ..context import CompanyContext
+from ..models import Claim, ConnectorResult, Evidence, FamilyState, claim_key, evidence_id, utc_now
+from . import candidates as candidates_mod
+from . import extract as extract_mod
+from . import verify as verify_mod
+from .candidates import Candidate
+from .crawl import PageFetch, crawl_candidate
+
+DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage"}
+
+
+def _registry_facts(ctx: CompanyContext) -> dict[str, Any]:
+    return candidates_mod.registry_facts(ctx)  # reuse: same fallback-to-bulk logic
+
+
+def _website_org_count(ctx: CompanyContext, domain: str) -> int | None:
+    """How many organisations this domain is registered to (BUILD_SPEC.md "Identity rules": a website
+    domain used by >=3 orgs is a shared/parent site, never `exact` on registry_declared trust alone).
+
+    `caches.email_domains.org_count(domain)` (BUILD_SPEC.md "Caches API") is the only documented counter
+    for "how many orgs use this domain" and is built from the bulk file's website *and* email columns
+    together, so it doubles as the website-domain shared-count here. `None`-safe: caches may be absent
+    (no --caches passed) or, in an older/partial cache build, may not expose the method at all.
+    """
+    caches = getattr(ctx, "caches", None)
+    if caches is None or not getattr(caches, "email_domains", None):
+        return None
+    email_domains = caches.email_domains
+    for method_name in ("org_count", "website_org_count"):
+        method = getattr(email_domains, method_name, None)
+        if method is None:
+            continue
+        try:
+            return method(domain)
+        except Exception:
+            return None
+    return None
+
+
+def _source_class_for(page: PageFetch) -> str:
+    return "company_owned"
+
+
+def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
+    return Evidence(
+        evidence_id=evidence_id(page.final_url, page.content_sha256, span),
+        source_url=page.url,
+        final_url=page.final_url,
+        redirect_chain=page.redirect_chain,
+        http_status=page.status,
+        source_class="company_owned",
+        retrieved_at=page.retrieved_at or utc_now(),
+        content_sha256=page.content_sha256,
+        snapshot_ref=page.snapshot_ref,
+        extraction_method=method,
+        span=(span or "")[:500] or None,
+    )
+
+
+class WebConnector:
+    name = "web"
+    families: tuple[str, ...] = ("website", "profiles", "description")
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        result = ConnectorResult()
+        org = ctx.org
+        facts = _registry_facts(ctx)
+
+        try:
+            cand_list = candidates_mod.generate_candidates(ctx)
+        except Exception as exc:  # candidate generation must never crash the pipeline
+            result.errors.append({"stage": "candidates", "error": f"{type(exc).__name__}: {exc}"[:300]})
+            cand_list = []
+
+        # Decisive-source candidates first, preserving relative order within each group.
+        ordered = sorted(cand_list, key=lambda c: (c.source not in DECISIVE_SOURCES, c.rank))
+
+        attempts: list[dict[str, Any]] = []
+        exact_pages: list[PageFetch] | None = None
+        exact_candidate: Candidate | None = None
+        exact_verdict: verify_mod.Verdict | None = None
+        best_related: tuple[Candidate, verify_mod.Verdict, list[PageFetch]] | None = None
+
+        client = getattr(ctx, "client", None)
+
+        for cand in ordered:
+            if client is not None and client.remaining(org) <= 0:
+                attempts.append({"domain": cand.domain, "source": cand.source, "status": "skipped", "reason": "request_budget"})
+                continue
+            try:
+                crawl_result = crawl_candidate(ctx, cand)
+            except Exception as exc:
+                attempts.append({"domain": cand.domain, "source": cand.source, "status": "error", "reason": f"{type(exc).__name__}: {exc}"[:200]})
+                continue
+
+            if crawl_result.fatal_error:
+                attempts.append({"domain": cand.domain, "source": cand.source, "status": "unreachable", "reason": crawl_result.fatal_error})
+                continue
+            if crawl_result.parked:
+                attempts.append({"domain": cand.domain, "source": cand.source, "status": "rejected", "reason": "parked_or_placeholder"})
+                continue
+
+            website_org_count = _website_org_count(ctx, cand.domain) if cand.source == "registry_website" else None
+            verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count)
+            attempts.append({
+                "domain": cand.domain, "source": cand.source, "status": verdict.status,
+                "identity_basis": verdict.identity_basis, "relationship": verdict.relationship,
+                "note": verdict.note, "signals": [s.kind for s in verdict.signals],
+                "conflicts": [c.org_number for c in verdict.conflicts],
+            })
+
+            if verdict.status == "exact":
+                exact_pages = crawl_result.pages
+                exact_candidate = cand
+                exact_verdict = verdict
+                break
+            if verdict.status == "related" and best_related is None:
+                best_related = (cand, verdict, crawl_result.pages)
+
+        result.shared["web_attempts"] = attempts
+
+        if exact_pages is not None and exact_candidate is not None and exact_verdict is not None:
+            self._publish_exact(ctx, result, exact_candidate, exact_verdict, exact_pages)
+        elif best_related is not None:
+            self._publish_related(ctx, result, *best_related)
+        else:
+            reason = f"checked {len(attempts)} candidates: none verified" if attempts else "no candidates"
+            result.families["website"] = FamilyState(family="website", availability="not_available", reason=reason, sources_checked=[a["domain"] for a in attempts])
+            result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no verified site to link profiles from")
+            result.families["description"] = FamilyState(family="description", availability="not_available", reason="no verified site to extract description from")
+
+        return result
+
+    # -- publication helpers -------------------------------------------------------------------------
+
+    def _publish_exact(
+        self, ctx: CompanyContext, result: ConnectorResult, cand: Candidate, verdict: verify_mod.Verdict, pages: list[PageFetch],
+    ) -> None:
+        org = ctx.org
+        homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
+        extraction = extract_mod.extract_all(pages)
+
+        # Evidence for the decisive/corroborating signals that proved identity.
+        site_evidence: list[Evidence] = []
+        for sig in verdict.signals[:5]:
+            page = next((p for p in pages if p.final_url == sig.page_url), homepage)
+            site_evidence.append(_make_evidence(page, sig.span, f"web_{sig.kind}_v1"))
+        if not site_evidence:
+            site_evidence = [_make_evidence(homepage, None, "web_homepage_fetch_v1")]
+        for ev in site_evidence:
+            result.evidence.append(ev)
+        evidence_ids = [ev.evidence_id for ev in site_evidence]
+
+        website_value = {"url": homepage.final_url, "domain": cand.domain, "brand_name": extraction.brand_name}
+        ckey = claim_key(org, "website", "official_website", None)
+        result.claims.append(Claim(
+            claim_id=ckey, organisation_number=org, family="website", field="official_website",
+            value=website_value, availability="available", confidence=1.0,
+            identity_basis=verdict.identity_basis, relationship="exact", evidence_ids=evidence_ids,
+        ))
+        result.families["website"] = FamilyState(family="website", availability="available", sources_checked=[cand.domain], claim_count=1)
+
+        contact_claims = 0
+        if extraction.contact_email:
+            ev = _make_evidence(homepage, extraction.contact_email, "web_contact_email_v1")
+            result.evidence.append(ev)
+            result.claims.append(Claim(
+                claim_id=claim_key(org, "website", "site_contact_email", None), organisation_number=org,
+                family="website", field="site_contact_email", value=extraction.contact_email,
+                availability="available", identity_basis="linked_from_verified_site", relationship="exact",
+                evidence_ids=[ev.evidence_id],
+            ))
+            contact_claims += 1
+        if extraction.contact_phone:
+            ev = _make_evidence(homepage, extraction.contact_phone, "web_contact_phone_v1")
+            result.evidence.append(ev)
+            result.claims.append(Claim(
+                claim_id=claim_key(org, "website", "site_phone", None), organisation_number=org,
+                family="website", field="site_phone", value=extraction.contact_phone,
+                availability="available", identity_basis="linked_from_verified_site", relationship="exact",
+                evidence_ids=[ev.evidence_id],
+            ))
+            contact_claims += 1
+        result.families["website"].claim_count += contact_claims
+
+        # profiles
+        if extraction.social_links:
+            for link in extraction.social_links:
+                source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
+                ev = _make_evidence(source_page, link["url"], "web_social_link_v1")
+                result.evidence.append(ev)
+                result.claims.append(Claim(
+                    claim_id=claim_key(org, "profiles", "profile", link["url"]), organisation_number=org,
+                    family="profiles", field="profile", value={"platform": link["platform"], "url": link["url"]},
+                    value_key=link["url"], availability="available", identity_basis="linked_from_verified_site",
+                    relationship="exact", evidence_ids=[ev.evidence_id],
+                ))
+            result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=len(extraction.social_links))
+        else:
+            result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
+
+        # description
+        if extraction.description:
+            desc_page = next((p for p in pages if p.final_url == extraction.description_source_url), homepage)
+            ev = _make_evidence(desc_page, extraction.description_span, extraction.description_method or "web_description_v1")
+            result.evidence.append(ev)
+            result.claims.append(Claim(
+                claim_id=claim_key(org, "description", "company_description", None), organisation_number=org,
+                family="description", field="company_description", value=extraction.description,
+                availability="available", identity_basis="linked_from_verified_site", relationship="exact",
+                evidence_ids=[ev.evidence_id],
+            ))
+            result.families["description"] = FamilyState(family="description", availability="available", claim_count=1)
+        else:
+            result.families["description"] = FamilyState(family="description", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
+
+        result.shared["verified_site"] = {"url": homepage.final_url, "domain": cand.domain, "identity_basis": verdict.identity_basis}
+        result.shared["site_pages"] = [
+            {
+                "url": p.url, "final_url": p.final_url, "snapshot_ref": p.snapshot_ref,
+                "text_excerpt": (p.text or "")[:3000], "links": p.links,
+            }
+            for p in pages if p.ok
+        ]
+        result.shared["social_links"] = extraction.social_links
+        result.shared["feed_urls"] = extraction.feed_urls
+        result.shared["ats_links"] = extraction.ats_links
+        result.shared["brand_name"] = extraction.brand_name
+        result.shared["news_urls"] = [extraction.news_url] if extraction.news_url else []
+
+    def _publish_related(
+        self, ctx: CompanyContext, result: ConnectorResult, cand: Candidate, verdict: verify_mod.Verdict, pages: list[PageFetch],
+    ) -> None:
+        org = ctx.org
+        homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
+        ev = _make_evidence(homepage, verdict.note, "web_related_site_v1")
+        result.evidence.append(ev)
+        value = {"url": homepage.final_url, "domain": cand.domain}
+        result.claims.append(Claim(
+            claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
+            family="website", field="official_website", value=value, availability="ambiguous",
+            confidence=0.4, relationship=verdict.relationship, evidence_ids=[ev.evidence_id],
+            note=verdict.note,
+        ))
+        result.families["website"] = FamilyState(
+            family="website", availability="ambiguous",
+            reason=f"related site found ({verdict.relationship}): {verdict.note}", sources_checked=[cand.domain], claim_count=1,
+        )
+        result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no exact-verified site to link profiles from")
+        result.families["description"] = FamilyState(family="description", availability="not_available", reason="no exact-verified site to extract description from")
+        result.shared["web_related_site"] = {"url": homepage.final_url, "domain": cand.domain, "relationship": verdict.relationship}

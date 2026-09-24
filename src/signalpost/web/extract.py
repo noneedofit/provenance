@@ -1,0 +1,298 @@
+"""Extract description, brand name, contact info, JSON-LD facts, feeds, ATS links and social profiles
+from an exact-verified site's fetched pages.
+
+No network access — operates purely on already-fetched `crawl.PageFetch` objects.
+"""
+from __future__ import annotations
+
+import re
+import urllib.parse
+from dataclasses import dataclass, field
+from typing import Any
+
+import warnings
+
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+from norway_company_agent.website import normalize_social_url  # reuse starter-kit normalization
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+from .crawl import PageFetch
+
+ATS_DOMAINS = {
+    "teamtailor.com": "teamtailor",
+    "webcruiter.no": "webcruiter",
+    "webcruiter.com": "webcruiter",
+    "jobylon.com": "jobylon",
+    "reachmee.com": "reachmee",
+    "hr-manager.net": "hrmanager",
+    "hrmanager.no": "hrmanager",
+    "recman.no": "recman",
+    "easycruit.com": "easycruit",
+    "myworkdayjobs.com": "workday",
+    "workday.com": "workday",
+    "smartrecruiters.com": "smartrecruiters",
+    "lever.co": "lever",
+    "greenhouse.io": "greenhouse",
+    "jobbnorge.no": "jobbnorge",
+    "finn.no": "finn_job",
+}
+
+MAX_DESCRIPTION_CHARS = 400
+
+
+@dataclass
+class ExtractionResult:
+    description: str | None = None
+    description_source_url: str | None = None
+    description_span: str | None = None
+    description_method: str | None = None
+    brand_name: str | None = None
+    brand_name_source_url: str | None = None
+    social_links: list[dict[str, str]] = field(default_factory=list)  # {platform, url, source_url}
+    contact_email: str | None = None
+    contact_email_source_url: str | None = None
+    contact_phone: str | None = None
+    contact_phone_source_url: str | None = None
+    addresses: list[dict[str, str]] = field(default_factory=list)
+    jsonld_organizations: list[dict[str, Any]] = field(default_factory=list)
+    feed_urls: list[str] = field(default_factory=list)
+    ats_links: list[dict[str, str]] = field(default_factory=list)  # {platform, url}
+    news_url: str | None = None
+
+
+def _jsonld_objects(html: str, base_url: str) -> list[dict[str, Any]]:
+    try:
+        import extruct
+
+        data = extruct.extract(html, base_url=base_url, syntaxes=["json-ld"])
+        return data.get("json-ld", []) or []
+    except Exception:
+        return []
+
+
+def _walk_organizations(nodes: Any, out: list[dict[str, Any]]) -> None:
+    if isinstance(nodes, dict):
+        kind = nodes.get("@type")
+        kinds = set(kind if isinstance(kind, list) else [kind])
+        if kinds & {"Organization", "Corporation", "LocalBusiness", "Store", "Restaurant"}:
+            out.append(nodes)
+        for child in nodes.values():
+            _walk_organizations(child, out)
+    elif isinstance(nodes, list):
+        for child in nodes:
+            _walk_organizations(child, out)
+
+
+def _first_org(pages: list[PageFetch]) -> tuple[dict[str, Any] | None, str | None]:
+    for page in pages:
+        if not page.ok:
+            continue
+        objs: list[dict[str, Any]] = []
+        _walk_organizations(_jsonld_objects(page.html, page.final_url), objs)
+        if objs:
+            return objs[0], page.final_url
+    return None, None
+
+
+def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None, str | None, str | None]:
+    """Returns (description, source_url, span, method), preferring JSON-LD, then meta description, then
+    the first substantive paragraph of an about-ish page."""
+    org, org_url = _first_org(pages)
+    if org and isinstance(org.get("description"), str) and org["description"].strip():
+        text = org["description"].strip()[:MAX_DESCRIPTION_CHARS]
+        return text, org_url, text, "jsonld_description_v1"
+
+    for page in pages:
+        if not page.ok:
+            continue
+        soup = BeautifulSoup(page.html, "lxml")
+        tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
+        content = str(tag.get("content") or "").strip() if tag else ""
+        if content:
+            return content[:MAX_DESCRIPTION_CHARS], page.final_url, content[:MAX_DESCRIPTION_CHARS], "meta_description_v1"
+
+    about_pages = [p for p in pages if p.ok and p.page_kind in {"om-oss", "om_oss", "about-us", "about"}]
+    for page in about_pages or [p for p in pages if p.ok and p.page_kind == "homepage"]:
+        text = (page.text or "").strip()
+        # first substantive paragraph: first run of text >= 60 chars
+        for para in re.split(r"\n{1,}", text):
+            para = para.strip()
+            if len(para) >= 60:
+                return para[:MAX_DESCRIPTION_CHARS], page.final_url, para[:MAX_DESCRIPTION_CHARS], "trafilatura_first_paragraph_v1"
+    return None, None, None, None
+
+
+def extract_brand_name(pages: list[PageFetch]) -> tuple[str | None, str | None]:
+    org, org_url = _first_org(pages)
+    if org and isinstance(org.get("name"), str) and org["name"].strip():
+        return org["name"].strip(), org_url
+    for page in pages:
+        if not page.ok:
+            continue
+        soup = BeautifulSoup(page.html, "lxml")
+        tag = soup.select_one('meta[property="og:site_name"]')
+        if tag and str(tag.get("content") or "").strip():
+            return str(tag["content"]).strip(), page.final_url
+    for page in pages:
+        if page.ok and page.title:
+            return page.title, page.final_url
+    return None, None
+
+
+def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
+    found: dict[tuple[str, str], dict[str, str]] = {}
+    for page in pages:
+        if not page.ok:
+            continue
+        soup = BeautifulSoup(page.html, "lxml")
+        candidates = [str(node.get("href") or "") for node in soup.select("a[href]")]
+        candidates.extend(str(node.get("src") or "") for node in soup.select("iframe[src]"))
+        for raw in candidates:
+            url = urllib.parse.urljoin(page.final_url, raw)
+            normalized = normalize_social_url(url)
+            if normalized:
+                key = (normalized["platform"], normalized["url"])
+                if key not in found:
+                    found[key] = {**normalized, "source_url": page.final_url}
+        org, _ = _first_org([page])
+        if org:
+            same_as = org.get("sameAs")
+            urls = same_as if isinstance(same_as, list) else [same_as] if same_as else []
+            for raw in urls:
+                if not isinstance(raw, str):
+                    continue
+                normalized = normalize_social_url(raw)
+                if normalized:
+                    key = (normalized["platform"], normalized["url"])
+                    if key not in found:
+                        found[key] = {**normalized, "source_url": page.final_url}
+    return sorted(found.values(), key=lambda item: (item["platform"], item["url"]))
+
+
+_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+_PHONE_RE = re.compile(r"(?<!\d)(\+?47[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2}|\d{2}[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2})(?!\d)")
+
+
+def extract_contact(pages: list[PageFetch]) -> tuple[str | None, str | None, str | None, str | None]:
+    contact_pages = [p for p in pages if p.ok and p.page_kind in {"kontakt", "contact", "homepage"}]
+    for page in contact_pages or pages:
+        if not page.ok:
+            continue
+        emails = _EMAIL_RE.findall(page.html)
+        real_emails = [e for e in emails if not e.lower().endswith((".png", ".jpg", ".gif", ".svg"))]
+        if real_emails:
+            return real_emails[0], page.final_url, None, None
+    for page in contact_pages or pages:
+        if not page.ok:
+            continue
+        phones = _PHONE_RE.findall(page.text)
+        if phones:
+            return None, None, re.sub(r"[\s.]", "", phones[0]), page.final_url
+    return None, None, None, None
+
+
+def extract_addresses(pages: list[PageFetch]) -> list[dict[str, str]]:
+    addresses: list[dict[str, str]] = []
+    seen = set()
+    for page in pages:
+        if not page.ok:
+            continue
+        org, _ = _first_org([page])
+        if not org:
+            continue
+        addr = org.get("address")
+        if isinstance(addr, dict):
+            entry = {
+                "street": str(addr.get("streetAddress") or ""),
+                "postcode": str(addr.get("postalCode") or ""),
+                "city": str(addr.get("addressLocality") or ""),
+                "source_url": page.final_url,
+            }
+            key = (entry["street"], entry["postcode"], entry["city"])
+            if any(entry.values()) and key not in seen:
+                seen.add(key)
+                addresses.append(entry)
+    return addresses
+
+
+def extract_jsonld_fields(pages: list[PageFetch]) -> list[dict[str, Any]]:
+    org, url = _first_org(pages)
+    if not org:
+        return []
+    fields = {k: org[k] for k in ("foundingDate", "numberOfEmployees", "address", "sameAs") if k in org}
+    if not fields:
+        return []
+    return [{"source_url": url, **fields}]
+
+
+def extract_feed_urls(pages: list[PageFetch]) -> list[str]:
+    found: list[str] = []
+    for page in pages:
+        if not page.ok:
+            continue
+        soup = BeautifulSoup(page.html, "lxml")
+        for link in soup.select('link[rel="alternate"]'):
+            link_type = str(link.get("type") or "").lower()
+            if link_type in {"application/rss+xml", "application/atom+xml"}:
+                href = str(link.get("href") or "")
+                if href:
+                    url = urllib.parse.urljoin(page.final_url, href)
+                    if url not in found:
+                        found.append(url)
+    return found
+
+
+def extract_ats_links(pages: list[PageFetch]) -> list[dict[str, str]]:
+    found: dict[str, dict[str, str]] = {}
+    for page in pages:
+        if not page.ok:
+            continue
+        for link_url in list(page.links or []):
+            _match_ats(link_url, found)
+        soup = BeautifulSoup(page.html, "lxml")
+        for anchor in soup.select("a[href]"):
+            href = str(anchor.get("href") or "")
+            if href:
+                _match_ats(urllib.parse.urljoin(page.final_url, href), found)
+    return sorted(found.values(), key=lambda item: item["url"])
+
+
+def _match_ats(url: str, found: dict[str, dict[str, str]]) -> None:
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    for domain, platform in ATS_DOMAINS.items():
+        if host == domain or host.endswith("." + domain):
+            found.setdefault(url, {"platform": platform, "url": url})
+            return
+
+
+def extract_news_url(pages: list[PageFetch]) -> str | None:
+    for page in pages:
+        if page.ok and page.page_kind in {"nyheter", "aktuelt", "news"}:
+            return page.final_url
+    return None
+
+
+def extract_all(pages: list[PageFetch]) -> ExtractionResult:
+    description, desc_url, desc_span, desc_method = extract_description(pages)
+    brand_name, brand_url = extract_brand_name(pages)
+    email, email_url, phone, phone_url = extract_contact(pages)
+    return ExtractionResult(
+        description=description,
+        description_source_url=desc_url,
+        description_span=desc_span,
+        description_method=desc_method,
+        brand_name=brand_name,
+        brand_name_source_url=brand_url,
+        social_links=extract_social_links(pages),
+        contact_email=email,
+        contact_email_source_url=email_url,
+        contact_phone=phone,
+        contact_phone_source_url=phone_url,
+        addresses=extract_addresses(pages),
+        jsonld_organizations=extract_jsonld_fields(pages),
+        feed_urls=extract_feed_urls(pages),
+        ats_links=extract_ats_links(pages),
+        news_url=extract_news_url(pages),
+    )
