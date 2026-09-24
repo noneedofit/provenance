@@ -115,10 +115,15 @@ def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
 
 def registry_facts(ctx: Any) -> dict[str, Any]:
     shared = getattr(ctx, "shared", {}) or {}
+    bulk = getattr(ctx, "bulk", {}) or {}
     facts = shared.get("registry_facts")
     if facts:
+        # W1's registry_facts() (the live-registry-aware version) doesn't carry a "nace" field; the
+        # industry/topic-mismatch guard (verify.industry_mismatch) needs one. Fall back to the bulk row
+        # without touching registry.py (owned by W1).
+        if "nace" not in facts:
+            facts = {**facts, "nace": bulk.get("naeringskode1.kode")}
         return facts
-    bulk = getattr(ctx, "bulk", {}) or {}
     return {
         "name": bulk.get("navn"),
         "aliases": [],
@@ -135,8 +140,16 @@ def registry_facts(ctx: Any) -> dict[str, Any]:
     }
 
 
+# Conjunctions/branch-qualifier connectors that a company's own domain very often just drops entirely
+# rather than spelling out -- "DRANGE KRAN OG TRANSPORT AS" -> drangekran.no (drops "og transport", not
+# "drange-og-kran"). Used only to decide which tokens count as "substantive" for the first-two-tokens
+# variant below; the full-name variants above are unaffected.
+_CONJUNCTIONS = {"og", "and", "&"}
+
+
 def _name_guess_slugs(name: str) -> list[str]:
-    """Up to 2 base slugs (joined, hyphenated), each tried with and without suffix words removed."""
+    """Up to 2 base slugs (joined, hyphenated), each tried with and without suffix words removed, plus a
+    first-two-substantive-tokens variant for longer names."""
     tokens = _slug_tokens(name)
     if not tokens:
         return []
@@ -150,6 +163,20 @@ def _name_guess_slugs(name: str) -> list[str]:
         for slug in (joined, hyphenated):
             if slug and slug not in variants:
                 variants.append(slug)
+
+    # First-two-tokens: a trade/brand domain routinely drops everything past the first two distinctive
+    # words -- a branch qualifier ("AVD. VOLLEN"), a conjunction clause ("OG TRANSPORT"), a co-founder's
+    # surname or a trailing place/product name. E.g. "GULLSMED FJELL AVD. VOLLEN AS" -> gullsmedfjell.no,
+    # "SVEIN SVENDSEN & SONN TRAFIKKSKOLE AS" -> svein-svendsen.no. Only tried once there are >=3
+    # substantive (non-suffix, non-conjunction) tokens, so a short name isn't affected (it already gets
+    # the same slug from the variants above).
+    substantive = [t for t in stripped if t not in _CONJUNCTIONS]
+    if len(substantive) >= 3:
+        first_two = substantive[:2]
+        for slug in ("".join(first_two), "-".join(first_two)):
+            if slug and slug not in variants:
+                variants.append(slug)
+
     # Drop overly generic results: a single token that is very short (<=3 chars, likely an
     # abbreviation/initialism with many unrelated registrants) or a known-generic industry/place word.
     # A distinctive short brand name (e.g. "adma", "rema", "kiwi") is kept.

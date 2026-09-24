@@ -151,6 +151,40 @@ def test_same_domain_from_registry_and_wikidata_keeps_the_wikidata_source():
     assert kitron[0].source == "wikidata_website"
 
 
+def test_first_two_tokens_variant_drops_branch_qualifier():
+    # GULLSMED FJELL AVD. VOLLEN AS -> gullsmedfjell.no: the real domain drops the branch qualifier
+    # ("AVD. VOLLEN") entirely, keeping only the first two distinctive words.
+    client = FakeHttpClient(dns={"gullsmedfjell.no"})
+    ctx = make_ctx("923456783", tier="T2", registry_facts={"name": "GULLSMED FJELL AVD. VOLLEN AS"}, client=client)
+    cands = generate_candidates(ctx)
+    assert any(c.domain == "gullsmedfjell.no" for c in cands)
+
+
+def test_first_two_tokens_variant_drops_trailing_conjunction_clause():
+    # DRANGE KRAN OG TRANSPORT AS -> drangekran.no: drops "OG TRANSPORT" entirely.
+    client = FakeHttpClient(dns={"drangekran.no"})
+    ctx = make_ctx("923456783", tier="T2", registry_facts={"name": "DRANGE KRAN OG TRANSPORT AS"}, client=client)
+    cands = generate_candidates(ctx)
+    assert any(c.domain == "drangekran.no" for c in cands)
+
+
+def test_first_two_tokens_variant_matches_ampersand_clause():
+    # SVEIN SVENDSEN & SONN TRAFIKKSKOLE AS -> svein-svendsen.no.
+    client = FakeHttpClient(dns={"svein-svendsen.no"})
+    ctx = make_ctx("923456783", tier="T2", registry_facts={"name": "SVEIN SVENDSEN & SONN TRAFIKKSKOLE AS"}, client=client)
+    cands = generate_candidates(ctx)
+    assert any(c.domain == "svein-svendsen.no" for c in cands)
+
+
+def test_first_two_tokens_variant_not_tried_for_short_names():
+    # A 2-token name already gets this slug from the ordinary joined/hyphenated variants -- no need for
+    # (and no extra guess spent on) a redundant first-two-tokens variant.
+    from signalpost.web.candidates import _name_guess_slugs
+
+    slugs = _name_guess_slugs("Eksempelfirma AS")
+    assert slugs.count("eksempelfirma") == 1
+
+
 def test_candidates_deduplicated_by_registered_domain():
     ctx = make_ctx(
         "923456783",

@@ -259,7 +259,12 @@ def _legal_name_core(name: str) -> set[str]:
 
 
 def _page_all_text(page: PageFetch) -> str:
-    return f"{page.title}\n{page.text}\n{page.html[:20000]}"
+    # No truncation: a modern page-builder site can be several hundred KB, and the real evidence (a
+    # footer address, a copyright line) is routinely past any small fixed prefix (confirmed on both
+    # FOUR SEASON SPA AS's and GULLSMED FJELL AVD. VOLLEN AS's own pages -- >20000 chars in). Regex
+    # scanning the full page is cheap CPU-only work, not an extra network request, so there is no
+    # request-budget cost to dropping the cap.
+    return f"{page.title}\n{page.text}\n{page.html or ''}"
 
 
 # --- Site-owner name detection (footer copyright / JSON-LD legalName) -------------------------------------
@@ -388,12 +393,7 @@ def assess(
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
             elif m.labeled:
                 other_org_matches.append(Conflict("conflicting_org_number", "different valid organisation number presented as site owner", m.digits, page.final_url, m.span))
-        # `_page_all_text` only scans the first 20000 chars of html for cost reasons, but a copyright
-        # notice can sit well past that on a heavy page-builder site (Four Season Spa AS's own page is
-        # 170KB+, and the real footer line is around char 130000 -- neither in the head nor literally in
-        # the last few KB). A plain regex search costs nothing extra even on the full untruncated html,
-        # so copyright-owner detection scans the whole page rather than a fixed-size prefix/suffix.
-        site_owner_names.extend(find_copyright_owners(f"{page.title}\n{page.text}\n{page.html or ''}"))
+        site_owner_names.extend(find_copyright_owners(_page_all_text(page)))
         try:
             import extruct
 
@@ -464,7 +464,24 @@ def assess(
         if legal_core and legal_core.issubset(title_tokens):
             signals.append(Signal("legal_name_match", "exact legal name (minus suffix) found in <title>", homepage.final_url, homepage.title))
 
-    corroborating_kinds = {"registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match"}
+        # The registered e-mail's domain being the SAME domain we're assessing is a structural signal
+        # independent of page content (a company almost never uses someone else's domain for its own
+        # e-mail address) -- helps a name-guess candidate that a registry_email_domain candidate would
+        # already carry decisively, but also a candidate reached some other way (e.g. Wikidata, a
+        # subunit website) that happens to share the registered e-mail's domain.
+        # Excludes candidate.source == "registry_email_domain": for that source the candidate's domain
+        # IS the registered e-mail's domain by construction (that's how the candidate was generated), so
+        # the match is tautological, not independent confirmation. For every other source (a name guess,
+        # the registry hjemmeside, Wikidata, a subunit site, ...) landing on the same domain the
+        # registered e-mail uses is a genuine, independent structural signal.
+        email_domain = (registry_facts.get("email_domain") or "").strip().lower()
+        if email_domain and email_domain == candidate.domain and candidate.source != "registry_email_domain":
+            signals.append(Signal("email_domain_match", "registered e-mail domain matches this site's domain", homepage.final_url, email_domain))
+
+    corroborating_kinds = {
+        "registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match",
+        "email_domain_match",
+    }
     corroborating = [s for s in signals if s.kind in corroborating_kinds]
     distinct_corroborating = {s.kind for s in corroborating}
 
