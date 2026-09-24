@@ -226,6 +226,22 @@ def test_registry_declared_domain_hijacked_by_casino_content_is_rejected():
     assert verdict.note == "registry website appears hijacked or unrelated"
 
 
+def test_hijack_marker_requires_word_boundary_not_bare_substring():
+    # CALPRO AS gold-set recall bug: "cialis" is a substring of "specialist" ("IBD Nurse Specialist"),
+    # a word that shows up completely innocently on a real medical-diagnostics company's own page. A
+    # naive `marker in haystack` substring check false-positived this as "hijacked" content and rejected
+    # a genuinely correct registry_declared site. Must require a word boundary around the marker.
+    facts = {**REGISTRY_FACTS, "name": "CALPRO AS", "email": "mail@calpro.no"}
+    html = (
+        "<html><body>Calpro AS. According to a leading IBD Nurse Specialist, calprotectin testing "
+        "helps clinicians. Contact: mail@calpro.no</body></html>"
+    )
+    p = page("Calpro AS IBD nurse specialist calprotectin", html=html, url="https://calpro.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="calpro.no", source="registry_website"), website_org_count=1)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "registry_declared"
+
+
 def test_registry_declared_hijacked_domain_with_real_corroboration_is_not_blindly_exact():
     # Even if a hijacked-looking page happens to contain some matching text, a single corroborating
     # signal must stay ambiguous, never jump straight to exact via the (now-disabled) registry_declared path.

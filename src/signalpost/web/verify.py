@@ -124,9 +124,17 @@ HIJACK_MARKERS = (
 )
 
 
+# Word-boundary matching, not bare substring: a naive `marker in haystack` check false-positived on
+# CALPRO AS's own page (a medical diagnostics company) because "cialis" is a substring of "IBD Nurse
+# SpeCIALISt" -- a real gold-set recall bug (correctly registry_declared calpro.no was rejected as
+# "hijacked"). \b boundaries apply to the whole matched phrase, so multi-word markers like "no deposit
+# bonus" still require a boundary before "no" and after "bonus", not just anywhere inside a longer word.
+_HIJACK_MARKER_RE = re.compile(r"\b(?:" + "|".join(re.escape(m) for m in HIJACK_MARKERS) + r")\b")
+
+
 def is_hijacked_content(text: str) -> bool:
     haystack = _normalize(text or "")
-    return any(marker in haystack for marker in HIJACK_MARKERS)
+    return bool(_HIJACK_MARKER_RE.search(haystack))
 
 
 # A name-derived guess can land on an unrelated, unaffiliated business that happens to share a common
