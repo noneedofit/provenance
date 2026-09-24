@@ -91,6 +91,31 @@ def _display(value: Any) -> str:
     return str(value)
 
 
+LEGAL_FORMS_EN = {
+    "AS": "private limited company", "ASA": "public limited company", "ENK": "sole proprietorship",
+    "NUF": "Norwegian branch of a foreign company", "ANS": "general partnership", "DA": "partnership with shared liability",
+    "SA": "cooperative", "BRL": "housing cooperative", "STI": "foundation", "FLI": "association",
+    "KS": "limited partnership", "IKS": "inter-municipal company", "KF": "municipal enterprise",
+    "SF": "state enterprise", "BA": "limited-liability company", "ESEK": "owner-section association",
+    "SAM": "jointly owned property", "PK": "pension fund", "KIRK": "church body", "ORGL": "organisational unit",
+}
+
+
+def _article(phrase: str) -> str:
+    return ("an " if phrase[:1].lower() in "aeiou" else "a ") + phrase
+
+
+def _count(n: int, singular: str, plural: str | None = None) -> str:
+    return f"{n} {singular if n == 1 else (plural or singular + 's')}"
+
+
+def _join(parts: list[str]) -> str:
+    """'a', 'a and b', 'a, b and c'."""
+    if len(parts) <= 1:
+        return "".join(parts)
+    return ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
 def _clip(text: str, limit: int = 200) -> str:
     text = " ".join(str(text).split())
     return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
@@ -177,7 +202,7 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
         text = desc.value.strip()
         quote = text if len(text) <= 200 else text[:197].rstrip() + "..."
         return SummarySentence(
-            text=f'According to its website, {envelope.legal_name or "the company"} "{quote}".',
+            text=f'{envelope.legal_name or "The company"} describes itself on its website as: "{quote.rstrip(".")}".',
             claim_ids=[desc.claim_id],
         )
     nace = _single(envelope, "identity", "nace_label")
@@ -210,10 +235,12 @@ def _sentence_legal_form(envelope: Envelope) -> SummarySentence | None:
     parts = []
     claim_ids = []
     if form is not None:
-        parts.append(f"is a {_display(form.value)} ({form.value.get('code')})" if isinstance(form.value, dict) and form.value.get('code') else f"is a {_display(form.value)}")
+        code = form.value.get("code") if isinstance(form.value, dict) else None
+        label = LEGAL_FORMS_EN.get(str(code or "").upper()) or _display(form.value)
+        parts.append(f"is {_article(label)} ({code})" if code else f"is {_article(label)}")
         claim_ids.append(form.claim_id)
     if founded is not None:
-        parts.append(f"founded {founded.value}")
+        parts.append(f"founded on {_display(founded.value)}")
         claim_ids.append(founded.claim_id)
     if municipality is not None:
         parts.append(f"registered in {_display(municipality.value).title()}")
@@ -230,7 +257,8 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
     parts = []
     claim_ids = []
     if employees is not None:
-        parts.append(f"has {_display(employees.value)} registered employees")
+        count = _display(employees.value)
+        parts.append(f"has {count} registered employee{'' if count == '1' else 's'}")
         claim_ids.append(employees.claim_id)
     if revenue is not None:
         period = _period_label(revenue) or "its latest filed year"
@@ -238,9 +266,16 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
         claim_ids.append(revenue.claim_id)
     if op_result is not None:
         period = _period_label(op_result) or "the same year"
-        parts.append(f"an operating result of {format_money(op_result.value)} ({period})")
+        try:
+            loss = float(_scalar(op_result.value)) < 0
+        except (TypeError, ValueError):
+            loss = False
+        if loss:
+            parts.append(f"an operating loss of {format_money(abs(float(_scalar(op_result.value))), op_result.value.get('currency', 'NOK') if isinstance(op_result.value, dict) else 'NOK')} ({period})")
+        else:
+            parts.append(f"an operating result of {format_money(op_result.value)} ({period})")
         claim_ids.append(op_result.claim_id)
-    text = "It " + ", ".join(parts) + "."
+    text = "It " + _join(parts) + "."
 
     trend = _sentence_revenue_trend(envelope, revenue)
     if trend is not None:
@@ -304,16 +339,17 @@ def _sentence_footprint(envelope: Envelope) -> SummarySentence | None:
     parts = []
     claim_ids = []
     if website is not None:
-        parts.append(f"a verified website at {website.value}")
+        url = website.value.get("url") if isinstance(website.value, dict) else website.value
+        parts.append(f"a verified website ({url})")
         claim_ids.append(website.claim_id)
     if profiles:
-        parts.append(f"{len(profiles)} linked public profile(s)")
+        parts.append(_count(len(profiles), "linked public profile"))
         claim_ids.extend(c.claim_id for c in profiles)
     if locations:
-        parts.append(f"{len(locations)} registered workplace(s)")
+        parts.append(_count(len(locations), "registered workplace"))
         claim_ids.extend(c.claim_id for c in locations)
     name = envelope.legal_name or "The company"
-    return SummarySentence(text=f"{name} has " + ", ".join(parts) + ".", claim_ids=claim_ids)
+    return SummarySentence(text=f"{name} has " + _join(parts) + ".", claim_ids=claim_ids)
 
 
 def _sentence_hiring(envelope: Envelope) -> SummarySentence | None:
@@ -330,19 +366,19 @@ def _sentence_hiring(envelope: Envelope) -> SummarySentence | None:
     if jobs:
         titles = [c.value.get("title") for c in jobs if isinstance(c.value, dict) and c.value.get("title")]
         if titles:
-            parts.append(f"{len(jobs)} active job posting(s), most recently \"{titles[0]}\"")
+            parts.append(f"{_count(len(jobs), 'active job posting')} on NAV, most recently \"{titles[0]}\"")
         else:
-            parts.append(f"{len(jobs)} active job posting(s)")
+            parts.append(f"{_count(len(jobs), 'active job posting')} on NAV")
         claim_ids.extend(c.claim_id for c in jobs)
     if activity:
         latest = activity[0]
         title = latest.value.get("title") if isinstance(latest.value, dict) else latest.value
         when = latest.effective_date or "an unspecified date"
         if title:
-            parts.append(f"its most recent public activity is \"{title}\" ({when})")
+            parts.append(f"recent public activity, most recently \"{title}\" ({when})")
         claim_ids.append(latest.claim_id)
     name = envelope.legal_name or "The company"
-    return SummarySentence(text=f"{name} has " + "; ".join(parts) + ".", claim_ids=claim_ids)
+    return SummarySentence(text=f"{name} has " + _join(parts) + ".", claim_ids=claim_ids)
 
 
 def _sentence_change(envelope: Envelope, change) -> SummarySentence:

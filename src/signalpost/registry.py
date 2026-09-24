@@ -706,7 +706,7 @@ class RegistryConnector:
         else:
             families["financial_history"] = FamilyState(
                 family="financial_history", availability="not_available" if tier in ("T0", "T1") else "failed",
-                reason="not run below tier T2",
+                reason="registry client unavailable",
             )
 
         # -------- group --------
