@@ -181,7 +181,14 @@ split them further; `web_attempts` in the saved JSON has the per-candidate verdi
 More authoritative than the 150-probe above: exercises the full `signalpost run` pipeline (registry +
 web connectors, real caches) and scores against `eval.score`, not just the web connector in isolation.
 See "Orchestrator QA fixes" in the final report for the full before/after table — precision went
-97.8% → 100% (1 wrong-company → 0), company recall 34.4% → 43.3%.
+97.8% → 100% (1 wrong-company → 0), company recall 34.4% → 44.4%.
+
+Remaining `related`-not-`exact` misses (4, all precision-safe): PARETO SECURITIES AS and STIFTELSEN
+STEINERSKOLEN I FREDRIKSTAD sit on a domain shared by >=2 sibling entities with no org-number-bearing
+page crawled; SMERUD MEDICAL RESEARCH INTERNATIONAL AS's registry domain is shared by 2 orgs (redirects
+to an odoo.com-hosted page); ARBEIDERPARTIET's crawled page shows a different, labelled org number
+(likely the party's separate administrative company) with no page showing the party's own number. Each
+is a genuine trade-off of the precision-preserving rules above, not a bug.
 
 ## Known gaps / follow-ups
 
