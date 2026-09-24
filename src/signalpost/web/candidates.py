@@ -45,12 +45,30 @@ SUFFIX_WORDS = LEGAL_FORM_WORDS | {
 # real brand, and the full-token variant that would have caught it never got a turn). Daily100-batch
 # measurement: this raises the request budget by roughly 20% of web_homepage requests (well within the
 # 1700-request global cap -- see docs/web.md).
-MAX_NAME_GUESSES = 6
+MAX_NAME_GUESSES = 10
+
+# T0 (shell-classified) companies get a much smaller name-guess cap rather than none at all -- see the
+# comment at the T0 branch in generate_candidates(). Small enough that it's a negligible fraction of T0's
+# ~5-request tier allowance even before the DNS prefilter thins it further.
+T0_MAX_NAME_GUESSES = 2
 
 
 def _slug_tokens(value: str) -> list[str]:
     text = str(value or "").translate(
         str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
+    )
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
+    return [tok for tok in re.findall(r"[a-z0-9]+", text) if tok]
+
+
+# Alternate, also-common Norwegian domain transliteration: "å" -> "aa" (the traditional double-vowel
+# spelling still widely used in registered domains -- e.g. "Zåbra" -> zaabra.no, "Ålesund" -> aalesund.no
+# historically) and "ø" -> "oe" (the Danish/German-style romanization, e.g. "Søren" -> soeren). Tried
+# ALONGSIDE (never instead of) the primary single-letter transliteration in `_slug_tokens`, since either
+# convention is genuinely common and neither reliably predicts the other.
+def _slug_tokens_alt(value: str) -> list[str]:
+    text = str(value or "").translate(
+        str.maketrans({"ø": "oe", "Ø": "OE", "å": "aa", "Å": "AA", "æ": "ae", "Æ": "AE"})
     )
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
     return [tok for tok in re.findall(r"[a-z0-9]+", text) if tok]
@@ -161,38 +179,62 @@ _CONJUNCTIONS = {"og", "and", "&"}
 
 def _name_guess_slugs(name: str) -> list[str]:
     """Up to 2 base slugs (joined, hyphenated), each tried with and without suffix words removed, plus a
-    first-two-substantive-tokens variant for longer names."""
+    first-two-substantive-tokens variant for longer names, an alternate aa/oe transliteration of the same
+    variants, and a first-single-token variant for a short, distinctive brand name."""
     tokens = _slug_tokens(name)
     if not tokens:
         return []
-    stripped = [t for t in tokens if t not in SUFFIX_WORDS] or tokens
-    # The legal-form suffix (AS/ASA/...) should ALWAYS be dropped -- it's never part of a real domain --
-    # but a bare descriptor word ("Norway", "Group", ...) sometimes genuinely IS part of the brand (FRESH
-    # WATER NORWAY AS -> freshwaternorway.com). `stripped` above removes both; this variant removes only
-    # the legal form, keeping any descriptor word, so a brand that keeps it still gets a matching slug
-    # instead of being represented only by the (wrong, "AS"-suffixed) `tokens` full-name variant.
-    legal_form_stripped = [t for t in tokens if t not in LEGAL_FORM_WORDS] or tokens
-    variants: list[str] = []
-    for toks in (stripped, legal_form_stripped, tokens):
-        if not toks:
-            continue
-        joined = "".join(toks)
-        hyphenated = "-".join(toks)
-        for slug in (joined, hyphenated):
-            if slug and slug not in variants:
-                variants.append(slug)
+    alt_tokens = _slug_tokens_alt(name)
 
-    # First-two-tokens: a trade/brand domain routinely drops everything past the first two distinctive
-    # words -- a branch qualifier ("AVD. VOLLEN"), a conjunction clause ("OG TRANSPORT"), a co-founder's
-    # surname or a trailing place/product name. E.g. "GULLSMED FJELL AVD. VOLLEN AS" -> gullsmedfjell.no,
-    # "SVEIN SVENDSEN & SONN TRAFIKKSKOLE AS" -> svein-svendsen.no. Only tried once there are >=3
-    # substantive (non-suffix, non-conjunction) tokens, so a short name isn't affected (it already gets
-    # the same slug from the variants above).
-    substantive = [t for t in stripped if t not in _CONJUNCTIONS]
-    if len(substantive) >= 3:
-        first_two = substantive[:2]
-        for slug in ("".join(first_two), "-".join(first_two)):
-            if slug and slug not in variants:
+    def _variants_for(toks_primary: list[str]) -> list[str]:
+        if not toks_primary:
+            return []
+        stripped = [t for t in toks_primary if t not in SUFFIX_WORDS] or toks_primary
+        # The legal-form suffix (AS/ASA/...) should ALWAYS be dropped -- it's never part of a real domain
+        # -- but a bare descriptor word ("Norway", "Group", ...) sometimes genuinely IS part of the brand
+        # (FRESH WATER NORWAY AS -> freshwaternorway.com). `stripped` above removes both; this variant
+        # removes only the legal form, keeping any descriptor word, so a brand that keeps it still gets a
+        # matching slug instead of being represented only by the (wrong, "AS"-suffixed) full-name variant.
+        legal_form_stripped = [t for t in toks_primary if t not in LEGAL_FORM_WORDS] or toks_primary
+        out: list[str] = []
+        for toks in (stripped, legal_form_stripped, toks_primary):
+            if not toks:
+                continue
+            joined = "".join(toks)
+            hyphenated = "-".join(toks)
+            for slug in (joined, hyphenated):
+                if slug and slug not in out:
+                    out.append(slug)
+
+        # First-two-tokens: a trade/brand domain routinely drops everything past the first two
+        # distinctive words -- a branch qualifier ("AVD. VOLLEN"), a conjunction clause ("OG TRANSPORT"),
+        # a co-founder's surname or a trailing place/product name. E.g. "GULLSMED FJELL AVD. VOLLEN AS" ->
+        # gullsmedfjell.no, "SVEIN SVENDSEN & SONN TRAFIKKSKOLE AS" -> svein-svendsen.no. Only tried once
+        # there are >=3 substantive (non-suffix, non-conjunction) tokens, so a short name isn't affected
+        # (it already gets the same slug from the variants above).
+        substantive = [t for t in stripped if t not in _CONJUNCTIONS]
+        if len(substantive) >= 3:
+            first_two = substantive[:2]
+            for slug in ("".join(first_two), "-".join(first_two)):
+                if slug and slug not in out:
+                    out.append(slug)
+
+        # First-token-only: some brands register just their first distinctive word and drop a generic
+        # trailing descriptor entirely rather than joining it (e.g. "ZAABRA FRISOR AS" -> zaabra.no, not
+        # zaabrafrisor.no -- "frisor"/"hairdresser" is the industry descriptor, not part of the brand).
+        # Only tried when there are exactly 2 substantive tokens AND the second one is a common,
+        # non-brand-distinctive trade/descriptor word (reusing GENERIC_WORDS plus a small set of trade
+        # nouns) -- narrow enough that it doesn't fire on a genuine two-word brand name.
+        if len(substantive) == 2 and substantive[1] in (GENERIC_WORDS | _TRADE_DESCRIPTOR_WORDS):
+            first = substantive[0]
+            if first and first not in out:
+                out.append(first)
+        return out
+
+    variants = _variants_for(tokens)
+    if alt_tokens != tokens:
+        for slug in _variants_for(alt_tokens):
+            if slug not in variants:
                 variants.append(slug)
 
     # Drop overly generic results: a single token that is very short (<=3 chars, likely an
@@ -205,6 +247,16 @@ def _name_guess_slugs(name: str) -> list[str]:
             continue
         filtered.append(slug)
     return filtered
+
+
+# Common Norwegian trade/occupation nouns that routinely get dropped from a small business's own domain
+# name -- the domain is just the brand/founder name (e.g. "Zaabra" alone), with the trade descriptor
+# ("Frisor"/hairdresser) only in the legal name, not the URL. Deliberately narrow (occupation nouns for
+# very small, single-location trades) -- NOT industry-sector words in general (those stay in GENERIC_WORDS
+# and are never treated as droppable-second-token here to avoid over-triggering on genuine two-word brands).
+_TRADE_DESCRIPTOR_WORDS = {
+    "frisor", "frisoer", "salong", "frisorsalong", "frisoersalong", "barbershop", "barber",
+}
 
 
 def generate_candidates(ctx: Any) -> list[Candidate]:
@@ -299,28 +351,36 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
                     candidates.append(Candidate(domain, _homepage_url(domain), "subunit_email_domain", f"subunit {subunit.get('name', '')} email domain", decisive=False, rank=rank))
                     rank += 1
 
-    # 6. Name-based guesses: legal name, historic names (aliases), subunit trade names. Skip for T0.
-    if tier != "T0":
-        names = [facts.get("name")] + list(facts.get("aliases") or [])
-        for subunit in facts.get("subunits") or []:
-            if subunit.get("name"):
-                names.append(subunit["name"])
-        guess_count = 0
-        for name in names:
-            if not name or guess_count >= MAX_NAME_GUESSES:
+    # 6. Name-based guesses: legal name, historic names (aliases), subunit trade names.
+    # T0 gets a much smaller cap (T0_MAX_NAME_GUESSES) rather than being skipped outright: a company
+    # lands in T0 whenever the bulk row shows no staff AND no site/e-mail domain signal, which includes
+    # plenty of ordinary small staffed businesses whose employee count is simply missing/blank in the
+    # bulk file (not actually zero) -- e.g. a one-location hairdresser or a holding-less small AS. Since
+    # every guess here is DNS-prefiltered before any HTTP request and verify.assess() is the only thing
+    # that can ever turn a guess into a published `exact` (this only affects what gets TRIED, never what
+    # gets trusted), a couple of cheap guesses for T0 costs at most ~2 extra requests per T0 company with
+    # zero precision risk -- pure recall for the "actually small, just under-described-in-bulk" case.
+    guess_cap = MAX_NAME_GUESSES if tier != "T0" else T0_MAX_NAME_GUESSES
+    names = [facts.get("name")] + list(facts.get("aliases") or [])
+    for subunit in facts.get("subunits") or []:
+        if subunit.get("name"):
+            names.append(subunit["name"])
+    guess_count = 0
+    for name in names:
+        if not name or guess_count >= guess_cap:
+            break
+        for slug in _name_guess_slugs(name):
+            if guess_count >= guess_cap:
                 break
-            for slug in _name_guess_slugs(name):
-                if guess_count >= MAX_NAME_GUESSES:
+            for tld in (".no", ".com"):
+                domain = f"{slug}{tld}"
+                if client is not None and hasattr(client, "dns_resolves") and not client.dns_resolves(domain):
+                    continue
+                candidates.append(Candidate(domain, _homepage_url(domain), "name_guess", f"name guess from '{name}'", decisive=False, rank=rank))
+                rank += 1
+                guess_count += 1
+                if guess_count >= guess_cap:
                     break
-                for tld in (".no", ".com"):
-                    domain = f"{slug}{tld}"
-                    if client is not None and hasattr(client, "dns_resolves") and not client.dns_resolves(domain):
-                        continue
-                    candidates.append(Candidate(domain, _homepage_url(domain), "name_guess", f"name guess from '{name}'", decisive=False, rank=rank))
-                    rank += 1
-                    guess_count += 1
-                    if guess_count >= MAX_NAME_GUESSES:
-                        break
 
     return _dedupe(candidates)
 

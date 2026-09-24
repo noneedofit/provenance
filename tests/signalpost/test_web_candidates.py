@@ -103,11 +103,17 @@ def test_name_guesses_are_dns_prefiltered_and_capped():
     assert all(c.domain == "eksempelfirma.no" for c in guesses)  # .com/hyphenated variants didn't resolve
 
 
-def test_name_guesses_skipped_for_t0():
+def test_name_guesses_capped_small_for_t0():
+    # T0 no longer skips name guesses entirely (many T0-classified companies are ordinary small
+    # businesses whose bulk employee count is simply blank, not zero) -- but the cap is much smaller
+    # than a non-T0 company's, and every guess is still DNS-prefiltered first.
+    from signalpost.web.candidates import T0_MAX_NAME_GUESSES
+
     client = FakeHttpClient(dns={"eksempelfirma.no", "eksempelfirma.com"})
     ctx = make_ctx("923456783", tier="T0", registry_facts={"name": "Eksempelfirma AS"}, client=client)
     cands = generate_candidates(ctx)
-    assert not any(c.source == "name_guess" for c in cands)
+    guesses = [c for c in cands if c.source == "name_guess"]
+    assert 0 < len(guesses) <= T0_MAX_NAME_GUESSES
 
 
 def test_generic_single_token_name_guess_is_dropped():
