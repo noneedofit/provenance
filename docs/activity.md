@@ -237,3 +237,32 @@ how much a single connector throttles or retries its own requests. That measurem
 the feed-index rewrite.
 
 ### `nav_live.py` / `nav_feed.py` (feed-index) live measurement
+
+Run via the actual CLI (`uv run python -m signalpost run ...`), 2026-09-24/25, against two sets: the
+131-company gold set and a 100-company daily rehearsal set, each run fresh (empty `--state-dir`) and
+then rerun with the *same* `--state-dir` to demonstrate the incremental resume.
+
+| Run | Requests (of which `nav_feed_page`) | Runtime | `jobs` states | Terminal status |
+|---|---|---|---|---|
+| gold131, fresh state-dir | 1856 (117) | 535s | 1 available / 107 not_available / 23 not_applicable / **0 failed** | 124 completed, 7 partial |
+| daily100, fresh state-dir | 668 (117) | 351s | 0 available / 19 not_available / 81 not_applicable / **0 failed** | 99 completed, 1 partial |
+| daily100, same state-dir (resume) | 552 (**1**) | 151s | identical to the fresh run above | 100 completed, 0 partial |
+
+Zero `jobs=failed` across both sets - the search-based v1 measured 93/131 failed on this same gold set
+(see the superseded section above). The resume run's `nav_feed_page` count dropping from 117 to 1 (and
+total requests 552 vs 668, runtime 151s vs 351s) is the incremental-walk behavior working as designed:
+the second run's feed walk re-fetched only the last page from the first run's saved cursor, found it
+was still the tip of the feed (`next_id` still null), and stopped - `jobs` results are byte-identical
+between the fresh and resumed daily100 runs, confirming the resume doesn't lose or duplicate any ads.
+
+The `partial` terminal statuses in both fresh runs are **not** a `nav_live.py`/`nav_feed.py` issue: they
+trace to a pre-existing, unrelated bug in `caches/store.py`'s shared sqlite connections (`stage:
+"candidates"`, `InterfaceError: bad parameter or other API misuse` - the same class of concurrency bug
+`NavFeedIndex` had and was fixed for in this same work, just in a different module this workstream
+doesn't own) and, for several gold131 companies, YouTube's `robots.txt` blocking their channel feed (a
+known, already-documented gap, see gap 1 above) - both flagged separately, neither affects `jobs`.
+
+One real posting was found and verified end to end in the gold131 run: **HALLAGERSTUA BARNEHAGE SA**
+(971474351) - "Bli ringevikar i en liten barnehage med natur, bevegelse og trygghet i sentrum",
+matched by name against the feed index, confirmed by org number via feedentry, published as an
+`available` `jobs/job_posting` claim.
