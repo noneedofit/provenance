@@ -92,31 +92,59 @@ class WebConnector:
 
         client = getattr(ctx, "client", None)
 
+        # The registry itself declaring a hjemmeside is a strong, independent claim -- if THAT candidate
+        # can't be confirmed (unreachable, parked, rejected, or merely ambiguous), a different candidate
+        # reached later needs a decisive signal to reach `exact`, not bare 2-signal corroboration alone
+        # (BUILD_SPEC.md "Identity rules" / the DACON SERVICES AS trap: a name-guessed sibling/coincidence
+        # domain can genuinely show a matching address+phone on its own contact page while the
+        # registry-declared site sits behind a broken SSL cert -- corroboration can't tell "same company,
+        # second domain" apart from "different company, same office/phone history" here).
+        has_registry_declared = any(c.source == "registry_website" for c in cand_list)
+        registry_declared_unconfirmed = False
+
         for cand in ordered:
+            require_decisive = (
+                has_registry_declared and registry_declared_unconfirmed
+                and cand.source not in DECISIVE_SOURCES
+            )
             if client is not None and client.remaining(org) <= 0:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "skipped", "reason": "request_budget"})
+                if cand.source == "registry_website":
+                    registry_declared_unconfirmed = True
                 continue
             try:
                 crawl_result = crawl_candidate(ctx, cand)
             except Exception as exc:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "error", "reason": f"{type(exc).__name__}: {exc}"[:200]})
+                if cand.source == "registry_website":
+                    registry_declared_unconfirmed = True
                 continue
 
             if crawl_result.fatal_error:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "unreachable", "reason": crawl_result.fatal_error})
+                if cand.source == "registry_website":
+                    registry_declared_unconfirmed = True
                 continue
             if crawl_result.parked:
                 attempts.append({"domain": cand.domain, "source": cand.source, "status": "rejected", "reason": "parked_or_placeholder"})
+                if cand.source == "registry_website":
+                    registry_declared_unconfirmed = True
                 continue
 
             website_org_count = _website_org_count(ctx, cand.domain) if cand.source == "registry_website" else None
-            verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count)
+            verdict = verify_mod.assess(
+                org, crawl_result.pages, facts, cand,
+                website_org_count=website_org_count, require_decisive=require_decisive,
+            )
             attempts.append({
                 "domain": cand.domain, "source": cand.source, "status": verdict.status,
                 "identity_basis": verdict.identity_basis, "relationship": verdict.relationship,
                 "note": verdict.note, "signals": [s.kind for s in verdict.signals],
                 "conflicts": [c.org_number for c in verdict.conflicts],
             })
+
+            if cand.source == "registry_website" and verdict.status != "exact":
+                registry_declared_unconfirmed = True
 
             if verdict.status == "exact":
                 exact_pages = crawl_result.pages

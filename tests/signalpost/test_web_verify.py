@@ -464,6 +464,28 @@ def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
     assert verdict.status == "related"
 
 
+def test_require_decisive_downgrades_corroboration_only_exact_to_ambiguous():
+    # DACON SERVICES AS trap: the registry's own declared hjemmeside couldn't be confirmed
+    # (unreachable/SSL error), and a DIFFERENT, name-guessed domain genuinely shows a matching
+    # address+legal-name on its own contact page (a coincidence, a sibling entity, or a predecessor/
+    # successor business at the same address -- not distinguishable from page content alone). With
+    # require_decisive=True (connector.py sets this when a registry_website candidate exists but wasn't
+    # confirmed), 2-signal corroboration is not enough; only a decisive signal reaches exact.
+    text = "Example Company AS. Storgata 1, 0155 Oslo."
+    p = page(text)
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"), require_decisive=True)
+    assert verdict.status == "ambiguous"
+
+
+def test_require_decisive_does_not_block_a_decisive_org_number_match():
+    # The guard only disables the WEAK corroboration path; a literal org-number match on the page is
+    # still decisive regardless.
+    p = page(f"Example Company AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}.")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"), require_decisive=True)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"
+
+
 def test_namesake_company_resolved_by_org_number_match():
     site_text = f"Oen Kuldeteknikk AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. Kontakt oss i Bergen."
     p = page(site_text, url="https://oenkuldeteknikk.no/")

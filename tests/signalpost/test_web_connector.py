@@ -102,6 +102,31 @@ def test_connector_uses_caches_org_count_to_reject_shared_registry_domain():
         assert claim.relationship != "exact"
 
 
+def test_connector_requires_decisive_signal_when_registry_site_unconfirmed():
+    # DACON SERVICES AS trap: the registry-declared site (example.no) 404s / can't be confirmed, and a
+    # name-guessed candidate (example.com, a different domain the .no/.com guess loop also tries)
+    # genuinely carries 2 corroborating signals (address + legal name) on its own page. With the
+    # registry's own claim unconfirmed, that must stay `ambiguous`, not jump to `exact` off corroboration
+    # alone.
+    guess_html = "<html><head><title>Example AS</title></head><body>Example AS. Storgata 1, 0155 Oslo.</body></html>"
+    client = FakeHttpClient(pages={"https://example.com/": FakePage(guess_html)}, dns={"example.com"})
+    ctx = make_ctx(
+        OUR_ORG, tier="T2", client=client,
+        registry_facts={
+            "name": "EXAMPLE AS", "website": "example.no", "street": "Storgata 1", "postcode": "0155",
+            "city": "", "phones": [], "email": None, "email_domain": None, "role_holders": [], "subunits": [],
+        },
+    )
+    result = WebConnector().run(ctx)
+    assert result.families["website"].availability != "available"
+    claim = next((c for c in result.claims if c.family == "website" and c.field == "official_website"), None)
+    if claim is not None:
+        assert claim.relationship != "exact"
+    attempts = result.shared["web_attempts"]
+    guess_attempt = next(a for a in attempts if a["domain"] == "example.com")
+    assert guess_attempt["status"] != "exact"
+
+
 def test_connector_stops_at_budget_exhaustion():
     client = FakeHttpClient(pages={}, remaining=0)
     ctx = make_ctx(OUR_ORG, tier="T2", client=client, registry_facts={"name": "EXAMPLE AS", "website": "example.no"})

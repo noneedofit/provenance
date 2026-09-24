@@ -259,12 +259,42 @@ def _legal_name_core(name: str) -> set[str]:
 
 
 def _page_all_text(page: PageFetch) -> str:
-    # No truncation: a modern page-builder site can be several hundred KB, and the real evidence (a
-    # footer address, a copyright line) is routinely past any small fixed prefix (confirmed on both
-    # FOUR SEASON SPA AS's and GULLSMED FJELL AVD. VOLLEN AS's own pages -- >20000 chars in). Regex
-    # scanning the full page is cheap CPU-only work, not an extra network request, so there is no
-    # request-budget cost to dropping the cap.
-    return f"{page.title}\n{page.text}\n{page.html or ''}"
+    """Visible page text for identity matching: title + trafilatura's extracted text + every visible
+    text node in the raw html (script/style stripped), via BeautifulSoup get_text() -- deliberately NOT
+    raw html. Scanning raw html/attributes let a substring match fire inside a URL or filename that
+    merely happens to contain matching digits/street-name text: a real false positive found on a
+    namesake site (DACON SERVICES AS, a different company than the gold DACON... AS) whose page never
+    visibly mentions our registered address at all, but has an image at
+    "/uploads/Durudveien_1600_500....jpg" -- our registered street name, coincidentally, only in a
+    filename. get_text() gives every VISIBLE text node (broader than trafilatura's narrower "main
+    content" extraction, which can also miss a footer address entirely -- confirmed on GULLSMED FJELL AVD.
+    VOLLEN AS's page, where trafilatura returned empty text but get_text() found the address fine)
+    without attribute/URL noise. No size cap: a modern page-builder site can be several hundred KB and
+    real evidence routinely sits past any small fixed prefix; this is pure CPU work, not a network
+    request, so there's no request-budget cost. Memoized on the PageFetch instance -- `assess()` calls
+    this several times per page within one verdict.
+    """
+    cached = getattr(page, "_identity_text_cache", None)
+    if cached is not None:
+        return cached
+    html = page.html or ""
+    visible = html
+    if html:
+        try:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, "lxml")
+            for tag in soup(["script", "style"]):
+                tag.decompose()
+            visible = soup.get_text(" ", strip=True)
+        except Exception:
+            pass
+    result = f"{page.title}\n{page.text}\n{visible}"
+    try:
+        page._identity_text_cache = result
+    except Exception:
+        pass
+    return result
 
 
 # --- Site-owner name detection (footer copyright / JSON-LD legalName) -------------------------------------
@@ -361,8 +391,20 @@ def assess(
     candidate: Candidate,
     *,
     website_org_count: int | None = None,
+    require_decisive: bool = False,
 ) -> Verdict:
-    """Assess whether `pages` (from `candidate`) belong to the company identified by `org_number`."""
+    """Assess whether `pages` (from `candidate`) belong to the company identified by `org_number`.
+
+    `require_decisive`: the registry itself declared a `hjemmeside` for this org, but connector.py
+    couldn't confirm THAT site (unreachable/rejected/ambiguous) before trying this candidate. A
+    namesake/coincidence trap found on the gold set: DACON SERVICES AS's registry-declared
+    dacon-inspection.no had a persistent SSL error, and a name-guessed dacon-services.no turned out to
+    show a genuinely matching address+phone on its contact page too (multi-domain business, a
+    predecessor/successor entity, or pure coincidence -- not distinguishable from page content alone).
+    With the authoritative registry-declared site itself unconfirmed, a competing candidate needs a
+    decisive signal (org number, Wikidata, NAV) to reach `exact` here -- 2-signal corroboration alone
+    is downgraded to `ambiguous`.
+    """
     live_pages = [p for p in pages if p.ok]
     if not live_pages:
         return Verdict("rejected", None, None, note="no page could be fetched")
@@ -584,6 +626,15 @@ def assess(
                 note=(
                     f"corroborating signals found but site content matches '{mismatched_industry}', not our "
                     "registered industry; topic/industry mismatch guard for a name-derived guess"
+                ),
+            )
+        if require_decisive:
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note=(
+                    ">=2 corroborating signals, but the registry's own declared hjemmeside could not be "
+                    "confirmed for this org -- a name-derived guess needs a decisive signal (not "
+                    "corroboration alone) while the authoritative site remains unconfirmed"
                 ),
             )
         return Verdict("exact", "corroborated", "exact", signals=signals, conflicts=[], note=">=2 independent corroborating signals, no conflict")
