@@ -83,3 +83,15 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
 - Submission manifest: submission/manifest-1000.jsonl (800 random + 200 staffed-with-website), runner
   scripts/run_submission_batches.sh; profiles generating into submission/profiles/submission-20260924/.
 - User (24 Sep): no contact details anywhere; no GitHub push yet (no repo); Builderr no reply on JBOX. Author rewrite still needed before any future push. Hand-checks use Haiku agents.
+
+## 24 Sep evening (autonomous)
+- 1,000-profile rehearsal: all valid, batches 518–1,579 requests, 3–7 min. Website 189, description 184, profiles 130.
+- Hand-check of all 189 published sites (Haiku agents were unreliable — scripted 404s; replaced by
+  scratchpad/recheck.py: org number on evidence page or registry match): 157 auto-confirmed; 32 read
+  manually. Real bugs found & fixed (445b8f7): shared-domain count ignored the website column (rtbbl.no,
+  28 co-ops), dead redirect to portfolio.adobe.com/missing published, redirect into parent subpage
+  (albatross-as.no -> toma.no/tjenester/camps).
+- Without caches the gold run had 6 wrong-company sites -> `run` now builds email_domains from bulk
+  (0 requests) and Wikidata (1 request, bundled CC0 snapshot fallback, 9358654).
+- Gold after fixes: fresh cache dir 0 wrong / precision 100% / recall 47% (Wikidata 429'd; snapshot now
+  covers it); full caches 0 wrong / 100% / 51.6%, 1,751 requests, 5.7 min.
