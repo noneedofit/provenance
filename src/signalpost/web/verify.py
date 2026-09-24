@@ -259,7 +259,42 @@ def _legal_name_core(name: str) -> set[str]:
 
 
 def _page_all_text(page: PageFetch) -> str:
-    return f"{page.title}\n{page.text}\n{page.html[:20000]}"
+    """Visible page text for identity matching: title + trafilatura's extracted text + every visible
+    text node in the raw html (script/style stripped), via BeautifulSoup get_text() -- deliberately NOT
+    raw html. Scanning raw html/attributes let a substring match fire inside a URL or filename that
+    merely happens to contain matching digits/street-name text: a real false positive found on a
+    namesake site (DACON SERVICES AS, a different company than the gold DACON... AS) whose page never
+    visibly mentions our registered address at all, but has an image at
+    "/uploads/Durudveien_1600_500....jpg" -- our registered street name, coincidentally, only in a
+    filename. get_text() gives every VISIBLE text node (broader than trafilatura's narrower "main
+    content" extraction, which can also miss a footer address entirely -- confirmed on GULLSMED FJELL AVD.
+    VOLLEN AS's page, where trafilatura returned empty text but get_text() found the address fine)
+    without attribute/URL noise. No size cap: a modern page-builder site can be several hundred KB and
+    real evidence routinely sits past any small fixed prefix; this is pure CPU work, not a network
+    request, so there's no request-budget cost. Memoized on the PageFetch instance -- `assess()` calls
+    this several times per page within one verdict.
+    """
+    cached = getattr(page, "_identity_text_cache", None)
+    if cached is not None:
+        return cached
+    html = page.html or ""
+    visible = html
+    if html:
+        try:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, "lxml")
+            for tag in soup(["script", "style"]):
+                tag.decompose()
+            visible = soup.get_text(" ", strip=True)
+        except Exception:
+            pass
+    result = f"{page.title}\n{page.text}\n{visible}"
+    try:
+        page._identity_text_cache = result
+    except Exception:
+        pass
+    return result
 
 
 # --- Site-owner name detection (footer copyright / JSON-LD legalName) -------------------------------------
@@ -356,8 +391,20 @@ def assess(
     candidate: Candidate,
     *,
     website_org_count: int | None = None,
+    require_decisive: bool = False,
 ) -> Verdict:
-    """Assess whether `pages` (from `candidate`) belong to the company identified by `org_number`."""
+    """Assess whether `pages` (from `candidate`) belong to the company identified by `org_number`.
+
+    `require_decisive`: the registry itself declared a `hjemmeside` for this org, but connector.py
+    couldn't confirm THAT site (unreachable/rejected/ambiguous) before trying this candidate. A
+    namesake/coincidence trap found on the gold set: DACON SERVICES AS's registry-declared
+    dacon-inspection.no had a persistent SSL error, and a name-guessed dacon-services.no turned out to
+    show a genuinely matching address+phone on its contact page too (multi-domain business, a
+    predecessor/successor entity, or pure coincidence -- not distinguishable from page content alone).
+    With the authoritative registry-declared site itself unconfirmed, a competing candidate needs a
+    decisive signal (org number, Wikidata, NAV) to reach `exact` here -- 2-signal corroboration alone
+    is downgraded to `ambiguous`.
+    """
     live_pages = [p for p in pages if p.ok]
     if not live_pages:
         return Verdict("rejected", None, None, note="no page could be fetched")
@@ -388,12 +435,7 @@ def assess(
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
             elif m.labeled:
                 other_org_matches.append(Conflict("conflicting_org_number", "different valid organisation number presented as site owner", m.digits, page.final_url, m.span))
-        # `_page_all_text` only scans the first 20000 chars of html for cost reasons, but a copyright
-        # notice can sit well past that on a heavy page-builder site (Four Season Spa AS's own page is
-        # 170KB+, and the real footer line is around char 130000 -- neither in the head nor literally in
-        # the last few KB). A plain regex search costs nothing extra even on the full untruncated html,
-        # so copyright-owner detection scans the whole page rather than a fixed-size prefix/suffix.
-        site_owner_names.extend(find_copyright_owners(f"{page.title}\n{page.text}\n{page.html or ''}"))
+        site_owner_names.extend(find_copyright_owners(_page_all_text(page)))
         try:
             import extruct
 
@@ -464,9 +506,32 @@ def assess(
         if legal_core and legal_core.issubset(title_tokens):
             signals.append(Signal("legal_name_match", "exact legal name (minus suffix) found in <title>", homepage.final_url, homepage.title))
 
-    corroborating_kinds = {"registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match"}
+        # The registered e-mail's domain being the SAME domain we're assessing is a structural signal
+        # independent of page content (a company almost never uses someone else's domain for its own
+        # e-mail address) -- helps a name-guess candidate that a registry_email_domain candidate would
+        # already carry decisively, but also a candidate reached some other way (e.g. Wikidata, a
+        # subunit website) that happens to share the registered e-mail's domain.
+        # Excludes candidate.source == "registry_email_domain": for that source the candidate's domain
+        # IS the registered e-mail's domain by construction (that's how the candidate was generated), so
+        # the match is tautological, not independent confirmation. For every other source (a name guess,
+        # the registry hjemmeside, Wikidata, a subunit site, ...) landing on the same domain the
+        # registered e-mail uses is a genuine, independent structural signal.
+        email_domain = (registry_facts.get("email_domain") or "").strip().lower()
+        if email_domain and email_domain == candidate.domain and candidate.source != "registry_email_domain":
+            signals.append(Signal("email_domain_match", "registered e-mail domain matches this site's domain", homepage.final_url, email_domain))
+
+    corroborating_kinds = {
+        "registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match",
+        "email_domain_match",
+    }
     corroborating = [s for s in signals if s.kind in corroborating_kinds]
     distinct_corroborating = {s.kind for s in corroborating}
+    # "Hard" signals require matching a specific, hard-to-coincidentally-satisfy piece of registry data
+    # (our exact legal name in <title>, the registry e-mail text itself, or the e-mail's domain). "Soft"
+    # signals (address, phone, a board member's name) are page CONTENT that can genuinely, coincidentally
+    # match on a page that isn't entity-specific -- a shared office after an acquisition, a former
+    # tenant's address, a person who moved employer. See the name_guess guard below.
+    STRONG_CORROBORATING_KINDS = {"legal_name_match", "registry_email", "email_domain_match"}
 
     # A parent/umbrella or franchise/chain page (group site, "our brands", "our stores", housing
     # manager, franchise/chain wording) is exactly the "flagged as a franchise/parent site" carve-out in
@@ -567,6 +632,35 @@ def assess(
                 note=(
                     f"corroborating signals found but site content matches '{mismatched_industry}', not our "
                     "registered industry; topic/industry mismatch guard for a name-derived guess"
+                ),
+            )
+        if require_decisive:
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note=(
+                    ">=2 corroborating signals, but the registry's own declared hjemmeside could not be "
+                    "confirmed for this org -- a name-derived guess needs a decisive signal (not "
+                    "corroboration alone) while the authoritative site remains unconfirmed"
+                ),
+            )
+        if candidate.source == "name_guess" and not (distinct_corroborating & STRONG_CORROBORATING_KINDS):
+            # ORBOTECH NORWAY AS trap: a name-guess with NO independent basis of its own (unlike
+            # registry_website/wikidata/nav) landed on a corporate group's brand site after an
+            # acquisition (formerly "MK Salg AS"), and the group's Norway landing page genuinely carries
+            # the same office address and a board member's name (the business/personnel were absorbed
+            # into the group, not a coincidence, but also not evidence this page is entity-specific
+            # rather than the group's shared page -- gold: "no Orbotech Norway-specific domain or
+            # org-number page was found"). "Soft" content signals (address/phone/role-name) alone can
+            # coincidentally satisfy 2-of-3 for a parent/group page after an M&A/office-sharing event;
+            # require at least one "hard" signal (exact legal name in <title>, registry e-mail text, or
+            # e-mail-domain match) before trusting a bare name-guess.
+            return Verdict(
+                "ambiguous", None, None, signals=signals, conflicts=[],
+                note=(
+                    ">=2 corroborating signals but all are address/phone/role-name (no legal-name or "
+                    "e-mail match) on a name-derived guess with no independent basis of its own -- too "
+                    "weak on their own for a company that could be sharing an office/personnel with an "
+                    "unrelated or parent entity"
                 ),
             )
         return Verdict("exact", "corroborated", "exact", signals=signals, conflicts=[], note=">=2 independent corroborating signals, no conflict")

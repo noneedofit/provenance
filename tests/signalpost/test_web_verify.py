@@ -195,15 +195,20 @@ def test_two_corroborating_signals_no_conflict_is_exact():
 
 
 def test_single_corroborating_signal_is_ambiguous_not_exact():
+    # email_domain deliberately differs from the candidate's domain so the new email_domain_match signal
+    # doesn't coincidentally supply a second signal here -- this test is specifically about there being
+    # only ONE genuine signal (the address).
+    facts = {**REGISTRY_FACTS, "email_domain": "unrelated-domain.no"}
     text = "Storgata 1, 0155 Oslo."
     p = page(text)
-    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"))
+    verdict = assess(OUR_ORG, [p], facts, cand(source="name_guess"))
     assert verdict.status == "ambiguous"
 
 
 def test_no_evidence_is_rejected():
+    facts = {**REGISTRY_FACTS, "email_domain": "unrelated-domain.no"}
     p = page("Welcome to our generic template website with no identifying information.")
-    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"))
+    verdict = assess(OUR_ORG, [p], facts, cand(source="name_guess"))
     assert verdict.status == "rejected"
 
 
@@ -411,6 +416,45 @@ def test_theme_designer_credit_line_is_not_treated_as_a_conflicting_owner():
     assert verdict.identity_basis == "registry_declared"
 
 
+def test_address_far_past_20000_chars_is_still_found():
+    # GULLSMED FJELL AVD. VOLLEN AS regression: a real page-builder site's address text can sit well
+    # past a small fixed prefix. _page_all_text no longer truncates html at all (regex scan is cheap,
+    # no extra network request), so the address is found regardless of page size.
+    padding = "<div>filler content well past any small fixed window</div>" * 400
+    facts = {**REGISTRY_FACTS, "name": "GULLSMED FJELL AS", "street": "Slemmestadveien 432", "postcode": "1390"}
+    html = f"<html><body>{padding}<span>Slemmestadveien 432\n1390 Vollen\nNorway</span></body></html>"
+    assert len(html) > 20000
+    p = page("Gullsmed Fjell", html=html, url="https://gullsmedfjell.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="gullsmedfjell.no", source="name_guess"))
+    signal_kinds = {s.kind for s in verdict.signals}
+    assert "registered_address" in signal_kinds
+
+
+def test_email_domain_matching_site_domain_is_a_corroborating_signal():
+    # A name-guess (or Wikidata/registry_website) candidate landing on the exact domain the registered
+    # e-mail uses is a genuine, independent structural signal: combined with just ONE other real-content
+    # signal (the address here, deliberately NOT the registry email text itself), it is enough to reach
+    # the >=2-signal exact threshold.
+    facts = {**REGISTRY_FACTS, "email_domain": "example.no", "email": None, "phones": [], "role_holders": []}
+    p = page("Example Company AS. Storgata 1, 0155 Oslo.", url="https://example.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="example.no", source="name_guess"))
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "corroborated"
+    signal_kinds = {s.kind for s in verdict.signals}
+    assert "email_domain_match" in signal_kinds
+
+
+def test_email_domain_match_not_counted_for_registry_email_domain_source():
+    # Excluded for candidate.source == "registry_email_domain": the candidate's domain IS the registered
+    # e-mail's domain by construction there, so the match is tautological, not independent confirmation.
+    facts = {**REGISTRY_FACTS, "email_domain": "example.no", "street": "", "postcode": "", "phones": [], "email": None, "role_holders": []}
+    p = page("Generic template site with no other identifying information.", url="https://example.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="example.no", source="registry_email_domain"))
+    assert verdict.status != "exact"
+    signal_kinds = {s.kind for s in verdict.signals}
+    assert "email_domain_match" not in signal_kinds
+
+
 def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
     # Coordinator fix: the registry_declared decisive gate now checks website_org_count >= 2 (not 3) --
     # a domain also registered by even one sibling/parent entity is not decisive on bare trust alone.
@@ -418,6 +462,60 @@ def test_registry_declared_domain_shared_by_two_orgs_blocks_exact():
     verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="registry_website"), website_org_count=2)
     assert verdict.status != "exact"
     assert verdict.status == "related"
+
+
+def test_require_decisive_downgrades_corroboration_only_exact_to_ambiguous():
+    # DACON SERVICES AS trap: the registry's own declared hjemmeside couldn't be confirmed
+    # (unreachable/SSL error), and a DIFFERENT, name-guessed domain genuinely shows a matching
+    # address+legal-name on its own contact page (a coincidence, a sibling entity, or a predecessor/
+    # successor business at the same address -- not distinguishable from page content alone). With
+    # require_decisive=True (connector.py sets this when a registry_website candidate exists but wasn't
+    # confirmed), 2-signal corroboration is not enough; only a decisive signal reaches exact.
+    text = "Example Company AS. Storgata 1, 0155 Oslo."
+    p = page(text)
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"), require_decisive=True)
+    assert verdict.status == "ambiguous"
+
+
+def test_require_decisive_does_not_block_a_decisive_org_number_match():
+    # The guard only disables the WEAK corroboration path; a literal org-number match on the page is
+    # still decisive regardless.
+    p = page(f"Example Company AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}.")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"), require_decisive=True)
+    assert verdict.status == "exact"
+    assert verdict.identity_basis == "org_number_on_source"
+
+
+# --- assess(): name-guess "soft signals only" guard (ORBOTECH NORWAY AS trap) ------------------------
+
+
+def test_name_guess_with_only_soft_signals_stays_ambiguous():
+    # ORBOTECH NORWAY AS trap: a name-guess (no independent basis of its own, unlike registry_website/
+    # wikidata/nav) landed on a corporate group's brand site after an acquisition. The group's country
+    # landing page genuinely carries the SAME office address and a board member's name -- both "soft"
+    # content signals that can coincidentally satisfy 2-of-N on a page that isn't entity-specific (a
+    # shared office post-acquisition). Neither a legal-name-in-title match nor an e-mail match is
+    # present, so this must not resolve to exact.
+    facts = {**REGISTRY_FACTS, "name": "ORBOTECH NORWAY AS", "street": "Industrivegen 4", "postcode": "7820", "role_holders": ["Mats Kvamso"], "phones": [], "email": None}
+    html = "<html><body>Orbotech. Industrivegen 4, 7820. Kontaktperson: Mats Kvamso.</body></html>"
+    p = page("Orbotech cleaning robots", html=html, url="https://orbotech.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="orbotech.no", source="name_guess"))
+    assert verdict.status == "ambiguous"
+    signal_kinds = {s.kind for s in verdict.signals}
+    assert signal_kinds == {"registered_address", "role_name"}
+
+
+def test_name_guess_with_one_strong_signal_still_reaches_exact():
+    # The same soft-signal page, but WITH a registry-email match too ("hard" per
+    # STRONG_CORROBORATING_KINDS) -- the guard only blocks an all-soft combination, not a genuinely
+    # well-corroborated match.
+    facts = {**REGISTRY_FACTS, "name": "ORBOTECH NORWAY AS", "street": "Industrivegen 4", "postcode": "7820", "role_holders": ["Mats Kvamso"], "phones": [], "email": "post@orbotech.no"}
+    html = "<html><body>Orbotech. Industrivegen 4, 7820. Kontaktperson: Mats Kvamso. post@orbotech.no</body></html>"
+    p = page("Orbotech cleaning robots", html=html, url="https://orbotech.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="orbotech.no", source="name_guess"))
+    assert verdict.status == "exact"
+
+
 
 
 def test_namesake_company_resolved_by_org_number_match():
@@ -467,14 +565,16 @@ def test_industry_mismatch_guard_blocks_corroboration_on_unlisted_namesake_domai
 
 def test_industry_mismatch_guard_does_not_block_same_industry_corroboration():
     # Sanity check: the guard must not suppress a genuine match just because NACE is set -- a fishing
-    # company's own site, describing fishing, with 2 corroborating signals, is still exact.
+    # company's own site, describing fishing, with 2 corroborating signals, is still exact. One of the
+    # two signals is registry_email (a "hard" signal per STRONG_CORROBORATING_KINDS), so the name_guess
+    # soft-signal guard (address/phone/role-name only) doesn't apply here either.
     facts = {
         **REGISTRY_FACTS, "name": "BRIS AS", "street": "Kaiveien 3", "postcode": "8063",
-        "phones": ["12345678"], "nace": "03.11",
+        "email": "post@bris.no", "phones": [], "nace": "03.11",
     }
     html = (
         "<html><head><title>Bris AS</title></head><body>Bris AS driver fiskebat og fangst av fisk i "
-        "Lofoten. Kaiveien 3 8063. Ring 12345678.</body></html>"
+        "Lofoten. Kaiveien 3 8063. Kontakt: post@bris.no.</body></html>"
     )
     p = page("Bris AS fiskebat", html=html, url="https://bris.no/")
     verdict = assess(OUR_ORG, [p], facts, cand(domain="bris.no", source="name_guess"))
