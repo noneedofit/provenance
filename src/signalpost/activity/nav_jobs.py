@@ -55,11 +55,111 @@ def _location(ad: dict) -> str | None:
     return None
 
 
+def _work_locations_text(locations: list) -> str | None:
+    parts = []
+    for loc in locations or []:
+        if not isinstance(loc, dict):
+            continue
+        city = loc.get("city") or loc.get("municipal") or loc.get("municipality") or loc.get("postalCode")
+        if city:
+            parts.append(str(city))
+    if parts:
+        return ", ".join(dict.fromkeys(parts))
+    return None
+
+
+def _collect_live(ctx, shared: dict) -> dict:
+    """Build job claims from `NavLiveConnector`'s `ctx.shared["nav_ads"]` / `nav_checked` (live NAV
+    search + feedentry lookup, see `nav_live.py`). Preferred over the cached-feed path whenever
+    `nav_checked` is present, i.e. `NavLiveConnector` ran for this company's tier and budget.
+    """
+    result: dict = {
+        "claims": [], "evidence": [], "checked": False, "error": None,
+        "recent_count": 0, "recent_evidence_ids": [], "source": "live",
+        "family_availability": None, "family_reason": None,
+    }
+    nav_checked = shared.get("nav_checked") or {}
+    state = nav_checked.get("state")
+    reason = nav_checked.get("reason")
+
+    if state != "ok":
+        if state == "failed":
+            result["error"] = reason or "request_budget"
+            result["family_availability"] = "failed"
+            result["family_reason"] = reason or "request_budget"
+        else:  # "not_applicable" or unrecognized -> fail safe to not_applicable, never a silent zero
+            result["family_availability"] = "not_applicable"
+            result["family_reason"] = reason or "not searched: no registered staff or web footprint"
+        return result
+
+    result["checked"] = True
+    nav_ads = shared.get("nav_ads") or []
+    search_evidence_ids = list(shared.get("nav_search_evidence_ids") or [])
+    name_matched_total = shared.get("nav_total_matching_hits") or 0
+
+    claims = []
+    all_evidence_ids: list[str] = []
+    for ad in nav_ads:
+        uuid = str(ad.get("uuid") or "").strip()
+        if not uuid:
+            continue
+        eid = ad.get("evidence_id")
+        evidence_ids = [eid] if eid else []
+        all_evidence_ids.extend(evidence_ids)
+        value = {
+            "title": ad.get("title"),
+            "employer_name": ad.get("employer_name"),
+            "location": _work_locations_text(ad.get("work_locations")),
+            "published": ad.get("published"),
+            "expires": ad.get("expires"),
+            "application_due": ad.get("application_due"),
+            "ad_url": ad.get("ad_url"),
+            "source": "NAV arbeidsplassen",
+        }
+        claims.append(make_claim(
+            org=ctx.org, family="jobs", field="job_posting", value=value,
+            value_key=f"nav:{uuid}", availability="available",
+            identity_basis="job_feed_org_number", effective_date=ad.get("published"),
+            evidence_ids=evidence_ids,
+        ))
+
+    count_evidence_ids = list(dict.fromkeys(all_evidence_ids + search_evidence_ids))
+    count_claim = make_claim(
+        org=ctx.org, family="jobs", field="active_postings_count",
+        value={"verified": len(nav_ads), "name_matched_total": name_matched_total, "checked_at": nav_checked.get("checked_at")},
+        value_key=None, availability="available" if count_evidence_ids else "not_available",
+        identity_basis="job_feed_org_number" if count_evidence_ids else None,
+        evidence_ids=count_evidence_ids,
+    )
+    claims.append(count_claim)
+
+    result["claims"] = claims
+    if nav_ads:
+        result["family_availability"] = "available"
+    else:
+        result["family_availability"] = "not_available"
+        result["family_reason"] = "checked NAV arbeidsplassen: no active postings for this org number"
+    return result
+
+
 def collect(ctx) -> dict:
+    """Returns dict: claims, evidence, checked, error, recent_count, recent_evidence_ids.
+
+    Prefers the live NAV search+feedentry path (`ctx.shared["nav_checked"]`, populated by
+    `NavLiveConnector` when it ran for this company) over the cached feed-index path; falls back to the
+    cache when `NavLiveConnector` didn't run at all (e.g. `nav` connector not wired into this pipeline).
+    """
+    shared = ctx.shared or {}
+    if shared.get("nav_checked") is not None:
+        return _collect_live(ctx, shared)
+    return _collect_cache(ctx)
+
+
+def _collect_cache(ctx) -> dict:
     """Returns dict: claims, evidence, checked, error, recent_count, recent_evidence_ids."""
     result: dict = {
         "claims": [], "evidence": [], "checked": False, "error": None,
-        "recent_count": 0, "recent_evidence_ids": [],
+        "recent_count": 0, "recent_evidence_ids": [], "source": "cache",
     }
     caches = ctx.caches
     nav_cache = getattr(caches, "nav", None) if caches is not None else None

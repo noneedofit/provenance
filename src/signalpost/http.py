@@ -195,10 +195,16 @@ class BudgetedHttpClient:
         respect_robots: bool = True,
         max_redirects: int = 4,
         snapshot: bool = True,
+        headers: dict[str, str] | None = None,
     ) -> Response:
+        # `headers` is an additive, backward-compatible extension beyond `context.HttpClient`'s declared
+        # protocol (default None, every existing call site unaffected) - needed so a connector can send
+        # `Authorization: Bearer <token>` to a keyless-but-token-gated public API (e.g. NAV's
+        # pam-stilling-feed feedentry endpoint) without a broader interface change to context.py.
         return self._request(
             "GET", url, org=org, purpose=purpose, accept=accept, max_bytes=max_bytes, timeout=timeout,
             respect_robots=respect_robots, max_redirects=max_redirects, snapshot=snapshot, body=None,
+            extra_headers=headers,
         )
 
     def post_json(
@@ -285,11 +291,13 @@ class BudgetedHttpClient:
                 self._robots_cache[key] = parser
             return (True if parser is None else parser.can_fetch(USER_AGENT, url)), charged
 
-    def _do_http(self, method: str, url: str, *, accept: str, timeout: float, max_bytes: int, body: bytes | None):
+    def _do_http(self, method: str, url: str, *, accept: str, timeout: float, max_bytes: int, body: bytes | None, extra_headers: dict[str, str] | None = None):
         """One raw HTTP attempt. Returns (status, headers, raw_body, final_url, error)."""
         headers = {"User-Agent": USER_AGENT, "Accept": accept, "Accept-Encoding": "gzip"}
         if body is not None:
             headers["Content-Type"] = "application/json"
+        if extra_headers:
+            headers.update(extra_headers)
         request = urllib.request.Request(url, data=body, method=method, headers=headers)
         try:
             with _OPENER.open(request, timeout=timeout) as resp:
@@ -314,6 +322,7 @@ class BudgetedHttpClient:
     def _request(
         self, method: str, url: str, *, org: str | None, purpose: str, accept: str, max_bytes: int,
         timeout: float, respect_robots: bool, max_redirects: int, snapshot: bool, body: bytes | None,
+        extra_headers: dict[str, str] | None = None,
     ) -> Response:
         started = time.monotonic()
         redirect_chain: list[str] = []
@@ -344,7 +353,7 @@ class BudgetedHttpClient:
             sem = self._semaphore_for(parsed_host)
             hop_started = time.monotonic()
             with sem:
-                status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body)
+                status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
             retryable = error == "timeout" or status == 429 or status >= 500
             if retryable:
@@ -352,7 +361,7 @@ class BudgetedHttpClient:
                     return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
                 total_requests_used += 1
                 with sem:
-                    status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body)
+                    status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
             hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
 
