@@ -33,6 +33,7 @@ MARKETPLACE_BLOCKLIST: frozenset[str] = frozenset({
     "facebook.com", "instagram.com", "linkedin.com", "linktr.ee", "youtube.com", "tiktok.com", "x.com",
     "wix.com", "wixsite.com", "weebly.com", "squarespace.com", "wordpress.com", "google.com", "goo.gl", "bit.ly",
     "odoo.com", "myshopify.com", "webnode.no", "webnode.com", "jimdofree.com", "jimdosite.com",
+    "adobe.com", "myportfolio.com", "one.com", "domeneshop.no", "webhuset.no", "godaddy.com", "sedo.com",
 })
 
 # Domains that must never be used as a website candidate at all (union of both lists — a franchise

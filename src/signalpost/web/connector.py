@@ -5,6 +5,7 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
+import urllib.parse
 from typing import Any
 
 from ..context import CompanyContext
@@ -12,7 +13,8 @@ from ..models import Claim, ConnectorResult, Evidence, FamilyState, claim_key, e
 from . import candidates as candidates_mod
 from . import extract as extract_mod
 from . import verify as verify_mod
-from .candidates import Candidate
+from .blocklist import is_marketplace_or_directory
+from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, crawl_candidate
 
 DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage"}
@@ -35,15 +37,37 @@ def _website_org_count(ctx: CompanyContext, domain: str) -> int | None:
     if caches is None or not getattr(caches, "email_domains", None):
         return None
     email_domains = caches.email_domains
+    counts: list[int] = []
     for method_name in ("org_count", "website_org_count"):
         method = getattr(email_domains, method_name, None)
         if method is None:
             continue
         try:
-            return method(domain)
+            counts.append(int(method(domain)))
         except Exception:
-            return None
-    return None
+            continue
+    # A domain is shared if either column says so (rtbbl.no: 0 e-mail users, 28 registry websites).
+    return max(counts) if counts else None
+
+
+def _redirects_into_other_site(cand: Any, pages: list[PageFetch]) -> bool:
+    """The candidate redirects to a subpage of a different domain (albatross-as.no ->
+    toma.no/tjenester/camps): that is someone else's site, usually a parent's, so only a decisive
+    signal such as our org number may make it our official site."""
+    if not pages:
+        return False
+    final = pages[0].final_url or ""
+    if registered_domain(final) == registered_domain(cand.url):
+        return False
+    return urllib.parse.urlsplit(final).path.strip("/") != ""
+
+
+def _public_url(cand: Any, homepage: PageFetch) -> str:
+    """The company's own address: keep the candidate URL when it redirects onto a hosting platform
+    (barokkanerne.no -> barokkanerne.squarespace.com), otherwise the final URL after redirects."""
+    if is_marketplace_or_directory(registered_domain(homepage.final_url) or "") and registered_domain(cand.url) != registered_domain(homepage.final_url):
+        return cand.url
+    return homepage.final_url
 
 
 def _source_class_for(page: PageFetch) -> str:
@@ -143,7 +167,8 @@ class WebConnector:
             website_org_count = _website_org_count(ctx, cand.domain) if cand.source == "registry_website" else None
             verdict = verify_mod.assess(
                 org, crawl_result.pages, facts, cand,
-                website_org_count=website_org_count, require_decisive=require_decisive,
+                website_org_count=website_org_count,
+                require_decisive=require_decisive or _redirects_into_other_site(cand, crawl_result.pages),
             )
             attempts.append({
                 "domain": cand.domain, "source": cand.source, "status": verdict.status,
@@ -196,7 +221,7 @@ class WebConnector:
             result.evidence.append(ev)
         evidence_ids = [ev.evidence_id for ev in site_evidence]
 
-        website_value = {"url": homepage.final_url, "domain": cand.domain, "brand_name": extraction.brand_name}
+        website_value = {"url": _public_url(cand, homepage), "domain": cand.domain, "brand_name": extraction.brand_name}
         ckey = claim_key(org, "website", "official_website", None)
         result.claims.append(Claim(
             claim_id=ckey, organisation_number=org, family="website", field="official_website",

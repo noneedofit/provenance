@@ -98,3 +98,16 @@ def test_crawl_falls_back_to_sitemap_when_no_priority_links_on_homepage():
     result = crawl_candidate(ctx, cand)
     urls = [p.url for p in result.pages]
     assert "https://example.no/kontakt-oss" in urls
+
+
+def test_redirect_to_platform_missing_page_is_parked():
+    from signalpost.web.crawl import _is_dead_redirect
+
+    assert _is_dead_redirect("https://www.hermstad.com/", "https://portfolio.adobe.com/missing")
+    assert _is_dead_redirect("https://acme.no/", "https://other-host.no/404")
+    # A rebrand redirect to another real domain is not dead.
+    assert not _is_dead_redirect("https://oldname.no/", "https://newname.no/")
+    assert not _is_dead_redirect("https://acme.no/", "https://www.acme.no/om-oss")
+    # A company site hosted as a platform tenant is alive; the platform's own front page is not.
+    assert not _is_dead_redirect("https://www.barokkanerne.no", "https://barokkanerne.squarespace.com/")
+    assert _is_dead_redirect("https://acme.no/", "https://www.wix.com/")

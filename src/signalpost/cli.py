@@ -51,12 +51,52 @@ def _resolve_bulk_path(explicit: str | None) -> str:
     return str(dest)
 
 
+DEFAULT_CACHE_DIR = "./cache"
+
+
+def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, int]:
+    """Return a caches directory, building the identity-critical parts when none was supplied.
+
+    The shared-domain table (email_domains) is what stops a registry website shared by many
+    organisations (a housing co-op manager, an accountant, a group site) from being published as one
+    company's own site, so a run must never go without it. It is built locally from the bulk file
+    (0 requests, a few seconds). Wikidata is one SPARQL query (a few pages); it is counted and reported.
+    Returns (cache_dir, requests_used_building).
+    """
+    cache_dir = Path(explicit or DEFAULT_CACHE_DIR)
+    requests_used = 0
+    try:
+        from signalpost.caches import email_domains as email_domains_mod, store, wikidata as wikidata_mod
+    except Exception as exc:  # caches package missing in a stripped build
+        print(f"caches unavailable ({exc}); running without them", file=sys.stderr)
+        return explicit, 0
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    if not (cache_dir / "email_domains.sqlite").exists():
+        print(f"building {cache_dir}/email_domains.sqlite from {bulk_path} (0 requests)", file=sys.stderr)
+        info = email_domains_mod.build(bulk_path, cache_dir)
+        store.update_meta_part(cache_dir, "email_domains", info)
+    if not (cache_dir / "wikidata.sqlite").exists():
+        print(f"building {cache_dir}/wikidata.sqlite from Wikidata SPARQL", file=sys.stderr)
+        try:
+            info = wikidata_mod.build(cache_dir)
+            store.update_meta_part(cache_dir, "wikidata", info)
+            requests_used += 1 + int(info.get("raw_binding_count") or 0) // 20_000
+        except Exception as exc:
+            print(f"wikidata cache build failed ({exc}); continuing without it", file=sys.stderr)
+            requests_used += 1
+    return str(cache_dir), requests_used
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     orgs = _read_organisation_inputs(args.organisations)
     bulk_path = _resolve_bulk_path(args.bulk)
+    caches_dir, setup_requests = _ensure_caches(args.caches, bulk_path)
+    max_requests = args.max_requests
+    if setup_requests and max_requests:
+        max_requests = max(0, max_requests - setup_requests)
     report = pipeline.run_batch(
         orgs, output_dir=args.output_dir, state_dir=args.state_dir, run_id=args.run_id,
-        bulk_path=bulk_path, caches_dir=args.caches, max_requests=args.max_requests,
+        bulk_path=bulk_path, caches_dir=caches_dir, max_requests=max_requests,
         deadline_s=args.deadline_seconds, workers=args.workers,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2))

@@ -1,0 +1,26 @@
+
+
+def test_run_builds_shared_domain_cache_when_none_supplied(tmp_path, monkeypatch):
+    from signalpost import cli
+
+    built = {}
+
+    def fake_email_build(bulk, cache_dir):
+        (cache_dir / "email_domains.sqlite").write_text("x")
+        built["email"] = bulk
+        return {"row_count": 1}
+
+    def fake_wikidata_build(cache_dir):
+        (cache_dir / "wikidata.sqlite").write_text("x")
+        return {"raw_binding_count": 11000}
+
+    import signalpost.caches.email_domains as ed
+    import signalpost.caches.wikidata as wd
+    monkeypatch.setattr(ed, "build", fake_email_build)
+    monkeypatch.setattr(wd, "build", fake_wikidata_build)
+    cache_dir, used = cli._ensure_caches(str(tmp_path / "cache"), "bulk.csv")
+    assert built["email"] == "bulk.csv" and used == 1
+    assert (tmp_path / "cache" / "email_domains.sqlite").exists()
+    # Second call reuses what exists: no rebuild, no requests.
+    built.clear()
+    assert cli._ensure_caches(cache_dir, "bulk.csv") == (cache_dir, 0) and not built

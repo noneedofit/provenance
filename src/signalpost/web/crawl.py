@@ -17,6 +17,7 @@ import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
+from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
@@ -85,6 +86,23 @@ def _normalize_text(html: str) -> str:
 def _is_parked(html: str, text: str) -> bool:
     haystack = unicodedata.normalize("NFKD", (html[:5000] + " " + text[:2000])).encode("ascii", "ignore").decode().casefold()
     return any(marker in haystack for marker in PARKED_MARKERS)
+
+
+_DEAD_PATH_RE = re.compile(r"/(missing|not[-_]?found|404|error|suspended|expired|deactivated)(?:[/.?#]|$)", re.I)
+
+
+def _is_dead_redirect(start_url: str, final_url: str) -> bool:
+    """A redirect off the candidate's own domain onto a hosting/builder platform or a 'missing' page."""
+    start, final = registered_domain(start_url), registered_domain(final_url)
+    if not final or final == start:
+        return False
+    parts = urllib.parse.urlsplit(final_url)
+    if _DEAD_PATH_RE.search(parts.path or "/"):
+        return True
+    # Landing on the platform's own front page (not a tenant site like acme.squarespace.com) means the
+    # company's site is gone.
+    host = (parts.hostname or "").lower().removeprefix("www.")
+    return is_marketplace_or_directory(final) and host == final
 
 
 def _is_js_shell(text: str, soup: BeautifulSoup) -> bool:
@@ -218,7 +236,7 @@ def crawl_candidate(
     homepage.page_kind = "homepage"
     result.pages.append(homepage)
 
-    if _is_parked(homepage.html, homepage.text):
+    if _is_parked(homepage.html, homepage.text) or _is_dead_redirect(candidate.url, homepage.final_url):
         result.parked = True
         return result
 

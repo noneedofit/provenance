@@ -143,3 +143,31 @@ def test_connector_stops_at_budget_exhaustion():
     attempts = result.shared["web_attempts"]
     assert attempts and attempts[0]["status"] == "skipped"
     assert attempts[0]["reason"] == "request_budget"
+
+
+def test_website_org_count_uses_website_column_when_email_count_is_zero():
+    from types import SimpleNamespace
+
+    from signalpost.web.connector import _website_org_count
+
+    class Domains:
+        def org_count(self, domain):
+            return 0
+
+        def website_org_count(self, domain):
+            return 28
+
+    ctx = SimpleNamespace(caches=SimpleNamespace(email_domains=Domains()))
+    assert _website_org_count(ctx, "rtbbl.no") == 28
+
+
+def test_redirect_into_a_subpage_of_another_domain_needs_a_decisive_signal():
+    from types import SimpleNamespace
+
+    from signalpost.web.connector import _redirects_into_other_site
+
+    cand = SimpleNamespace(url="https://albatross-as.no/")
+    page = lambda u: SimpleNamespace(final_url=u)
+    assert _redirects_into_other_site(cand, [page("https://www.toma.no/tjenester/camps/")])
+    assert not _redirects_into_other_site(cand, [page("https://newname.no/")])
+    assert not _redirects_into_other_site(cand, [page("https://www.albatross-as.no/hjem")])
