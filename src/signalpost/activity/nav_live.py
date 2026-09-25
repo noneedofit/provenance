@@ -289,8 +289,13 @@ class NavLiveConnector:
             if onr:
                 our_orgnrs.add(onr)
 
-        matches = index.match(name_norms)
-        by_uuid = {m["uuid"]: m for m in matches}
+        # Exact match first (cheap, indexed); fuzzy token-overlap match second catches a trade/brand
+        # name, an "avd." department suffix, or wording NAV's businessName doesn't share verbatim with
+        # the legal/alias/subunit name - never a publishing risk on its own, since every candidate
+        # (exact or fuzzy) still needs its organisation number confirmed via feedentry below.
+        by_uuid: dict[str, dict] = {m["uuid"]: m for m in index.match(name_norms)}
+        for m in index.match_fuzzy(name_norms):
+            by_uuid.setdefault(m["uuid"], m)
         ranked = sorted(by_uuid.values(), key=lambda m: m.get("sist_endret") or "", reverse=True)
         cap = self._match_cap.get(tier, 5)
         candidates = ranked[:cap]

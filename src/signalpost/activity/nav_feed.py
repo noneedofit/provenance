@@ -154,6 +154,39 @@ class NavFeedIndex:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def match_fuzzy(self, name_norms: set[str], *, min_overlap: float = 0.6) -> list[dict]:
+        """Ads whose normalized business name shares most of its tokens with one of `name_norms` -
+        catches a trade/brand name, an "avd." (department) suffix, or a subunit name that isn't an exact
+        string match but clearly refers to the same company (e.g. ad businessName "Fresh Water Norway"
+        vs legal name "Fresh Water Norway AS", or "X AS avd Bergen" vs a subunit trade name "X Bergen").
+        Token overlap must cover at least `min_overlap` of the SMALLER of the two token sets - the same
+        threshold and shape as `caches/nav.py`'s `fuzzy_name_match`, reused here as a precedented,
+        already-reviewed heuristic rather than inventing a new one. This is deliberately permissive: the
+        caller (`nav_live.py`) must still confirm every candidate by organisation number via feedentry
+        before publishing anything - a name overlap alone is never sufficient, only a way to find more
+        candidates worth that confirmation check.
+        """
+        name_token_sets = [set(n.split()) for n in name_norms if n]
+        name_token_sets = [t for t in name_token_sets if t]
+        if not name_token_sets:
+            return []
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM active_ads").fetchall()
+        matched = []
+        for row in rows:
+            ad_tokens = set((row["business_name_norm"] or "").split())
+            if not ad_tokens:
+                continue
+            for target_tokens in name_token_sets:
+                overlap = ad_tokens & target_tokens
+                if not overlap:
+                    continue
+                smaller = min(len(ad_tokens), len(target_tokens))
+                if smaller and len(overlap) / smaller >= min_overlap:
+                    matched.append(dict(row))
+                    break
+        return matched
+
     def count(self) -> int:
         with self._lock:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM active_ads").fetchone()

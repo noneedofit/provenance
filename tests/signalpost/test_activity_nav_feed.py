@@ -104,6 +104,36 @@ def test_name_matching_uses_normalized_business_name(tmp_path: Path):
     assert index.match({norm_title("Completely Different Name")}) == []
 
 
+def test_fuzzy_match_catches_trade_name_and_department_suffix_but_not_unrelated_names(tmp_path: Path):
+    from signalpost.activity._common import norm_title
+
+    index = NavFeedIndex.open(tmp_path)
+    # A shortened/partial businessName (e.g. NAV truncates or the poster dropped a word) - same
+    # meaningful tokens, not an exact string match against the full legal name.
+    index.upsert_active(uuid="y1", title="Selger", business_name="Olsen Nauen", municipal="BARKAKER",
+                         sist_endret="2026-09-01T00:00:00Z", updated_at="2026-09-24T00:00:00Z")
+    index.upsert_active(uuid="y2", title="Baker", business_name="Trade Name AS avd Bergen", municipal="BERGEN",
+                         sist_endret="2026-09-01T00:00:00Z", updated_at="2026-09-24T00:00:00Z")
+    index.upsert_active(uuid="y3", title="Unrelated job", business_name="Totally Unrelated Company AS",
+                         municipal="OSLO", sist_endret="2026-09-01T00:00:00Z", updated_at="2026-09-24T00:00:00Z")
+    index.commit()
+
+    # "Olsen Nauen Klokkestøperi AS" (legal name) doesn't exact-match the ad's shorter businessName
+    # "Olsen Nauen" - but a fuzzy token-overlap match (>= 60% of the smaller token set) still finds it.
+    legal_name_norm = norm_title("Olsen Nauen Klokkestøperi AS")
+    assert index.match({legal_name_norm}) == []  # exact match misses it
+    fuzzy = index.match_fuzzy({legal_name_norm})
+    assert {m["uuid"] for m in fuzzy} == {"y1"}
+
+    # A subunit/trade name "Trade Name Bergen" should fuzzy-match "Trade Name AS avd Bergen".
+    fuzzy2 = index.match_fuzzy({norm_title("Trade Name Bergen")})
+    assert {m["uuid"] for m in fuzzy2} == {"y2"}
+
+    # An unrelated name must never fuzzy-match just because it shares one common word.
+    fuzzy3 = index.match_fuzzy({norm_title("Totally Different")})
+    assert fuzzy3 == []
+
+
 def test_missing_token_short_circuits_the_walk_without_a_request(tmp_path: Path):
     client = FakeNavHttpClient(pages={None: {"id": "p1", "items": [], "next_id": None}})
     index = NavFeedIndex.open(tmp_path)
