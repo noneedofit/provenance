@@ -29,6 +29,12 @@ SECONDARY_PAGE_BUDGET = {"T0": 0, "T1": 2, "T2": 4, "T3": 6}
 PRIORITY_TERMS = (
     "kontakt", "contact",
     "om-oss", "om_oss", "about-us", "about",
+    # "kontoret" ("the office") is a common Norwegian about-us-equivalent page slug, especially for
+    # architecture/law/consulting firms -- e.g. rakark.no's homepage has no body text at all (an
+    # image-portfolio nav list only), but /kontoret/ carries the real substantive company description.
+    # Substring-matches both "kontor" and "kontoret" paths/link text without colliding with "kontakt"
+    # (checked: "kontor" is not a substring of "kontakt" or vice versa).
+    "kontor",
     "personvern", "privacy",
     "vilkar", "salgsbetingelser", "kjopsbetingelser", "terms",
     "impressum",

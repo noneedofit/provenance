@@ -35,6 +35,25 @@ def test_crawl_fetches_homepage_and_priority_secondary_pages():
     assert not result.js_shell
 
 
+def test_crawl_picks_kontoret_page_as_priority_link():
+    # "kontoret" ("the office") is a common Norwegian about-us-equivalent page slug, especially for
+    # architecture/law/consulting firms -- must be picked up as a priority secondary page.
+    home_html = """
+    <html><head><title>Example Arkitektur AS</title></head><body>
+    <a href="/kontoret">Kontoret</a>
+    </body></html>
+    """
+    client = FakeHttpClient(pages={
+        "https://example.no/": FakePage(home_html),
+        "https://example.no/kontoret": FakePage("<html><body>Vi er et arkitektkontor.</body></html>"),
+    })
+    ctx = make_ctx("923456783", tier="T2", client=client)
+    cand = Candidate(domain="example.no", url="https://example.no/", source="registry_website", label="x", decisive=True)
+    result = crawl_candidate(ctx, cand)
+    kinds = {p.page_kind for p in result.pages}
+    assert "kontor" in kinds
+
+
 def test_crawl_respects_tier_secondary_page_budget():
     client = FakeHttpClient(pages={
         "https://example.no/": FakePage(HOME_HTML),
