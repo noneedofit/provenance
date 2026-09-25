@@ -48,9 +48,13 @@
     for matching), `registry_facts["aliases"]`, `registry_facts["subunits"][*]["name"]`, and
     `ctx.caches.aliases.names(org)` trade names when a caches instance is available - normalization is
     `_common.norm_title` (casefold, strip diacritics/punctuation/legal-form tokens, collapse whitespace),
-    the same function `nav_feed.NavFeedIndex` uses to index each ad's business name, so an exact
-    normalized match is required (no fuzzy scoring). `nav_total_matching_hits` counts every match
-    (verified or not); the newest-changed (`sistEndret`) matches, capped at T1: 3, T2: 5, T3: 8, get a
+    the same function `nav_feed.NavFeedIndex` uses to index each ad's business name. Two passes: an
+    exact normalized match first, then `NavFeedIndex.match_fuzzy()` (token overlap >= 60% of the
+    smaller token set - catches a trade name, an "avd." department suffix, or a truncated
+    businessName) widens the candidate pool for the same names. Fuzzy matching never lowers the
+    publishing bar - every candidate, exact or fuzzy, still needs its organisation number confirmed via
+    feedentry below. `nav_total_matching_hits` counts every match (verified or not, exact or fuzzy);
+    the newest-changed (`sistEndret`) matches, capped at T1: 3, T2: 5, T3: 8, get a
     `GET pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}` fetch with `Authorization: Bearer <token>` -
     the token is the last non-empty line of `GET .../api/publicToken` (plain 401 without it, measured
     live), fetched once and cached behind a lock, refreshed once on a 401.
@@ -244,9 +248,18 @@ then rerun with the *same* `--state-dir` to demonstrate the incremental resume.
 
 | Run | Requests (of which `nav_feed_page`) | Runtime | `jobs` states | Terminal status |
 |---|---|---|---|---|
-| gold131, fresh state-dir | 1856 (117) | 535s | 1 available / 107 not_available / 23 not_applicable / **0 failed** | 124 completed, 7 partial |
-| daily100, fresh state-dir | 668 (117) | 351s | 0 available / 19 not_available / 81 not_applicable / **0 failed** | 99 completed, 1 partial |
-| daily100, same state-dir (resume) | 552 (**1**) | 151s | identical to the fresh run above | 100 completed, 0 partial |
+| gold131, fresh state-dir | 1788 (117) | 539s | 1 available / 107 not_available / 23 not_applicable / **0 failed** | 125 completed, 6 partial |
+| daily100, fresh state-dir | 785 (117) | 336s | 0 available / 19 not_available / 81 not_applicable / **0 failed** | 100 completed, 0 partial |
+| daily100, same state-dir (resume) | 669 (**1**) | 166s | identical to the fresh run above | 100 completed, 0 partial |
+
+(These are the final numbers, after merging `main`'s run-report fix - robots.txt fetches were
+previously double-counted in `total_requests` - and after adding `match_fuzzy()`, below. Fuzzy matching
+raised `nav_live_feedentry` from 2 to 40 on gold131 - it widened the candidate pool considerably - while
+the verified-postings count stayed at exactly 1, confirming every extra candidate it found was
+correctly rejected by the mandatory orgnr check, not a source of false positives. The remaining
+`partial` envelopes in gold131 are YouTube `robots.txt` blocks (gap 1), unrelated to `jobs`; the
+`caches/store.py` concurrency bug from an earlier measurement here was fixed upstream on `main` and
+picked up by the merge, dropping gold131's `partial` count from 7-8 to 6.)
 
 Zero `jobs=failed` across both sets - the search-based v1 measured 93/131 failed on this same gold set
 (see the superseded section above). The resume run's `nav_feed_page` count dropping from 117 to 1 (and
@@ -266,3 +279,52 @@ One real posting was found and verified end to end in the gold131 run: **HALLAGE
 (971474351) - "Bli ringevikar i en liten barnehage med natur, bevegelse og trygghet i sentrum",
 matched by name against the feed index, confirmed by org number via feedentry, published as an
 `available` `jobs/job_posting` claim.
+
+### Recall gap: import-sourced ads are absent from the feed API entirely
+
+`eval/data/gold_web.jsonl` independently labels 4 companies with an active NAV posting as of
+2026-09-24: HALLAGERSTUA BARNEHAGE SA (found, above), OSLO AKUTTEN AS, FRESH WATER NORWAY AS, and
+Olsen Nauen Klokkestøperi AS (all 3 missed). Diagnosis (live, 2026-09-24/25): a fresh, from-scratch
+200-day feed walk (427 pages, confirmed `reached_end=True` - it caught up to the live tip) found zero
+exact or fuzzy match for any of the 3 missed companies anywhere in that much larger index (10,523 ads,
+barely more than the 60-day window's 10,081 - see below). Re-checking `arbeidsplassen.nav.no`'s own
+search API confirms `NavLiveConnector`'s earlier, since-verified Atrium People AS ad (orgnr 919858400,
+`tests/fixtures/nav_live/feedentry_atrium_people.json`) is *still* `ACTIVE` right now - but a direct
+feedentry re-fetch shows its `sistEndret` is unchanged since `2025-12-29`, ~9 months ago, and that same
+200-day-deep feed walk does not contain it either. NAV's feed event log only fires on a status
+**change** (see `caches/nav.py`'s and `nav_feed.py`'s module docstrings); an ad created once through
+NAV's `IMPORTAPI`/third-party-recruiter import path and never subsequently touched sits at its
+original, potentially very old, feed position forever - not "outside a 60-day window" so much as
+"outside any window this connector can afford to walk". This is a genuine structural gap in the feed
+API, not a matching bug: **no window length and no name-normalization fix can close it**, since the
+affected ads simply never generate a feed event for the walk to see.
+
+What this rules in and out as fixes:
+- **Window extension: measured and rejected as the general fix.** 60 -> 200 days (117 -> 427 pages)
+  grew the indexed active-ad count by only ~4.4% (10,081 -> 10,523, against NAV's own reported ~14k
+  total active ads platform-wide - see below), and doesn't even recover these 3 companies (their sole
+  feed event is older than 200 days). Meanwhile gold131's fresh run already sits close to the 1,900
+  hard cap (1788-1856 across measured runs) - lengthening the default window would trade a real budget
+  risk for a small, diminishing-returns recall gain that doesn't fix the actual problem.
+  `DEFAULT_WINDOW_DAYS` stays at 60.
+- **Fuzzy matching: added, doesn't recover these 3 either, but is still worth keeping.**
+  `NavFeedIndex.match_fuzzy()` (token overlap >= 60% of the smaller set, same shape as `caches/nav.py`'s
+  existing `fuzzy_name_match`) runs alongside the exact match for every company; a live gold131 rerun
+  with it enabled still finds exactly the same 1 verified posting (`nav_live_feedentry` requests rose
+  2 -> 40 as fuzzy widened the candidate pool, all but the 1 real match correctly rejected by the
+  mandatory orgnr check) - confirming it adds real candidates for genuine trade-name/"avd."-suffix
+  cases without ever publishing a false positive, but that the 3 gold misses are an index-coverage gap,
+  not a name-matching one.
+- **Reintroducing search was considered and deliberately not done.** It would close this specific gap
+  (search *does* index import-sourced ads, since it's how the independent labeller found them), but
+  it's exactly the mechanism this rewrite replaced for failing at batch scale (see "History" above) -
+  re-adding it, even scoped to zero-match companies only and carefully throttled, needs an explicit
+  product decision given the observed WAF behavior, not a unilateral reintroduction here.
+
+**Index coverage vs NAV's total.** The 60-day index holds ~10,100 currently-ACTIVE ads; NAV's own
+platform-wide total is on the order of ~14,000 active ads (per the gold-labelling session's own
+estimate, not independently re-measured here). That gap is consistent with, and roughly the right
+order of magnitude for, exactly the import-sourced/never-updated-since-creation category described
+above - most of NAV's day-to-day posting activity is captured by the 60-day window; the remainder is
+disproportionately old, one-off-imported listings the feed event log was never going to show without
+walking back to their original (unpredictable, sometimes very old) creation date.
