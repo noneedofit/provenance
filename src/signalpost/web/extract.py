@@ -113,15 +113,42 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
         if content:
             return content[:MAX_DESCRIPTION_CHARS], page.final_url, content[:MAX_DESCRIPTION_CHARS], "meta_description_v1"
 
-    about_pages = [p for p in pages if p.ok and p.page_kind in {"om-oss", "om_oss", "about-us", "about"}]
+    # "kontor"/"kontoret" ("the office") is a common Norwegian about-us-equivalent page slug (see
+    # crawl.py's PRIORITY_TERMS) -- an image-portfolio-style homepage with no body text at all
+    # (architecture/design firms especially) routinely carries its real description there instead.
+    about_pages = [p for p in pages if p.ok and p.page_kind in {"om-oss", "om_oss", "about-us", "about", "kontor"}]
     for page in about_pages or [p for p in pages if p.ok and p.page_kind == "homepage"]:
         text = (page.text or "").strip()
         # first substantive paragraph: first run of text >= 60 chars
         for para in re.split(r"\n{1,}", text):
             para = para.strip()
-            if len(para) >= 60:
+            if len(para) >= 60 and not _is_boilerplate_paragraph(para):
                 return para[:MAX_DESCRIPTION_CHARS], page.final_url, para[:MAX_DESCRIPTION_CHARS], "trafilatura_first_paragraph_v1"
     return None, None, None, None
+
+
+# Cookie-consent banners, generic CMS placeholder text and bare "Welcome to X" greetings routinely
+# beat the real about-paragraph to the "first run of text >= 60 chars" check (a cookie banner is
+# often the first substantial text node in the DOM, rendered above the actual page content) --
+# publishing one of these as the company's "description" is technically non-empty but useless and
+# occasionally actively misleading (a cookie-policy sentence has nothing to do with the company).
+# A short, narrow keyword/pattern list, checked against the FULL paragraph (not the whole page) so
+# it only skips a paragraph that is itself boilerplate, not one that merely appears near a banner.
+_BOILERPLATE_MARKERS = (
+    "informasjonskapsler", "cookies", "personvernerklæring", "personvernerklaering",
+    "vi bruker cookies", "we use cookies", "accept all cookies", "aksepter alle",
+    "denne nettsiden bruker", "this website uses",
+)
+_WELCOME_ONLY_RE = re.compile(
+    r"^(velkommen til|welcome to)\s+[^.!?]{0,80}[.!?]?$", re.IGNORECASE
+)
+
+
+def _is_boilerplate_paragraph(text: str) -> bool:
+    normalized = text.strip().casefold()
+    if _WELCOME_ONLY_RE.match(normalized):
+        return True
+    return any(marker in normalized for marker in _BOILERPLATE_MARKERS)
 
 
 def extract_brand_name(pages: list[PageFetch]) -> tuple[str | None, str | None]:

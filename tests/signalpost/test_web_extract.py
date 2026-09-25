@@ -56,6 +56,44 @@ def test_description_truncated_to_400_chars():
     assert len(desc) <= 400
 
 
+def test_description_uses_kontoret_page_when_homepage_has_no_body_text():
+    # rakark.no-style: an image-portfolio homepage with only a nav-list of project names (no
+    # substantive paragraph), but /kontoret/ ("the office" -- a common Norwegian about-us-equivalent
+    # slug for architecture/consulting firms) carries the real company description.
+    homepage_html = "<html><body><nav>Prosjekter Kontoret Planarbeid</nav></body></html>"
+    kontoret_html = (
+        "<html><body><p>"
+        + ("Vi er et arkitektkontor med kompetanse som dekker alle faser av byggeprosjekter. " * 2)
+        + "</p></body></html>"
+    )
+    pages = [
+        page(homepage_html, kind="homepage", url="https://example.no/"),
+        page(kontoret_html, kind="kontor", url="https://example.no/kontoret/"),
+    ]
+    desc, source_url, *_ = extract_description(pages)
+    assert desc and "arkitektkontor" in desc
+    assert source_url == "https://example.no/kontoret/"
+
+
+def test_description_rejects_cookie_banner_and_bare_welcome_paragraphs():
+    # A cookie-consent banner or a bare "Velkommen til X" greeting is often the first >=60-char text
+    # node in the DOM (rendered above the real content) -- must not be published as the description.
+    html = (
+        "<html><body>"
+        "<div>Vi bruker cookies for a gi deg en bedre brukeropplevelse og for a analysere trafikk pa nettsiden var.</div>"
+        "<p>Velkommen til Eksempel Bedrift AS, din lokale leverandor av alt du trenger her.</p>"
+        "<p>"
+        + ("Vi leverer skreddersydde losninger til bedrifter over hele landet siden 1998. " * 2)
+        + "</p>"
+        "</body></html>"
+    )
+    desc, *_ = extract_description([page(html)])
+    assert desc is not None
+    assert "cookies" not in desc.casefold()
+    assert not desc.casefold().startswith("velkommen til")
+    assert "skreddersydde" in desc
+
+
 def test_social_links_normalized_and_share_links_excluded():
     html = (
         "<html><body>"
