@@ -1,10 +1,14 @@
-"""In-memory fakes for `nav_live.py` tests: no network, no filesystem.
+"""In-memory fakes for `nav_feed.py` / `nav_live.py` tests: no network, no filesystem.
 
-Kept separate from `activity_testkit.py` / `fake_http.py` because `NavLiveConnector` needs a fake
-`HttpClient` that (a) supports the `headers=` kwarg (`get()` on the real `BudgetedHttpClient` gained this
-as an additive extension so `nav_live.py` can send `Authorization: Bearer <token>`) and (b) routes on
-query-string-bearing URLs (`.../search?q=...`) rather than exact-match URLs only, since each test company
-issues a different search query.
+`FakeNavHttpClient` implements the `HttpClient` protocol plus the additive `headers=` kwarg
+(`BudgetedHttpClient.get()` gained it so `nav_live.py`/`nav_feed.py` can send
+`Authorization: Bearer <token>` and `If-Modified-Since`). It answers three endpoint families:
+- the public token endpoint (exact URL),
+- feed pages (`FEED_URL` for the root page, `FEED_URL/{page_id}` for any other - registered by page id),
+- feedentry lookups (`FEEDENTRY_PREFIX{uuid}` - exact URL per uuid).
+
+Every call is recorded (url, org, purpose, headers) so tests can assert on request sequencing/headers
+(e.g. "If-Modified-Since only on the very first, non-resumed request").
 """
 from __future__ import annotations
 
@@ -22,6 +26,12 @@ from signalpost.context import CompanyContext, Response
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "nav_live"
 
+TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
+FEED_URL = "https://pam-stilling-feed.nav.no/api/v1/feed"
+FEEDENTRY_PREFIX = "https://pam-stilling-feed.nav.no/api/v1/feedentry/"
+TOKEN_BODY = b"Current public token for Nav Job Vacancy Feed:\neyJhbGciOiJIUzI1NiJ9.fake.token\n"
+FAKE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.fake.token"
+
 
 def load_fixture_text(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
@@ -29,14 +39,6 @@ def load_fixture_text(name: str) -> str:
 
 def _sha(body: bytes) -> str:
     return hashlib.sha256(body).hexdigest()
-
-
-@dataclass
-class FakeRoute:
-    body: bytes = b""
-    status: int = 200
-    error: str | None = None
-    content_type: str = "application/octet-stream"
 
 
 @dataclass
@@ -49,34 +51,48 @@ class RecordedCall:
 
 @dataclass
 class FakeNavHttpClient:
-    """Fake `HttpClient` for nav_live tests.
+    """Fake `HttpClient` for nav_feed/nav_live tests.
 
-    - Exact-URL routes (`route()`) match first.
-    - Prefix routes (`route_prefix()`) match any URL starting with the given prefix - used for the
-      search endpoint, where each query builds a different `?q=...` URL.
-    - `remaining(org)` tracks a per-org budget so cap/exhaustion tests can drive it to zero.
+    `pages`: {page_id_or_None: page_json_dict}; `None` is the root `FEED_URL` (no id in the URL).
+    `feedentries`: {uuid: body_bytes}. `token_body` defaults to a valid token response.
+    `required_bearer`: if set, feed/feedentry requests without exactly this bearer get 401.
     """
 
-    routes: dict[str, FakeRoute] = field(default_factory=dict)
-    prefix_routes: list[tuple[str, Callable[[str], FakeRoute]]] = field(default_factory=list)
+    pages: dict[str | None, dict] = field(default_factory=dict)
+    feedentries: dict[str, bytes] = field(default_factory=dict)
+    token_body: bytes = TOKEN_BODY
+    token_status: int = 200
     calls: list[RecordedCall] = field(default_factory=list)
     budget: dict[str, int] = field(default_factory=dict)
-    default_remaining: int = 100
-    required_bearer: str | None = None  # if set, feedentry requests without this exact header get 401
+    default_remaining: int = 1000
+    required_bearer: str | None = None
 
-    def route(self, url: str, body: bytes, *, status: int = 200, error: str | None = None) -> None:
-        self.routes[url] = FakeRoute(body=body, status=status, error=error)
+    def _json_response(self, url: str, obj: dict) -> Response:
+        import json
 
-    def route_prefix(self, prefix: str, body_fn: Callable[[str], bytes], *, status: int = 200) -> None:
-        self.prefix_routes.append((prefix, lambda url: FakeRoute(body=body_fn(url), status=status)))
+        raw = json.dumps(obj).encode("utf-8")
+        return Response(
+            url=url, final_url=url, redirect_chain=[url], status=200,
+            headers={"content-type": "application/json"}, body=raw,
+            retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(raw), elapsed_ms=1,
+            requests_used=1, error=None, snapshot_ref=f"snap:{_sha(raw)[:12]}",
+        )
 
-    def _resolve(self, url: str) -> FakeRoute | None:
-        if url in self.routes:
-            return self.routes[url]
-        for prefix, fn in self.prefix_routes:
-            if url.startswith(prefix):
-                return fn(url)
-        return None
+    def _unauthorized(self, url: str) -> Response:
+        raw = b'{"status":401}'
+        return Response(
+            url=url, final_url=url, redirect_chain=[url], status=401,
+            headers={"content-type": "application/json"}, body=raw,
+            retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(raw), elapsed_ms=1,
+            requests_used=1, error=None,
+        )
+
+    def _not_found(self, url: str) -> Response:
+        return Response(
+            url=url, final_url=url, redirect_chain=[url], status=0, headers={}, body=b"",
+            retrieved_at="2026-09-24T00:00:00Z", content_sha256="", elapsed_ms=1, requests_used=1,
+            error="not_found_in_fake",
+        )
 
     def get(
         self, url: str, *, org: str | None = None, purpose: str = "", accept: str = "*/*",
@@ -89,41 +105,49 @@ class FakeNavHttpClient:
             if remaining <= 0:
                 return Response(
                     url=url, final_url=url, redirect_chain=[url], status=0, headers={}, body=b"",
-                    retrieved_at="2026-09-23T00:00:00Z", content_sha256="", elapsed_ms=0, requests_used=0,
+                    retrieved_at="2026-09-24T00:00:00Z", content_sha256="", elapsed_ms=0, requests_used=0,
                     error="budget_exhausted",
                 )
             self.budget[org] = remaining - 1
 
-        if self.required_bearer is not None and "feedentry" in url:
-            sent = (headers or {}).get("Authorization")
-            if sent != f"Bearer {self.required_bearer}":
-                raw = b'{"status":401}'
-                return Response(
-                    url=url, final_url=url, redirect_chain=[url], status=401,
-                    headers={"content-type": "application/json"}, body=raw,
-                    retrieved_at="2026-09-23T00:00:00Z", content_sha256=_sha(raw), elapsed_ms=1,
-                    requests_used=1, error=None,
-                )
+        if url == TOKEN_URL:
+            return Response(
+                url=url, final_url=url, redirect_chain=[url], status=self.token_status,
+                headers={"content-type": "text/plain"}, body=self.token_body,
+                retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(self.token_body), elapsed_ms=1,
+                requests_used=1, error=None,
+            )
 
-        route = self._resolve(url)
-        if route is None:
+        bearer = (headers or {}).get("Authorization")
+        if self.required_bearer is not None and bearer != f"Bearer {self.required_bearer}":
+            return self._unauthorized(url)
+
+        if url == FEED_URL or url.startswith(FEED_URL + "/"):
+            page_id = None if url == FEED_URL else url[len(FEED_URL) + 1:]
+            page = self.pages.get(page_id)
+            if page is None:
+                return self._not_found(url)
+            return self._json_response(url, page)
+
+        if url.startswith(FEEDENTRY_PREFIX):
+            uuid = url[len(FEEDENTRY_PREFIX):]
+            body = self.feedentries.get(uuid)
+            if body is None:
+                raw = b'{"status":404}'
+                return Response(
+                    url=url, final_url=url, redirect_chain=[url], status=404,
+                    headers={"content-type": "application/json"}, body=raw,
+                    retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(raw), elapsed_ms=1,
+                    requests_used=1, error="http_4xx",
+                )
             return Response(
-                url=url, final_url=url, redirect_chain=[url], status=0, headers={}, body=b"",
-                retrieved_at="2026-09-23T00:00:00Z", content_sha256="", elapsed_ms=1, requests_used=1,
-                error="not_found_in_fake",
+                url=url, final_url=url, redirect_chain=[url], status=200,
+                headers={"content-type": "application/json"}, body=body,
+                retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(body), elapsed_ms=1,
+                requests_used=1, error=None, snapshot_ref=f"snap:{_sha(body)[:12]}",
             )
-        if route.error:
-            return Response(
-                url=url, final_url=url, redirect_chain=[url], status=route.status, headers={}, body=b"",
-                retrieved_at="2026-09-23T00:00:00Z", content_sha256="", elapsed_ms=1, requests_used=1,
-                error=route.error,
-            )
-        return Response(
-            url=url, final_url=url, redirect_chain=[url], status=route.status,
-            headers={"content-type": route.content_type}, body=route.body,
-            retrieved_at="2026-09-23T00:00:00Z", content_sha256=_sha(route.body), elapsed_ms=5,
-            requests_used=1, error=None, snapshot_ref=f"snap:{_sha(route.body)[:12]}",
-        )
+
+        return self._not_found(url)
 
     def post_json(self, url: str, payload: Any, *, org: str | None = None, purpose: str = "", timeout: float = 20.0) -> Response:
         raise NotImplementedError
@@ -144,11 +168,12 @@ def make_ctx(
     tier: str = "T2",
     registry_facts: dict | None = None,
     bulk: dict | None = None,
+    caches: Any = None,
 ) -> CompanyContext:
     shared = {}
     if registry_facts is not None:
         shared["registry_facts"] = registry_facts
     return CompanyContext(
         org=org, run_id="test-run", now="2026-09-23T00:00:00Z", tier=tier, bulk=bulk or {},
-        registry={}, caches=None, client=client, snapshots=None, shared=shared, previous=None,
+        registry={}, caches=caches, client=client, snapshots=None, shared=shared, previous=None,
     )
