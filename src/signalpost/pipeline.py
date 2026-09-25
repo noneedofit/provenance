@@ -185,7 +185,12 @@ def run_batch(
     for connector in conn_list:
         start_prepare = getattr(connector, "start_prepare", None)
         if callable(start_prepare):
-            t = start_prepare(client, str(state_path))
+            try:
+                t = start_prepare(client, str(state_path), bulk)
+            except TypeError:
+                # A connector whose start_prepare(client, state_dir) doesn't accept bulk_rows (only
+                # NavLiveConnector does today, for its employee-ranked search-fallback selection).
+                t = start_prepare(client, str(state_path))
             if t is not None:
                 prepare_threads.append(t)
 

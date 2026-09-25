@@ -29,6 +29,7 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "nav_live"
 TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
 FEED_URL = "https://pam-stilling-feed.nav.no/api/v1/feed"
 FEEDENTRY_PREFIX = "https://pam-stilling-feed.nav.no/api/v1/feedentry/"
+SEARCH_URL = "https://arbeidsplassen.nav.no/stillinger/api/search"
 TOKEN_BODY = b"Current public token for Nav Job Vacancy Feed:\neyJhbGciOiJIUzI1NiJ9.fake.token\n"
 FAKE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.fake.token"
 
@@ -66,6 +67,9 @@ class FakeNavHttpClient:
     budget: dict[str, int] = field(default_factory=dict)
     default_remaining: int = 1000
     required_bearer: str | None = None
+    # search fallback: search_responder(url, call_number) -> (status, body_bytes); call_number starts at 1.
+    search_responder: Callable[[str, int], tuple[int, bytes]] | None = None
+    search_calls: int = 0
 
     def _json_response(self, url: str, obj: dict) -> Response:
         import json
@@ -145,6 +149,20 @@ class FakeNavHttpClient:
                 headers={"content-type": "application/json"}, body=body,
                 retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(body), elapsed_ms=1,
                 requests_used=1, error=None, snapshot_ref=f"snap:{_sha(body)[:12]}",
+            )
+
+        if url.startswith(SEARCH_URL + "?"):
+            self.search_calls += 1
+            if self.search_responder is not None:
+                status, body = self.search_responder(url, self.search_calls)
+            else:
+                status, body = 200, b'{"hits":{"total":{"value":0},"hits":[]}}'
+            error = "http_4xx" if 400 <= status < 500 else None
+            return Response(
+                url=url, final_url=url, redirect_chain=[url], status=status,
+                headers={"content-type": "application/json"}, body=body,
+                retrieved_at="2026-09-24T00:00:00Z", content_sha256=_sha(body), elapsed_ms=1,
+                requests_used=1, error=error,
             )
 
         return self._not_found(url)
