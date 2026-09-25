@@ -101,3 +101,12 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
   Agent a1f9fe0b6965c3a99 (branch nav-feed) building a 60-day active-ads index per run + incremental state.
 - Agent affbf3a3399a469c6 (Sonnet, worktree <workspace>/wt-recall2, branch recall2): website recall.
   Found HTTPS verification failing on OS trust store → certifi fix (f593747).
+
+## 25 Sep (autonomous)
+- Merged recall2 (c4e46db): gold recall 51.6% → 52.8%, 0 wrong; Viejega gold label corrected (1b18c63).
+- Fixed run-report double-counting of robots.txt fetches (762624e) — reports overstated requests
+  (2,015 reported vs ~1,700 charged). Budget enforcement itself was always correct.
+- Caches: per-thread read-only sqlite connections (6247e64).
+- nav-feed branch (agent a1f9fe0b6965c3a99): jobs failed 93→0 on gold; resume run 117→1 feed pages.
+  Investigating why only 1/4 gold job companies found. Not merged yet.
+- recall agent affbf3a3399a469c6 now on branch recall3: restore guess volume, description/profile coverage.

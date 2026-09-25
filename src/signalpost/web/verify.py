@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from .blocklist import is_franchise_chain_domain
-from .candidates import Candidate
+from .candidates import Candidate, registered_domain
 from .crawl import PARKED_MARKERS, PageFetch
 
 Status = Literal["exact", "related", "ambiguous", "rejected"]
@@ -552,16 +552,25 @@ def assess(
     # registry_declared free pass, the same way umbrella wording does.
     owner_name_mismatch = site_owner_mismatch(registry_facts.get("name") or "", site_owner_names)
 
+    # A registry-declared domain that forwards WHOLESALE to a different registered domain (dacon-
+    # inspection.no -> dacon-services.no after a rebrand/consolidation) is a genuinely weaker signal than
+    # one that stays on its own domain: the registry only vouches for the domain it named, not for
+    # wherever that domain's current owner happens to point it today (a lapsed/resold domain forwarding
+    # to an unrelated party would look identical from here). Same-domain hops (bare apex -> www, a path
+    # redirect) are unaffected -- `registered_domain()` normalizes both to the same apex.
+    redirected_off_domain = registered_domain(homepage.final_url or "") != candidate.domain
+
     # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared
     # (>=2 organisations also registered on this domain -- a sibling/parent entity, not just "any old
     # coincidence"), not a known franchise/chain domain, not naming a different legal entity as the site's
-    # owner, not reading as a parent/umbrella site with zero org-specific corroboration, and not showing
-    # content topically unrelated to the company (hijacked/re-registered domain) ---
+    # owner, not reading as a parent/umbrella site with zero org-specific corroboration, not showing
+    # content topically unrelated to the company (hijacked/re-registered domain), and not redirecting
+    # wholesale to a different registered domain ---
     registry_declared_ok = False
     shared_domain = website_org_count is not None and website_org_count >= 2
     if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
         unsupported_umbrella = umbrella_wording and not distinct_corroborating
-        if not shared_domain and not unsupported_umbrella and not owner_name_mismatch:
+        if not shared_domain and not unsupported_umbrella and not owner_name_mismatch and not redirected_off_domain:
             registry_declared_ok = True
             signals.append(Signal("registry_declared", "registry-listed hjemmeside is live and unconflicted", homepage.final_url, candidate.url))
 

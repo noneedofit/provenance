@@ -64,3 +64,25 @@ def test_sha256_file(tmp_path: Path):
     p.write_bytes(b"hello world")
     import hashlib
     assert store.sha256_file(p) == hashlib.sha256(b"hello world").hexdigest()
+
+
+def test_read_only_cache_handle_is_safe_across_threads(tmp_path):
+    import sqlite3
+    from concurrent.futures import ThreadPoolExecutor
+
+    from signalpost.caches import store
+
+    db = tmp_path / "t.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE t (k INTEGER PRIMARY KEY, v TEXT)")
+    conn.executemany("INSERT INTO t VALUES (?, ?)", [(i, f"v{i}") for i in range(500)])
+    conn.commit()
+    conn.close()
+    handle = store.connect_ro_fast(db)
+
+    def read(i):
+        return handle.execute("SELECT v FROM t WHERE k = ?", (i % 500,)).fetchone()["v"]
+
+    with ThreadPoolExecutor(16) as pool:
+        results = list(pool.map(read, range(4000)))
+    assert results == [f"v{i % 500}" for i in range(4000)]

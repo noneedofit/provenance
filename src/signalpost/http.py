@@ -11,6 +11,7 @@ import concurrent.futures
 import gzip
 import json
 import socket
+import ssl
 import threading
 import time
 import urllib.error
@@ -62,7 +63,28 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect())
+def _build_https_handler() -> urllib.request.HTTPSHandler:
+    """Verify against certifi's CA bundle rather than the interpreter's OS-default trust store.
+
+    `ssl.create_default_context()` with no `cafile` falls back to whatever `SSL_CERT_FILE` /
+    `ssl.get_default_verify_paths()` resolves to on the host -- on a dev machine with several Python
+    installs (e.g. an Anaconda env exporting `SSL_CERT_FILE`) that can point at a stale or unrelated CA
+    bundle missing a current intermediate cert, so a perfectly valid, live company site fails with
+    `CERTIFICATE_VERIFY_FAILED` and gets misclassified as `network_error` -- a real recall bug found by
+    comparing this client's failures against `curl`/a plain `certifi`-backed context on the same host
+    (freshwater.no and others: genuinely reachable, wrongly marked unreachable). `certifi` is already a
+    pinned transitive dependency (via `requests`/`trafilatura`), so this needs no pyproject.toml change.
+    """
+    try:
+        import certifi
+
+        context = ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # pragma: no cover - certifi always present in this project's lockfile
+        context = ssl.create_default_context()
+    return urllib.request.HTTPSHandler(context=context)
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect(), _build_https_handler())
 
 
 @dataclass
@@ -259,10 +281,10 @@ class BudgetedHttpClient:
 
     def _fail(
         self, url: str, redirect_chain: list[str], error: str, *, org: str | None, purpose: str,
-        status: int = 0, requests_used: int = 0, started: float | None = None,
+        status: int = 0, requests_used: int = 0, started: float | None = None, already_logged: int = 0,
     ) -> Response:
         elapsed_ms = int((time.monotonic() - started) * 1000) if started else 0
-        self._log(RequestLogEntry(purpose=purpose, org=org, url=url, status=status, requests_used=requests_used, elapsed_ms=elapsed_ms, error=error))
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=url, status=status, requests_used=requests_used - already_logged, elapsed_ms=elapsed_ms, error=error))
         return Response(
             url=url, final_url=redirect_chain[-1] if redirect_chain else url, redirect_chain=redirect_chain,
             status=status, headers={}, body=b"", retrieved_at=_utc_now(), content_sha256="",
@@ -336,7 +358,17 @@ class BudgetedHttpClient:
             return 0, {}, b"", url, "timeout"
         except urllib.error.URLError as exc:
             reason = str(getattr(exc, "reason", exc))
-            error = "dns" if "not known" in reason or "nodename" in reason else "network_error"
+            if "not known" in reason or "nodename" in reason:
+                error = "dns"
+            elif isinstance(getattr(exc, "reason", None), ssl.SSLError) or "SSL" in reason or "certificate" in reason.lower():
+                # A small, live Norwegian business site not uncommonly has a broken/expired cert, a
+                # hostname mismatch (shared/default hosting cert), or a server that rejects modern TLS on
+                # the bare domain while still serving plain HTTP fine -- genuinely reachable, real content,
+                # just misconfigured TLS. Tagging this distinctly (not the generic "network_error" bucket)
+                # lets `_request` retry once over plain http:// instead of silently dropping the candidate.
+                error = "ssl_error"
+            else:
+                error = "network_error"
             return 0, {}, b"", url, error
         except Exception as exc:  # pragma: no cover - defensive
             return 0, {}, b"", url, f"{type(exc).__name__}: {str(exc)[:120]}"
@@ -351,24 +383,27 @@ class BudgetedHttpClient:
         current_url = url
         total_requests_used = 0
         hops = 0
+        robots_logged = 0
+        tried_http_fallback = False
 
         while True:
             redirect_chain.append(current_url)
             try:
                 assert_public_url(current_url)
             except ValueError as exc:
-                return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 
             if respect_robots:
                 allowed, robots_charged = self._robots_allowed(current_url, org=org, timeout=timeout)
                 total_requests_used += robots_charged
+                robots_logged += robots_charged  # already logged by _robots_allowed under purpose "robots"
                 if robots_charged and self.budget.remaining(org) < 0:
                     pass  # informational only; charge() already enforced the hard cap
                 if not allowed:
-                    return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                    return self._fail(url, redirect_chain, "robots_disallowed", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 
             if not self.budget.charge(org, 1, purpose=purpose):
-                return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
             total_requests_used += 1
 
             parsed_host = urllib.parse.urlparse(current_url).hostname or ""
@@ -380,15 +415,39 @@ class BudgetedHttpClient:
             retryable = error == "timeout" or status == 429 or status >= 500
             if retryable:
                 if not self.budget.charge(org, 1, purpose=purpose):
-                    return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started)
+                    return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
                 total_requests_used += 1
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
             hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
 
+            # A live small-business (or occasionally larger) site can have a broken/expired cert, a
+            # hostname-mismatched shared-hosting cert, or reject modern TLS on the bare domain entirely
+            # while still serving plain HTTP fine -- genuinely reachable, real content. Downgrade to
+            # http:// once, on the FIRST hop only (never mid-redirect-chain, and never more than once per
+            # request), charged as one more budgeted request like the existing timeout/5xx retry above.
+            # Scoped to `web_homepage` only (not secondary/sitemap/robots/official-registry purposes):
+            # the homepage is the one page whose loss kills the whole candidate outright, so it is the
+            # only place the extra request is worth spending -- a secondary page's own SSL failure just
+            # means one fewer page of corroboration text, not a dead candidate, and official registry
+            # APIs essentially never hit this. Keeps the fix's request-budget footprint small (a gold-set
+            # measurement without this scoping pushed the batch over the request cap).
+            if (
+                error == "ssl_error" and not tried_http_fallback and len(redirect_chain) == 1
+                and current_url.startswith("https://") and purpose == "web_homepage"
+            ):
+                tried_http_fallback = True
+                if self.budget.charge(org, 1, purpose=purpose):
+                    total_requests_used += 1
+                    current_url = "http://" + current_url[len("https://"):]
+                    redirect_chain.append(current_url)
+                    with sem:
+                        status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
+                    hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
+
             if error:
-                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error))
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error))
                 return Response(
                     url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=headers,
                     body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
@@ -404,7 +463,7 @@ class BudgetedHttpClient:
                     continue
                 # No location, or redirect budget exhausted: treat as terminal (report the redirect itself).
                 error_final = None if not location else "too_many_redirects"
-                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+                self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error_final))
                 return Response(
                     url=url, final_url=current_url, redirect_chain=redirect_chain, status=status, headers=lowered_headers,
                     body=b"", retrieved_at=_utc_now(), content_sha256="", elapsed_ms=int((time.monotonic() - started) * 1000),
@@ -430,7 +489,7 @@ class BudgetedHttpClient:
             )
 
         elapsed_ms = int((time.monotonic() - started) * 1000)
-        self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used, elapsed_ms=hop_elapsed_ms, error=error_final))
+        self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error_final))
         return Response(
             url=url, final_url=final_hop_url or current_url, redirect_chain=redirect_chain, status=status,
             headers=lowered_headers, body=truncated_body, retrieved_at=retrieved_at, content_sha256=content_sha256,

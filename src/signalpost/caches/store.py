@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import sqlite3
+import threading
 import tarfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -56,15 +57,43 @@ def connect(path: str | Path, *, readonly: bool = False) -> sqlite3.Connection:
     return conn
 
 
-def connect_ro_fast(path: str | Path) -> sqlite3.Connection | None:
+class ReadOnlyPerThread:
+    """A read-only sqlite handle that gives each worker thread its own connection.
+
+    One sqlite3.Connection shared by the pipeline's worker threads raises InterfaceError / returns
+    garbled rows under concurrent queries; read-only files are safe to open once per thread.
+    """
+
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        self._local = threading.local()
+
+    def _conn(self) -> sqlite3.Connection:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = connect(self._path, readonly=True)
+            self._local.conn = conn
+        return conn
+
+    def execute(self, sql: str, params: Any = ()) -> sqlite3.Cursor:
+        return self._conn().execute(sql, params)
+
+    def close(self) -> None:
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
+
+
+def connect_ro_fast(path: str | Path) -> "ReadOnlyPerThread | None":
     """Best-effort read-only open for `Caches.load`; returns None instead of raising so a missing or
     corrupt cache file degrades to `None` on the containing attribute (never a hard failure).
     """
     try:
-        conn = connect(path, readonly=True)
+        handle = ReadOnlyPerThread(path)
         # Cheap sanity probe: fail fast on a corrupt/incompatible file rather than at first query.
-        conn.execute("SELECT 1").fetchone()
-        return conn
+        handle.execute("SELECT 1").fetchone()
+        return handle
     except Exception:
         return None
 
