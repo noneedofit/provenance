@@ -50,10 +50,10 @@ MAX_NAME_GUESSES = 6
 # T0 (shell-classified) companies get a much smaller name-guess cap rather than none at all -- see the
 # comment at the T0 branch in generate_candidates(). Small enough that it's a negligible fraction of T0's
 # ~5-request tier allowance even before the DNS prefilter thins it further.
-# Kept small (not 0): a gold-set A/B measurement showed name guesses generally add negligible net exact
-# recall for their added request cost (nearly all of this branch's own gold hits already reach `exact`
-# through registry/wikidata/NAV signals, not a bare name guess), so this stays conservative -- enough to
-# rescue an occasional under-described-in-bulk small business, not a broad budget spend.
+# Kept small (not 0): a gold-set A/B measurement (with the corrected, non-double-counted request
+# total) showed raising this cap from 6->9 / 1->2 added ZERO further gold exact matches
+# (correct_exact held at 43) while costing +53 requests (1665->1718) -- reverted; not worth the
+# budget against the incoming NAV-jobs-feed headroom requirement (target <=1750/gold131).
 T0_MAX_NAME_GUESSES = 1
 
 
