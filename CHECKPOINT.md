@@ -110,3 +110,8 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
 - nav-feed branch (agent a1f9fe0b6965c3a99): jobs failed 93→0 on gold; resume run 117→1 feed pages.
   Investigating why only 1/4 gold job companies found. Not merged yet.
 - recall agent affbf3a3399a469c6 now on branch recall3: restore guess volume, description/profile coverage.
+- Merged recall3 (b09729e): gold recall 53.3%, 0 wrong, descriptions 44/44 on verified sites, 1,665 req.
+- Merged nav-feed (ff09483): jobs failed 93→0; gold131 1,788 req / 9 min; daily100 785 req fresh, 669 resume.
+  Import-sourced NAV ads (IMPORTAPI) are never re-touched → invisible to any feed window.
+- a1f9fe0b6965c3a99 on nav-hybrid: ≤15 spaced searches/run for staffed companies without a feed match,
+  rotated via state-dir.
