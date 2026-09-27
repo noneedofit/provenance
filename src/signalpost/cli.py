@@ -95,8 +95,10 @@ def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, in
 
 def cmd_run(args: argparse.Namespace) -> int:
     orgs = _read_organisation_inputs(args.organisations)
+    bulk_downloaded = not args.bulk and not any(Path(p).exists() for p in DEFAULT_BULK_PATHS)
     bulk_path = _resolve_bulk_path(args.bulk)
     caches_dir, setup_requests = _ensure_caches(args.caches, bulk_path)
+    setup_requests += 1 if bulk_downloaded else 0
     max_requests = args.max_requests
     if setup_requests and max_requests:
         max_requests = max(0, max_requests - setup_requests)
@@ -105,6 +107,13 @@ def cmd_run(args: argparse.Namespace) -> int:
         bulk_path=bulk_path, caches_dir=caches_dir, max_requests=max_requests,
         deadline_s=args.deadline_seconds, workers=args.workers,
     )
+    # Setup requests (bulk download, Wikidata query) happen before the batch budget starts; record them
+    # so the report's grand total covers every outbound request this command made.
+    report["setup_requests"] = setup_requests
+    report["total_requests_including_setup"] = int(report.get("total_requests", 0)) + setup_requests
+    report_path = Path(args.output_dir) / "run-report.json"
+    if report_path.exists():
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
 

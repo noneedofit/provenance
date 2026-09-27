@@ -51,7 +51,15 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 pass `--bulk <path>` explicitly); if neither is found it downloads the file itself (counted as one
 request). No API key is required — the registry API is keyless and public.
 
-Optional, but recommended for a full run: pre-built offline **caches** (shared/service-provider email
+**Caches are built automatically.** When `--caches` is omitted, `signalpost run` uses `./cache` and, if
+it is empty, builds the two identity-critical parts itself before the batch starts: the shared-domain
+table from the bulk file (0 requests, a few seconds) and the Wikidata table (1 SPARQL request, with a
+bundled CC0 snapshot as fallback). A clean clone therefore needs only `uv sync` and the run command below;
+the first run also downloads the bulk file and a 60-day NAV job-feed window (~115 requests, reused from
+`--state-dir` by later runs). Setup requests are reported separately in `run-report.json`
+(`setup_requests`, `total_requests_including_setup`).
+
+Optional: the fuller pre-built offline **caches** (shared/service-provider email
 and website domains, subunit trade-name aliases, Wikidata company profiles, and a NAV job-feed index).
 These are built once, outside the timed 45-minute run, and reused across many batches:
 
@@ -89,8 +97,7 @@ per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), o
 (one number per line). Every input must be a 9-digit Norwegian organisation number with no duplicates.
 
 `--bulk` is optional (see "Data prerequisites" above for the default-path/auto-download behaviour).
-`--caches` is optional; when omitted, the run still completes, with weaker recall on website/jobs
-discovery. `--max-requests` defaults to 1,900 (leaving headroom under the competition's 2,000-request
+`--caches` is optional; when omitted, `./cache` is used and built automatically (see above). `--max-requests` defaults to 1,900 (leaving headroom under the competition's 2,000-request
 cap), `--deadline-seconds` to 2,400 (40 minutes, leaving headroom under the 45-minute cap; the run still
 emits one envelope per input past that point, with unfinished families marked `failed` reason
 `deadline`), `--workers` to 12 (thread pool size).
