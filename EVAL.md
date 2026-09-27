@@ -110,7 +110,8 @@ Final submission set (1,000 companies, 10 batches of 100, frozen commit `7ea858b
 valid; 681–1,493 requests and 2–6 minutes per batch. Available per family: identity 1000, leadership 998,
 locations 999, financials 997, financial_history 999, website 212, description 207, profiles 139,
 activity 62, jobs 5. Every published website was re-verified: 171 automatically (org number re-found on the
-evidence page, or live registry website), the rest by hand.
+evidence page, or live registry website) and 41 by hand — 211 correct, 0 wrong, 0 related, 1 unclear
+(a thin storefront whose brand name matches the legal name).
 
 Refresh on real data: batch 1 of the 24 Sep profiles rerun on 27 Sep against its stored state reported
 sensible typed changes (new filings, a moved business address, a newly verified website and profile, a
