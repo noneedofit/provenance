@@ -115,3 +115,8 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
   Import-sourced NAV ads (IMPORTAPI) are never re-touched → invisible to any feed window.
 - a1f9fe0b6965c3a99 on nav-hybrid: ≤15 spaced searches/run for staffed companies without a feed match,
   rotated via state-dir.
+- 27 Sep: real 3-day refresh test (b00 vs 24 Sep state) found 3 refresh bugs, all fixed:
+  pipeline discarded apply_refresh's result (afc78ca); checked_at in values and roles withdrawn in both
+  runs caused false changes (9830180). Now: rerun vs 24 Sep = sensible real changes; immediate rerun = 0.
+- Merged nav-hybrid (fd047ad): ≤15 spaced searches/run, rotated.
+- Final submission profiles: generated from frozen worktree at the commit below.
