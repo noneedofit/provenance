@@ -45,7 +45,7 @@ def _resolve_bulk_path(explicit: str | None) -> str:
     Path("./data").mkdir(parents=True, exist_ok=True)
     dest = Path("./data/brreg-enheter.csv")
     print(f"No bulk file found; downloading {BULK_DOWNLOAD_URL} -> {dest} (counts as 1 request)", file=sys.stderr)
-    request = urllib.request.Request(BULK_DOWNLOAD_URL, headers={"User-Agent": "SignalpostResearchAgent/0.1 (+contact in repo README)"})
+    request = urllib.request.Request(BULK_DOWNLOAD_URL, headers={"User-Agent": "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"})
     with urllib.request.urlopen(request, timeout=120) as resp, open(dest, "wb") as f:
         f.write(resp.read())
     return str(dest)

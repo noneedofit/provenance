@@ -1,4 +1,7 @@
-# Signalpost agent
+# Provenance
+
+Every fact about a Norwegian company, with its source.
+
 
 A keyless Norwegian company-research agent for the Builderr "Signalpost" competition. Given a batch of
 Norwegian organisation numbers, it produces one evidence-backed JSON envelope per company: legal

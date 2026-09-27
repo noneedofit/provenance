@@ -49,7 +49,7 @@ except Exception:  # pragma: no cover - fallback if the starter kit package is e
                 raise ValueError("Private, loopback, link-local, multicast, and reserved addresses are blocked")
 
 
-USER_AGENT = "SignalpostResearchAgent/0.1 (+contact in repo README)"
+USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"
 DEFAULT_HOST_CONCURRENCY = 2
 HOST_CONCURRENCY_OVERRIDES = {
     "data.brreg.no": 6,
