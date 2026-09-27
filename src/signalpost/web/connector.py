@@ -50,6 +50,33 @@ def _website_org_count(ctx: CompanyContext, domain: str) -> int | None:
     return max(counts) if counts else None
 
 
+def _previous_site_domain(ctx: Any) -> str | None:
+    previous = getattr(ctx, "previous", None) or {}
+    envelope = previous.get("last_envelope") or {}
+    for claim in envelope.get("claims", []):
+        if claim.get("field") == "official_website" and claim.get("status") == "current" and claim.get("relationship") in (None, "exact"):
+            value = claim.get("value") or {}
+            if isinstance(value, dict) and value.get("domain"):
+                return str(value["domain"]).lower()
+    return None
+
+
+def _previous_site_unreachable(ctx: Any, attempts: list[dict]) -> bool:
+    domain = _previous_site_domain(ctx)
+    if not domain:
+        return False
+    return any(
+        a.get("domain", "").lower() == domain and a.get("status") in ("unreachable", "error") and _transient(a.get("reason"))
+        for a in attempts
+    )
+
+
+def _transient(reason: Any) -> bool:
+    """Connection-level or server-side failures; a 404 or DNS failure means the site may really be gone."""
+    text = str(reason or "")
+    return text in ("ssl_error", "network_error", "timeout", "http_429") or text.startswith("http_5") or text.startswith("URLError")
+
+
 def _redirects_into_other_site(cand: Any, pages: list[PageFetch]) -> bool:
     """The candidate redirects to a subpage of a different domain (albatross-as.no ->
     toma.no/tjenester/camps): that is someone else's site, usually a parent's, so only a decisive
@@ -193,6 +220,13 @@ class WebConnector:
             self._publish_exact(ctx, result, exact_candidate, exact_verdict, exact_pages)
         elif best_related is not None:
             self._publish_related(ctx, result, *best_related)
+        elif _previous_site_unreachable(ctx, attempts):
+            # The site we verified last run could not be fetched this run (TLS/connection error). That is
+            # "not checked", not "gone": mark these families failed so refresh keeps the stored facts.
+            result.shared["website_unchecked"] = True
+            reason = "previously verified site unreachable this run; previous profile kept"
+            for fam in ("website", "profiles", "description"):
+                result.families[fam] = FamilyState(family=fam, availability="failed", reason=reason, sources_checked=[a["domain"] for a in attempts])
         else:
             reason = f"checked {len(attempts)} candidates: none verified" if attempts else "no candidates"
             result.families["website"] = FamilyState(family="website", availability="not_available", reason=reason, sources_checked=[a["domain"] for a in attempts])

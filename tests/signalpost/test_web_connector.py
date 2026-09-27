@@ -171,3 +171,32 @@ def test_redirect_into_a_subpage_of_another_domain_needs_a_decisive_signal():
     assert _redirects_into_other_site(cand, [page("https://www.toma.no/tjenester/camps/")])
     assert not _redirects_into_other_site(cand, [page("https://newname.no/")])
     assert not _redirects_into_other_site(cand, [page("https://www.albatross-as.no/hjem")])
+
+
+def _previous_with_site(domain: str) -> dict:
+    return {"last_envelope": {"claims": [{
+        "field": "official_website", "status": "current", "relationship": "exact",
+        "value": {"url": f"https://{domain}/", "domain": domain},
+    }]}}
+
+
+def test_previously_verified_site_unreachable_is_failed_not_gone():
+    from web_fakes import FakePage
+
+    client = FakeHttpClient(pages={"https://example.no/": FakePage("", status=503)})
+    ctx = make_ctx(OUR_ORG, tier="T2", client=client,
+                   registry_facts={"name": "EXAMPLE AS", "website": "example.no", "street": "", "postcode": "", "city": ""})
+    ctx.previous = _previous_with_site("example.no")
+    result = WebConnector().run(ctx)
+    for fam in ("website", "profiles", "description"):
+        assert result.families[fam].availability == "failed"
+    assert result.shared.get("website_unchecked") is True
+
+
+def test_previously_verified_site_now_404_is_reported_not_available():
+    client = FakeHttpClient(pages={})  # every URL 404s: the site may really be gone
+    ctx = make_ctx(OUR_ORG, tier="T2", client=client,
+                   registry_facts={"name": "EXAMPLE AS", "website": "example.no", "street": "", "postcode": "", "city": ""})
+    ctx.previous = _previous_with_site("example.no")
+    result = WebConnector().run(ctx)
+    assert result.families["website"].availability == "not_available"

@@ -138,7 +138,12 @@ class ActivityConnector:
             families["jobs"] = FamilyState(family="jobs", availability="not_applicable", reason="no NAV cache supplied to this run", sources_checked=jobs_sources, claim_count=0)
 
         # ---- activity: site feeds/news + YouTube (needs HTTP + a verified site) ----
-        if not has_verified_site:
+        if not has_verified_site and (ctx.shared or {}).get("website_unchecked"):
+            families["activity"] = FamilyState(
+                family="activity", availability="failed",
+                reason="previously verified site unreachable this run; previous profile kept", sources_checked=[],
+            )
+        elif not has_verified_site:
             families["activity"] = FamilyState(
                 family="activity", availability="not_applicable",
                 reason="no verified company website to derive activity from", sources_checked=[],
