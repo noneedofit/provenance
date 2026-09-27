@@ -100,3 +100,104 @@ def test_collect_records_fetch_errors():
     assert result["checked"] is True
     assert result["claims"] == []
     assert result["errors"][0]["url"] == "https://eksempel.no/missing-rss"
+
+
+def test_parse_wp_rest_posts():
+    body = (
+        '[{"title": {"rendered": "Ny kontrakt signert"}, "link": "https://eksempel.no/2026/ny-kontrakt",'
+        ' "date": "2026-02-10T09:00:00"},'
+        ' {"title": {"rendered": "Uten dato"}, "link": "https://eksempel.no/uten-dato", "date": null}]'
+    )
+    items = feeds.parse_wp_rest_posts(body)
+    assert len(items) == 1
+    assert items[0]["title"] == "Ny kontrakt signert"
+    assert items[0]["published"] == "2026-02-10"
+
+
+def test_parse_wp_rest_posts_ignores_malformed_json():
+    assert feeds.parse_wp_rest_posts("not json") == []
+    assert feeds.parse_wp_rest_posts('{"not": "a list"}') == []
+
+
+def test_collect_falls_back_to_wordpress_feed_when_w3_found_nothing():
+    # No feed_urls/news_urls from W3 (the priority-page picker never fetched a news page), but the
+    # site is a WordPress site with a working /feed/.
+    client = FakeHttpClient()
+    client.route("https://eksempel.no/feed/", load_fixture("generic_news.rss.xml"))
+    ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}})
+
+    result = feeds.collect(ctx)
+
+    assert result["checked"] is True
+    assert len(result["claims"]) == 3
+    assert {"url": "https://eksempel.no/feed/", "org": "999888777", "purpose": "site_feed"} in [
+        {"url": c["url"], "org": c["org"], "purpose": c["purpose"]} for c in client.calls
+    ]
+
+
+def test_collect_discovers_news_link_from_already_fetched_page():
+    # W3 fetched the homepage (for identity verification) and found a "/blogg" link on it, but never
+    # fetched /blogg itself (crowded out by kontakt/om-oss in the tier's secondary-page budget). The
+    # link-scan step runs BEFORE the WordPress guess, so /feed/ should never even be called here.
+    client = FakeHttpClient()
+    client.route("https://eksempel.no/blogg", load_fixture("news_article.html"))
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "site_pages": [{"url": "https://eksempel.no/", "links": ["https://eksempel.no/blogg", "https://eksempel.no/kontakt"]}],
+    })
+
+    result = feeds.collect(ctx)
+
+    assert result["checked"] is True
+    assert len(result["claims"]) == 1
+    assert result["claims"][0].value["url"] == "https://eksempel.no/blogg"
+    called_urls = {c["url"] for c in client.calls}
+    assert "https://eksempel.no/feed/" not in called_urls
+
+
+def test_collect_falls_back_to_wordpress_feed_when_link_scan_finds_nothing():
+    # No feed_urls/news_urls and no matching link on any already-fetched page -> falls through to the
+    # WordPress /feed/ guess as the last resort.
+    client = FakeHttpClient()
+    client.route("https://eksempel.no/feed/", load_fixture("generic_news.rss.xml"))
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "site_pages": [{"url": "https://eksempel.no/", "links": ["https://eksempel.no/kontakt"]}],
+    })
+
+    result = feeds.collect(ctx)
+
+    assert result["checked"] is True
+    assert len(result["claims"]) == 3
+
+
+def test_collect_extra_discovery_never_runs_when_free_sources_already_found_something():
+    # Free feed_urls already produced claims -> no WordPress/link-scan probes should fire at all.
+    client = FakeHttpClient()
+    client.route("https://eksempel.no/rss", load_fixture("generic_news.rss.xml"))
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "feed_urls": ["https://eksempel.no/rss"],
+    })
+
+    result = feeds.collect(ctx)
+
+    assert len(result["claims"]) == 3
+    called_urls = {c["url"] for c in client.calls}
+    assert "https://eksempel.no/feed/" not in called_urls
+
+
+def test_collect_extra_discovery_spends_at_most_the_budget():
+    client = FakeHttpClient()  # every probe 404s / not routed
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "site_pages": [{"url": "https://eksempel.no/", "links": [
+            "https://eksempel.no/nyheter", "https://eksempel.no/aktuelt", "https://eksempel.no/presse",
+        ]}],
+    })
+
+    result = feeds.collect(ctx)
+
+    assert result["claims"] == []
+    # 3 link candidates on offer, but the budget caps spend at EXTRA_DISCOVERY_BUDGET requests.
+    assert len(client.calls) <= feeds.EXTRA_DISCOVERY_BUDGET

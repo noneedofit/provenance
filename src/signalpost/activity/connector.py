@@ -169,11 +169,19 @@ class ActivityConnector:
                 activity_sources.append("youtube_rss")
 
             new_count = len(claims) - before
+            any_errors = bool([e for e in (feeds_result.get("errors") or []) + (yt_result.get("errors") or [])])
             if new_count > 0:
                 families["activity"] = FamilyState(family="activity", availability="available", sources_checked=activity_sources, claim_count=new_count)
             elif activity_sources:
                 families["activity"] = FamilyState(family="activity", availability="not_available", reason="checked: none found", sources_checked=activity_sources, claim_count=0)
-            else:
+            elif any_errors:
+                # Something was attempted (feed_urls/news_urls existed, or the WordPress feed/REST
+                # discovery probe was tried) and it genuinely errored -- a real "failed", not an absence.
                 families["activity"] = FamilyState(family="activity", availability="failed", reason="all activity sources failed or were unreachable", sources_checked=activity_sources, claim_count=0)
+            else:
+                # Nothing was even attempted: no feed_urls/news_urls from W3, and feeds.collect()'s own
+                # discovery (WordPress /feed/, REST API, linked news/blog pages) found no candidate to
+                # try either. An honest absence ("checked, nothing to check"), not a failure.
+                families["activity"] = FamilyState(family="activity", availability="not_available", reason="no site-derived activity source discoverable (no feed, no news/blog page, no linked video channel)", sources_checked=activity_sources, claim_count=0)
 
         return ConnectorResult(claims=claims, evidence=evidence, families=families, errors=errors, shared={})
