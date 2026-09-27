@@ -406,6 +406,8 @@ def apply_refresh(envelope: Envelope, state_dir: Path, *, now: str | None = None
 
     # 3) Compute this run's Change events against the (now carry-forward-merged) working envelope.
     working.changes = diff_envelopes(prev, working)
+    earlier_runs = [r for r in profile.get("run_ids", []) if r != working.run.run_id]
+    working.run.previous_run_id = earlier_runs[-1] if earlier_runs else prev.run.run_id
 
     change_log = list(profile.get("change_log", []))
     change_log.extend(change.model_dump(mode="json") for change in working.changes)

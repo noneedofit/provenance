@@ -76,3 +76,53 @@ def test_run_batch_fills_missing_families_as_not_run(tmp_path: Path):
     for fam in FAMILIES:
         assert env["families"][fam]["availability"] == "failed"
         assert env["families"][fam]["reason"] == "not_run"
+
+
+class _EmployeesConnector:
+    """Publishes one employee-count claim whose value the test can change between runs."""
+
+    name = "employees"
+    families = ("identity",)
+
+    def __init__(self, count: int):
+        self.count = count
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        org = ctx.org
+        eid = evidence_id("https://example.test/entity", f"sha{self.count}", "$.antallAnsatte")
+        claim = Claim(
+            claim_id=claim_key(org, "identity", "employees", None), organisation_number=org, family="identity",
+            field="employees", value=self.count, availability="available", identity_basis="registry_record",
+            evidence_ids=[eid],
+        )
+        ev = Evidence(
+            evidence_id=eid, source_url="https://example.test/entity", source_class="official_registry",
+            retrieved_at=ctx.now, extraction_method="stub_v1", span="$.antallAnsatte",
+        )
+        return ConnectorResult(
+            claims=[claim], evidence=[ev],
+            families={"identity": FamilyState(family="identity", availability="available", claim_count=1)},
+        )
+
+
+def _envelopes(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def test_rerun_publishes_refresh_changes_and_links_previous_run(tmp_path: Path):
+    # Regression: the pipeline used to discard apply_refresh's merged envelope, so published output
+    # never carried changes or first-observed dates even though the stored profile was updated.
+    org = "555555555"
+    common = dict(state_dir=str(tmp_path / "state"), bulk_rows={org: {}}, workers=1)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "r1"), run_id="r1", connectors=[_EmployeesConnector(10)], **common)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "r2"), run_id="r2", connectors=[_EmployeesConnector(12)], **common)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "r3"), run_id="r3", connectors=[_EmployeesConnector(12)], **common)
+
+    first, second, third = (_envelopes(tmp_path / r / "envelopes.jsonl")[0] for r in ("r1", "r2", "r3"))
+    assert first["changes"] == [] and first["run"]["previous_run_id"] is None
+    assert second["run"]["previous_run_id"] == "r1"
+    assert any(c["field"] == "employees" for c in second["changes"])
+    claim = next(c for c in second["claims"] if c["field"] == "employees" and c["status"] == "current")
+    assert claim["first_observed_at"] and claim["last_observed_at"]
+    # Unchanged rerun: no false changes.
+    assert third["changes"] == [] and third["run"]["previous_run_id"] == "r2"

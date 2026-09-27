@@ -260,18 +260,11 @@ def run_batch(
             )
 
             try:
-                from . import synthesis  # type: ignore
-
-                envelope.summary = synthesis.build_summary(envelope)
-            except ImportError:
-                pass
-            except Exception as exc:
-                errors.append({"stage": "synthesis", "error": f"{type(exc).__name__}: {exc}"})
-
-            try:
                 from . import refresh  # type: ignore
 
-                refresh.apply_refresh(envelope, str(state_path))
+                # apply_refresh returns the merged envelope (changes, observed dates, carry-forward);
+                # the input is left untouched, so the result must replace it.
+                envelope = refresh.apply_refresh(envelope, str(state_path))
             except ImportError:
                 for claim in envelope.claims:
                     claim.first_observed_at = claim.first_observed_at or now
@@ -281,6 +274,16 @@ def run_batch(
                 for claim in envelope.claims:
                     claim.first_observed_at = claim.first_observed_at or now
                     claim.last_observed_at = now
+
+            # Summarise after the refresh merge so change sentences and carried-forward facts appear.
+            try:
+                from . import synthesis  # type: ignore
+
+                envelope.summary = synthesis.build_summary(envelope)
+            except ImportError:
+                pass
+            except Exception as exc:
+                errors.append({"stage": "synthesis", "error": f"{type(exc).__name__}: {exc}"})
 
             envelope.errors = errors
             envelope.sections = {
