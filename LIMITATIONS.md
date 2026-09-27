@@ -20,18 +20,21 @@ data," for the large majority of companies. This is a genuine coverage gap, not 
 reverse direction (which orgs list *this* one as their `overordnetEnhet`) would need a reverse index over
 the full subunit bulk file, which the current caches don't build.
 
-## NAV search rate-limiting and circuit breaker
+## Job postings: NAV feed window and capped search
 
-`arbeidsplassen.nav.no`'s search endpoint (CDN/WAF-fronted) trips a 429 ban after a burst of roughly 6–8
-requests from one IP, observed live to take several minutes to clear. In a full 15-company batch run
-during development, this made **~85–90% of search attempts fail with 429** despite serialized throttling
-(`nav_live.py`'s `_throttle_search`, minimum 3s spacing) and a bounded retry-with-backoff — largely
-because the same sandbox IP had already been driving repeated manual probes against the endpoint earlier
-in the session. A clean IP with no prior probing measured a 100% search success rate in the same testing.
-When every search attempt for a company errors, that company's `jobs` family correctly reports `failed`
-(reason `nav_live_search: http_4xx`), never a false `not_available` — but this means a run from a "hot"
-IP can under-report jobs coverage through no fault of the identity/candidate logic. See
-`docs/activity.md`'s live-measurement section for the full numbers.
+Jobs come from NAV's public `pam-stilling-feed`: each run walks the feed from about 60 days back
+(`If-Modified-Since` jumps straight to that date), keeps currently ACTIVE ads, matches them to the batch by
+employer name, and publishes a posting only after `/feedentry/{uuid}` confirms our organisation number (or
+one of our subunits). The index and feed position persist in `--state-dir`, so a daily refresh reads only
+the new pages (117 pages on a fresh run, 1 on the next). Two limits remain:
+
+- **Import-sourced ads are invisible to the feed window.** Ads imported from other job boards are never
+  touched after creation, so their only feed event can be months old; even a 200-day walk did not find the
+  three such companies in our gold set.
+- **Search is capped.** `arbeidsplassen.nav.no`'s search endpoint rate-limits an IP after roughly 30
+  searches, so the agent searches at most 15 staffed companies per run (≥5 employees, no feed match, largest
+  first, rotated across runs via `--state-dir`), stopping after two consecutive 429s. Companies not
+  searched keep the feed result (`not_available`), never `failed`.
 
 ## Website discovery: recall trade-off for precision
 
@@ -41,7 +44,7 @@ company websites are sometimes left `not_available` or `ambiguous` rather than p
 evidence found doesn't clear that bar — e.g. a registry-declared site on a domain shared by exactly 2
 organisations with no org-number-bearing page crawled (see the gold-set QA misses documented in
 `docs/web.md`). Company-website company recall against the 131-company gold set:
-51.1% (24 Sep 2026; see EVAL.md). No wrong-company website was published against gold at last measurement
+53.3% (25 Sep 2026; see EVAL.md). No wrong-company website was published against gold at last measurement
 (`wrong_company_publications: 0`).
 
 ## JS-only sites are not rendered
@@ -65,7 +68,7 @@ restriction to respect, not a bug to route around; see `SOURCES.md`.
 
 ## Financial history limited to the list of filed years
 
-`financial_history` (T2/T3 only) publishes the list of years the company has filed accounts for
+`financial_history` publishes the list of years the company has filed accounts for
 (`regnskap/aarsregnskap/kopi/{org}/aar`), not the actual figures for each of those years — only the
 **latest** filed year's metrics (revenue, operating result, annual result, total assets, equity, total
 debt) are extracted, from the separate `regnskapsregisteret/regnskap/{org}` endpoint. A full multi-year

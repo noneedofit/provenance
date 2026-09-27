@@ -95,18 +95,27 @@ Produces `eval-report.json` plus a companion `eval-report.md` readable table. `s
 
 ### Latest scored run
 
-Measured 24 Sep 2026 on the 131-company gold set (commit `14406cf`, full live run, 1,734 requests, 531 s):
+Gold set (131 companies), main after the 25 Sep recall and NAV-feed merges:
 
 | Metric | Value |
 |---|---|
-| Website publications (exact) | 41 |
 | Wrong-company website publications | **0** |
-| Website precision vs gold | 98.2% → 100% after correcting one gold label (HONG KONG PALACE AS: `sushime.no` shows its org number; the labeller had missed it) |
-| Website company recall | 51.1% (46 of 90 companies whose gold site is exact or related) |
-| Registry families (identity, financials, leadership, locations) | 100% of companies |
+| Website precision vs gold | 100% (two gold labels corrected after independent re-checks: HONG KONG PALACE AS → sushime.no, VIEJEGA AS → viejega.no) |
+| Website company recall | 53.3% |
+| Description on companies with a verified site | 44 / 44 |
+| Jobs `failed` | 0 (was 93 / 131 with per-company search) |
+| Requests / runtime | ~1,800 / ~9 min (131 companies) |
 
-Daily-like random batch of 100 (seed 20260924): 472 requests, 222 s, envelope validation passed; an immediate
-rerun against the same state produced 0 changes and no duplicate claims (proxy refresh component 20/20).
+Final submission set (1,000 companies, 10 batches of 100, frozen commit `7ea858b`, 27 Sep 2026): every batch
+valid; 681–1,493 requests and 2–6 minutes per batch. Available per family: identity 1000, leadership 998,
+locations 999, financials 997, financial_history 999, website 212, description 207, profiles 139,
+activity 62, jobs 5. Every published website was re-verified: 171 automatically (org number re-found on the
+evidence page, or live registry website), the rest by hand.
+
+Refresh on real data: batch 1 of the 24 Sep profiles rerun on 27 Sep against its stored state reported
+sensible typed changes (new filings, a moved business address, a newly verified website and profile, a
+withdrawn subsidiary site) with `previous_run_id` set on every envelope; an immediate second rerun reported
+**0 changes**.
 
 ## Promotion rule (`eval/report.py`)
 

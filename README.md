@@ -19,7 +19,7 @@ Built on the Builderr Signalpost starter kit.
   see `IDENTITY_RESOLUTION.md`.
 - Extracts a description, social profile links and contact details only from a site that passed
   verification.
-- Reads NAV job ads (cache and/or live search), ATS feeds, site RSS/news, and YouTube channel RSS for
+- Reads NAV job ads (a 60-day `pam-stilling-feed` window kept incrementally in `--state-dir`, plus a small capped search), ATS feeds, site RSS/news, and YouTube channel RSS for
   channels linked from the verified site.
 - Diffs every run against the previous stored profile for the same organisation, emitting `Change`
   events only for genuine differences and carrying forward claims whose source could not be re-checked
