@@ -1,0 +1,1295 @@
+{
+  "schema_version": "signalpost-envelope/1",
+  "organisation_number": "931848674",
+  "legal_name": "K. VOLDEN AS",
+  "run": {
+    "run_id": "smoke-100",
+    "previous_run_id": null,
+    "started_at": "2026-09-27T22:31:40Z",
+    "completed_at": "2026-09-27T22:37:27Z",
+    "terminal_status": "completed",
+    "agent_version": "0.1.0",
+    "tier": "T2"
+  },
+  "sections": {
+    "legal_identity_and_brand": [
+      "c_2dcd040be89aa70d7f8d",
+      "c_1d47ee81295751903894",
+      "c_555edbdbc986b677a179",
+      "c_8db40c1c06a30e171bee",
+      "c_91d476c1ce170e2d52bc",
+      "c_ff0068f3dd46285b7521",
+      "c_07823060fc58031f4411",
+      "c_0c5d27ebce3e6e407e94",
+      "c_d57601223558cf57d3c4"
+    ],
+    "annual_accounts": [
+      "c_bc3da575314304352a4f",
+      "c_e692d758519806ae388f",
+      "c_321a99c23ee8b7881d2b",
+      "c_9046d1583c9cd5b2a0af",
+      "c_cb6d1c73268ec92d0428",
+      "c_500bdf450a8ff8c3e2ad",
+      "c_d1b8c1819af993f36cc3",
+      "c_18ff2646f69267446b92",
+      "c_ac0f4cbc30e82f5bfe73"
+    ],
+    "leadership_and_workplaces": [
+      "c_eb8ac04e3070a638bf5b",
+      "c_93d2315f6e251a9d1d90",
+      "c_84ef64e0aeab79e5c82c",
+      "c_8d1da02f6e6af90f03e2",
+      "c_20eac9a4ab68e0f94f1a",
+      "c_4f0c32bb9df5779e7b47",
+      "c_a1c749f25670d9b92c57",
+      "c_c4e15afbfac50894a9bb"
+    ],
+    "website_and_profiles": [],
+    "hiring_and_activity": [
+      "c_77e622cd91e7a781fe47"
+    ],
+    "evidence_and_availability": [],
+    "refresh_and_changes": []
+  },
+  "families": {
+    "identity": {
+      "family": "identity",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "claim_count": 9
+    },
+    "leadership": {
+      "family": "leadership",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "claim_count": 6
+    },
+    "locations": {
+      "family": "locations",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=931848674&size=100"
+      ],
+      "claim_count": 2
+    },
+    "financials": {
+      "family": "financials",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "claim_count": 8
+    },
+    "financial_history": {
+      "family": "financial_history",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/931848674/aar"
+      ],
+      "claim_count": 1
+    },
+    "group": {
+      "family": "group",
+      "availability": "not_available",
+      "reason": "no parent relationship in registry data",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "website": {
+      "family": "website",
+      "availability": "not_available",
+      "reason": "checked 2 candidates: none verified",
+      "sources_checked": [
+        "kvolden.no",
+        "kvolden.com"
+      ],
+      "claim_count": 0
+    },
+    "profiles": {
+      "family": "profiles",
+      "availability": "not_available",
+      "reason": "no verified site to link profiles from",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "description": {
+      "family": "description",
+      "availability": "not_available",
+      "reason": "no verified site to extract description from",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "reviews": {
+      "family": "reviews",
+      "availability": "not_available",
+      "reason": "no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "jobs": {
+      "family": "jobs",
+      "availability": "not_available",
+      "reason": "checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified; search fallback skipped (circuit breaker open after repeated rate-limiting)",
+      "sources_checked": [
+        "nav_arbeidsplassen_live"
+      ],
+      "claim_count": 0
+    },
+    "activity": {
+      "family": "activity",
+      "availability": "not_applicable",
+      "reason": "no verified company website to derive activity from",
+      "sources_checked": [],
+      "claim_count": 0
+    }
+  },
+  "claims": [
+    {
+      "claim_id": "c_2dcd040be89aa70d7f8d",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "legal_name",
+      "value": "K. VOLDEN AS",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_24118b8fea94fdda1f52"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_1d47ee81295751903894",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "legal_form",
+      "value": {
+        "code": "AS",
+        "label": "Aksjeselskap"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e5ee1029bcf49363f14c"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_555edbdbc986b677a179",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "status",
+      "value": "active",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_833ee5d61553bb6e844a"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_8db40c1c06a30e171bee",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "nace",
+      "value": {
+        "code": "43.120",
+        "label": "Grunnarbeid"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_37e3993c86d17f916c71"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_91d476c1ce170e2d52bc",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "registered_employees",
+      "value": {
+        "count": 23,
+        "registered_at": "2026-08-12"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_1732639537f740416198"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_ff0068f3dd46285b7521",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "business_address",
+      "value": {
+        "street": "Leirpollvegen 55",
+        "postcode": "5419",
+        "city": "FITJAR",
+        "municipality": "FITJAR",
+        "country": "Norge"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_67741de636968e17962c"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_07823060fc58031f4411",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "founded_date",
+      "value": "2023-06-30",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_07b7d0315e91455fc343"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_0c5d27ebce3e6e407e94",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "vat_registered",
+      "value": true,
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_fc8d5b98cd517ea5d6f7"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d57601223558cf57d3c4",
+      "organisation_number": "931848674",
+      "family": "identity",
+      "field": "statutory_purpose",
+      "value": "Transport- og entreprenørvirksomhet, samt aktiviteter som står i naturlig forbindelse med dette, herunder å delta i selskaper med tilsvarende virksomhet.",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_b36180b9fa658df34d64"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_eb8ac04e3070a638bf5b",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2024-01-11",
+      "value_key": "STYR",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_ad59058af8e45597718c"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_93d2315f6e251a9d1d90",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "LEDE",
+        "role_label": "Styrets leder",
+        "name": "Lars Martin Volden"
+      },
+      "value_key": "LEDE|lars martin volden",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_bd04c27bca64a123a977"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_84ef64e0aeab79e5c82c",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "MEDL",
+        "role_label": "Styremedlem",
+        "name": "Lars Erik Dalen"
+      },
+      "value_key": "MEDL|lars erik dalen",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e990fcb98a362df58a1a"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_8d1da02f6e6af90f03e2",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "MEDL",
+        "role_label": "Styremedlem",
+        "name": "Espen Langenes Kyllingstad"
+      },
+      "value_key": "MEDL|espen langenes kyllingstad",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e990fcb98a362df58a1a"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_20eac9a4ab68e0f94f1a",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2024-11-13",
+      "value_key": "REVI",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_f57b612f2977121ec22e"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_4f0c32bb9df5779e7b47",
+      "organisation_number": "931848674",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "REVI",
+        "role_label": "Revisor",
+        "name": "ERGA REVISJON AS",
+        "entity_name": "ERGA REVISJON AS",
+        "entity_organisation_number": "980024679"
+      },
+      "value_key": "REVI|erga revisjon as",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_0c55beeb0ba22ee12b52"
+      ],
+      "first_observed_at": "2026-09-27T22:37:18Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_a1c749f25670d9b92c57",
+      "organisation_number": "931848674",
+      "family": "locations",
+      "field": "workplace",
+      "value": {
+        "organisation_number": "974332035",
+        "name": "K. VOLDEN AS",
+        "street": "Leirpollvegen 55",
+        "postcode": "5419",
+        "city": "FITJAR",
+        "employees": 23,
+        "nace": "43.120"
+      },
+      "value_key": "974332035",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_968a20fafc7621eb0602"
+      ],
+      "first_observed_at": "2026-09-27T22:37:19Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_c4e15afbfac50894a9bb",
+      "organisation_number": "931848674",
+      "family": "locations",
+      "field": "business_address",
+      "value": {
+        "street": "Leirpollvegen 55",
+        "postcode": "5419",
+        "city": "FITJAR",
+        "municipality": "FITJAR",
+        "country": "Norge"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_67741de636968e17962c"
+      ],
+      "first_observed_at": "2026-09-27T22:37:17Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_bc3da575314304352a4f",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "revenue",
+      "value": {
+        "amount": 58380773.0,
+        "currency": "NOK"
+      },
+      "value_key": "revenue",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_bf85b7e6971a798ffa08"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_e692d758519806ae388f",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "operating_result",
+      "value": {
+        "amount": -2132477.0,
+        "currency": "NOK"
+      },
+      "value_key": "operating_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_9caf2bc12dbe136bd80e"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_321a99c23ee8b7881d2b",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "annual_result",
+      "value": {
+        "amount": -2015084.0,
+        "currency": "NOK"
+      },
+      "value_key": "annual_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_f21b086a0a1ae78bdc47"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_9046d1583c9cd5b2a0af",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "total_assets",
+      "value": {
+        "amount": 53663867.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_assets",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_4fa3bd0830524b536a5b"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_cb6d1c73268ec92d0428",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "equity",
+      "value": {
+        "amount": 17613770.0,
+        "currency": "NOK"
+      },
+      "value_key": "equity",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_231dda68e3c83ea23966"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_500bdf450a8ff8c3e2ad",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "total_debt",
+      "value": {
+        "amount": 36050097.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_debt",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_8d62a61004ccf4498e53"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d1b8c1819af993f36cc3",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "accounting_type",
+      "value": {
+        "type": "SELSKAP",
+        "small_enterprise": true
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_56bad3787ce466d8b888"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_18ff2646f69267446b92",
+      "organisation_number": "931848674",
+      "family": "financials",
+      "field": "audit_status",
+      "value": {
+        "ikkeRevidertAarsregnskap": false,
+        "fravalgRevisjon": false
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_56bad3787ce466d8b888"
+      ],
+      "first_observed_at": "2026-09-27T22:37:20Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_ac0f4cbc30e82f5bfe73",
+      "organisation_number": "931848674",
+      "family": "financial_history",
+      "field": "filed_years",
+      "value": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_a460a3f5491961e7855b"
+      ],
+      "first_observed_at": "2026-09-27T22:37:24Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_77e622cd91e7a781fe47",
+      "organisation_number": "931848674",
+      "family": "jobs",
+      "field": "active_postings_count",
+      "value": {
+        "verified": 0,
+        "name_matched_total": 0,
+        "checked_at": "2026-09-27T22:37:24Z"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "job_feed_org_number",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_69436ae9c54edb7b1871"
+      ],
+      "first_observed_at": "2026-09-27T22:36:15Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "e_24118b8fea94fdda1f52",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.navn",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_e5ee1029bcf49363f14c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.organisasjonsform",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_833ee5d61553bb6e844a",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.konkurs/underAvvikling",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_37e3993c86d17f916c71",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.naeringskode1",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_1732639537f740416198",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.antallAnsatte",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_67741de636968e17962c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.forretningsadresse",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_07b7d0315e91455fc343",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.stiftelsesdato",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_fc8d5b98cd517ea5d6f7",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.registrertIMvaregisteret",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_b36180b9fa658df34d64",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:17Z",
+      "content_sha256": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "snapshot_ref": "a3ac49212eef5b37920534ffd6ef33838ab2476a819351082a715bbf01e7049e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.vedtektsfestetFormaal",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_ad59058af8e45597718c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:18Z",
+      "content_sha256": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "snapshot_ref": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].sistEndret",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_bd04c27bca64a123a977",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:18Z",
+      "content_sha256": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "snapshot_ref": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=LEDE]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_e990fcb98a362df58a1a",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:18Z",
+      "content_sha256": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "snapshot_ref": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=MEDL]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_f57b612f2977121ec22e",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:18Z",
+      "content_sha256": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "snapshot_ref": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=REVI].sistEndret",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_0c55beeb0ba22ee12b52",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/931848674/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:18Z",
+      "content_sha256": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "snapshot_ref": "24b0405386dbf1788c394ec60053ef51d4966469a81f208bbc3d4458cdea857d",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=REVI].roller[type.kode=REVI]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_968a20fafc7621eb0602",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=931848674&size=100",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=931848674&size=100",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=931848674&size=100"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:37:19Z",
+      "content_sha256": "7c128e34e73d7f095259c40da112380bcaf62d6a2a05b8cb13fe1715c82da4da",
+      "snapshot_ref": "7c128e34e73d7f095259c40da112380bcaf62d6a2a05b8cb13fe1715c82da4da",
+      "extraction_method": "brreg_subunits_v1",
+      "extractor_version": "1",
+      "span": "$._embedded.underenheter[organisasjonsnummer=974332035]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_bf85b7e6971a798ffa08",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].resultatregnskapResultat.driftsresultat.driftsinntekter.sumDriftsinntekter",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_9caf2bc12dbe136bd80e",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].resultatregnskapResultat.driftsresultat.driftsresultat",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_f21b086a0a1ae78bdc47",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].resultatregnskapResultat.aarsresultat",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_4fa3bd0830524b536a5b",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].eiendeler.sumEiendeler",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_231dda68e3c83ea23966",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].egenkapitalGjeld.egenkapital.sumEgenkapital",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_8d62a61004ccf4498e53",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].egenkapitalGjeld.gjeldOversikt.sumGjeld",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_56bad3787ce466d8b888",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/931848674",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/931848674"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:20Z",
+      "content_sha256": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "snapshot_ref": "8e9252bee796d34c7acc0daf31b778b508faf48fc9e865a0c3e2a6074aaa6de5",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6910266].regnskapstype",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_a460a3f5491961e7855b",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/931848674/aar",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/931848674/aar",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/931848674/aar"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:37:24Z",
+      "content_sha256": "fa62a3dbca03c249268cd2c02e05821c7da2c97ad23ce7e63241bec881b360a2",
+      "snapshot_ref": "fa62a3dbca03c249268cd2c02e05821c7da2c97ad23ce7e63241bec881b360a2",
+      "extraction_method": "brreg_financial_history_v1",
+      "extractor_version": "1",
+      "span": "$",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_69436ae9c54edb7b1871",
+      "source_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
+      "final_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
+      "redirect_chain": [
+        "https://pam-stilling-feed.nav.no/api/v1/feed"
+      ],
+      "http_status": null,
+      "source_class": "public_job_feed",
+      "retrieved_at": "2026-09-27T22:36:15Z",
+      "content_sha256": null,
+      "snapshot_ref": null,
+      "extraction_method": "nav_feed_index_v1",
+      "extractor_version": "1",
+      "span": "active_ads_indexed=9504; window_days=60; complete=True; pages_walked_this_run=117",
+      "access_policy": "NLOD-2.0 (NAV)"
+    }
+  ],
+  "changes": [],
+  "summary": {
+    "language": "en",
+    "sentences": [
+      {
+        "text": "K. VOLDEN AS is registered in the industry \"Grunnarbeid\"; its statutory purpose reads \"Transport- og entreprenørvirksomhet, samt aktiviteter som står i naturlig forbindelse med dette, herunder å delta i selskaper med tilsvarende virksomhet.\".",
+        "claim_ids": [
+          "c_8db40c1c06a30e171bee",
+          "c_d57601223558cf57d3c4"
+        ]
+      },
+      {
+        "text": "K. VOLDEN AS is a private limited company (AS), founded on 2023-06-30, registered in Fitjar.",
+        "claim_ids": [
+          "c_1d47ee81295751903894",
+          "c_07823060fc58031f4411",
+          "c_ff0068f3dd46285b7521"
+        ]
+      },
+      {
+        "text": "It has 23 registered employees, reported revenue of NOK 58.38M for 2025 and an operating loss of NOK 2.13M (2025).",
+        "claim_ids": [
+          "c_91d476c1ce170e2d52bc",
+          "c_bc3da575314304352a4f",
+          "c_e692d758519806ae388f"
+        ]
+      },
+      {
+        "text": "K. VOLDEN AS is led by board chair Lars Martin Volden.",
+        "claim_ids": [
+          "c_93d2315f6e251a9d1d90"
+        ]
+      },
+      {
+        "text": "K. VOLDEN AS has 1 registered workplace.",
+        "claim_ids": [
+          "c_a1c749f25670d9b92c57"
+        ]
+      }
+    ],
+    "unknowns": [
+      "Public activity (news, posts, videos): no verified company website to derive activity from",
+      "A description of what it does: no verified site to extract description from",
+      "Its group / ownership structure: no parent relationship in registry data",
+      "Open job postings: checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified; search fallback skipped (circuit breaker open after repeated rate-limiting)",
+      "Public social or video profiles: no verified site to link profiles from",
+      "Public reviews or ratings: no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)",
+      "An official website: checked 2 candidates: none verified"
+    ],
+    "method": "template_v1"
+  },
+  "errors": [],
+  "operations": {
+    "requests": 11,
+    "bytes": 0,
+    "runtime_ms": 347809,
+    "third_party_cost_usd": 0.0
+  }
+}

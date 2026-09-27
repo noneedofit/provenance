@@ -1,0 +1,127 @@
+{
+  "started_at": "2026-09-27T22:31:40Z",
+  "completed_at": "2026-09-27T22:38:02Z",
+  "runtime_s": 382.68,
+  "company_count": 100,
+  "terminal_status_counts": {
+    "completed": 100
+  },
+  "family_state_counts": {
+    "identity": {
+      "available": 100
+    },
+    "financials": {
+      "available": 100
+    },
+    "financial_history": {
+      "available": 100
+    },
+    "leadership": {
+      "available": 100
+    },
+    "locations": {
+      "available": 100
+    },
+    "group": {
+      "not_available": 100
+    },
+    "website": {
+      "not_available": 80,
+      "available": 15,
+      "ambiguous": 5
+    },
+    "profiles": {
+      "not_available": 92,
+      "available": 8
+    },
+    "description": {
+      "not_available": 86,
+      "available": 14
+    },
+    "jobs": {
+      "not_applicable": 63,
+      "not_available": 37
+    },
+    "activity": {
+      "not_applicable": 87,
+      "available": 4,
+      "not_available": 9
+    },
+    "reviews": {
+      "not_available": 100
+    }
+  },
+  "requests_by_purpose": {
+    "registry_entity": 100,
+    "registry_roles": 100,
+    "robots": 122,
+    "registry_financials": 100,
+    "registry_subunits": 37,
+    "nav_live_token": 1,
+    "registry_financial_history": 100,
+    "web_homepage": 171,
+    "nav_feed_page": 117,
+    "nav_live_feedentry": 15,
+    "web_secondary_personvern": 9,
+    "web_secondary_vilkar": 1,
+    "web_secondary_jobb": 4,
+    "web_secondary_privacy": 3,
+    "web_secondary_nyheter": 2,
+    "web_sitemap": 16,
+    "web_secondary_kontakt": 19,
+    "web_secondary_om-oss": 11,
+    "nav_search_fallback": 4,
+    "site_feed": 16,
+    "site_news_page_discovered": 2,
+    "web_secondary_karriere": 1,
+    "web_secondary_contact": 2,
+    "web_secondary_about-us": 1,
+    "web_secondary_about": 2,
+    "web_secondary_terms": 1,
+    "site_news_page": 1
+  },
+  "total_requests": 958,
+  "runtime_ms_p50": 308081,
+  "runtime_ms_p95": 353642,
+  "deadline_hits": 0,
+  "budget_exhausted_count": 0,
+  "cache_versions": {
+    "built_at": "2026-09-27T22:31:40Z",
+    "parts": {
+      "email_domains": {
+        "built_at": "2026-09-27T22:31:29Z",
+        "domain_count": 127780,
+        "input_path": "data/brreg-enheter.csv",
+        "input_sha256": "2d2ca4c0b1ea7b425a7834afef994899fc9e0bc0c8be50a1dcb2de4823b5709e",
+        "license": "NLOD 2.0",
+        "row_count": 1175605,
+        "source_urls": [
+          "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
+        ]
+      },
+      "wikidata": {
+        "built_at": "2026-09-27T22:31:39Z",
+        "license": "CC0",
+        "raw_binding_count": 10944,
+        "row_count": 10283,
+        "source_urls": [
+          "https://query.wikidata.org/sparql?query=<P2333 items with websites/social ids>"
+        ]
+      }
+    }
+  },
+  "validation": {
+    "passed": true,
+    "checks": {
+      "unique_organisation_numbers": true,
+      "exact_expected_count": true,
+      "same_order_as_input": true,
+      "zero_dropped_inputs": true,
+      "all_envelopes_valid": true
+    },
+    "problems": {}
+  },
+  "third_party_cost_usd": 0.0,
+  "setup_requests": 2,
+  "total_requests_including_setup": 960
+}

@@ -1,0 +1,1584 @@
+{
+  "schema_version": "signalpost-envelope/1",
+  "organisation_number": "815076702",
+  "legal_name": "KOGGER AS",
+  "run": {
+    "run_id": "smoke-100",
+    "previous_run_id": null,
+    "started_at": "2026-09-27T22:31:40Z",
+    "completed_at": "2026-09-27T22:37:00Z",
+    "terminal_status": "completed",
+    "agent_version": "0.1.0",
+    "tier": "T1"
+  },
+  "sections": {
+    "legal_identity_and_brand": [
+      "c_6f55fcd2be0ecc2f19f2",
+      "c_2c2adb0e24c466fc92f2",
+      "c_cff88866281a829de626",
+      "c_23c41df1c3f3413d6efc",
+      "c_d23849ae9815f9aaca09",
+      "c_9c84774a1d2c1450d5c6",
+      "c_6672d16ab4be46a086c7",
+      "c_a13ddc9d52f5ab6a452b",
+      "c_97db85972fe6254033e7",
+      "c_e3ea8a17f3c220f75312",
+      "c_6d2038fc412bbb56e3a7"
+    ],
+    "annual_accounts": [
+      "c_dca91d8d62dfb247c6ac",
+      "c_280feb403251335a2db3",
+      "c_9df8a1fbe0bc3691d488",
+      "c_e1ee731a1411621710e3",
+      "c_5dde1dfe5f6e5813d2ff",
+      "c_10787fa6c8701744a925",
+      "c_018ffc27662afdbdaafc",
+      "c_2c83f35ba019ce44de58",
+      "c_774b0f1d52938e0e387f"
+    ],
+    "leadership_and_workplaces": [
+      "c_5f414602be84a01834e1",
+      "c_09a8da66e167e291c8c4",
+      "c_e4bebd8610a7291f46f0",
+      "c_ea02be997bf759df9086",
+      "c_d8d3f11217ee3c9ffe55"
+    ],
+    "website_and_profiles": [
+      "c_be21285d94635f1067ec",
+      "c_333f537336a786520d33",
+      "c_330a9ec82d945d585560"
+    ],
+    "hiring_and_activity": [
+      "c_edc1009d84b31603f819",
+      "c_cb72600a1f0db2d3929d",
+      "c_b67ef940c8189d742bc0",
+      "c_675b0d4c4c1046721b04",
+      "c_11458618d82561645b51"
+    ],
+    "evidence_and_availability": [],
+    "refresh_and_changes": []
+  },
+  "families": {
+    "identity": {
+      "family": "identity",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "claim_count": 11
+    },
+    "leadership": {
+      "family": "leadership",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller"
+      ],
+      "claim_count": 3
+    },
+    "locations": {
+      "family": "locations",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=815076702&size=100"
+      ],
+      "claim_count": 2
+    },
+    "financials": {
+      "family": "financials",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "claim_count": 8
+    },
+    "financial_history": {
+      "family": "financial_history",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/815076702/aar"
+      ],
+      "claim_count": 1
+    },
+    "group": {
+      "family": "group",
+      "availability": "not_available",
+      "reason": "no parent relationship in registry data",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "website": {
+      "family": "website",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "kogger.no"
+      ],
+      "claim_count": 2
+    },
+    "profiles": {
+      "family": "profiles",
+      "availability": "not_available",
+      "reason": "checked: none found",
+      "sources_checked": [
+        "kogger.no"
+      ],
+      "claim_count": 0
+    },
+    "description": {
+      "family": "description",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [],
+      "claim_count": 1
+    },
+    "reviews": {
+      "family": "reviews",
+      "availability": "not_available",
+      "reason": "no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)",
+      "sources_checked": [],
+      "claim_count": 0
+    },
+    "jobs": {
+      "family": "jobs",
+      "availability": "not_available",
+      "reason": "checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified",
+      "sources_checked": [
+        "nav_arbeidsplassen_live"
+      ],
+      "claim_count": 0
+    },
+    "activity": {
+      "family": "activity",
+      "availability": "available",
+      "reason": null,
+      "sources_checked": [
+        "site_feeds_and_news"
+      ],
+      "claim_count": 4
+    }
+  },
+  "claims": [
+    {
+      "claim_id": "c_6f55fcd2be0ecc2f19f2",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "legal_name",
+      "value": "KOGGER AS",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_13161a4f3b66896a23cc"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_2c2adb0e24c466fc92f2",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "legal_form",
+      "value": {
+        "code": "AS",
+        "label": "Aksjeselskap"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_5f4dc541f2a6627da62b"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_cff88866281a829de626",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "status",
+      "value": "active",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_7efeba427f74214a40f8"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_23c41df1c3f3413d6efc",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "nace",
+      "value": {
+        "code": "70.200",
+        "label": "Bedriftsrådgivning og annen administrativ rådgivning"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_3a719428bd82d079af4b"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d23849ae9815f9aaca09",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "business_address",
+      "value": {
+        "street": "Kniveveien 81",
+        "postcode": "3036",
+        "city": "DRAMMEN",
+        "municipality": "DRAMMEN",
+        "country": "Norge"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_51e6289675d222d9be28"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_9c84774a1d2c1450d5c6",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "founded_date",
+      "value": "2015-02-01",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_0d5183fe3f09e3fdff9c"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_6672d16ab4be46a086c7",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "registered_website",
+      "value": "https://www.kogger.no",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_207c8570a6478ceea81a"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_a13ddc9d52f5ab6a452b",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "registry_email",
+      "value": "post@kogger.no",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_52e9a17167a881ef1a55"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_97db85972fe6254033e7",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "vat_registered",
+      "value": true,
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_638070a9952c15192ce2"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_e3ea8a17f3c220f75312",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "statutory_purpose",
+      "value": "Salgs-, strategi- og konsulenttjenester, herunder investering i andre selskaper.",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_c52d390095620ef57299"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_6d2038fc412bbb56e3a7",
+      "organisation_number": "815076702",
+      "family": "identity",
+      "field": "historic_names",
+      "value": [
+        "ZEA CONSULTING AS",
+        "KOGGER ZEA CONSULTING AS",
+        "KOGGER AS",
+        "CIRCON HOLDING AS"
+      ],
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_63d66a11f09512dfd3e6"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_5f414602be84a01834e1",
+      "organisation_number": "815076702",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2026-06-23",
+      "value_key": "STYR",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_69f841f182256b645077"
+      ],
+      "first_observed_at": "2026-09-27T22:36:40Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_09a8da66e167e291c8c4",
+      "organisation_number": "815076702",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "LEDE",
+        "role_label": "Styrets leder",
+        "name": "Lars-Oscar Hovland"
+      },
+      "value_key": "LEDE|lars-oscar hovland",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_abee0d762fb1283a1aaa"
+      ],
+      "first_observed_at": "2026-09-27T22:36:40Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_e4bebd8610a7291f46f0",
+      "organisation_number": "815076702",
+      "family": "leadership",
+      "field": "role",
+      "value": {
+        "role_code": "MEDL",
+        "role_label": "Styremedlem",
+        "name": "Leah Anne Ekrann Hovland"
+      },
+      "value_key": "MEDL|leah anne ekrann hovland",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_f38a2a6bde8914281d22"
+      ],
+      "first_observed_at": "2026-09-27T22:36:40Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_ea02be997bf759df9086",
+      "organisation_number": "815076702",
+      "family": "locations",
+      "field": "workplace",
+      "value": {
+        "organisation_number": "915103685",
+        "name": "KOGGER AS",
+        "street": "Kniveveien 81",
+        "postcode": "3036",
+        "city": "DRAMMEN",
+        "employees": null,
+        "nace": "70.200"
+      },
+      "value_key": "915103685",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_05e4ec02182948867f24"
+      ],
+      "first_observed_at": "2026-09-27T22:36:40Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d8d3f11217ee3c9ffe55",
+      "organisation_number": "815076702",
+      "family": "locations",
+      "field": "business_address",
+      "value": {
+        "street": "Kniveveien 81",
+        "postcode": "3036",
+        "city": "DRAMMEN",
+        "municipality": "DRAMMEN",
+        "country": "Norge"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_51e6289675d222d9be28"
+      ],
+      "first_observed_at": "2026-09-27T22:36:39Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_dca91d8d62dfb247c6ac",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "revenue",
+      "value": {
+        "amount": 2242189.0,
+        "currency": "NOK"
+      },
+      "value_key": "revenue",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_4738ce4011df4225615c"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_280feb403251335a2db3",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "operating_result",
+      "value": {
+        "amount": 156159.0,
+        "currency": "NOK"
+      },
+      "value_key": "operating_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_f146ce8b7027834599db"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_9df8a1fbe0bc3691d488",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "annual_result",
+      "value": {
+        "amount": 159369.0,
+        "currency": "NOK"
+      },
+      "value_key": "annual_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_3dca2da3ca60ab863af9"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_e1ee731a1411621710e3",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "total_assets",
+      "value": {
+        "amount": 449288.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_assets",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_46276a45230979a65ce3"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_5dde1dfe5f6e5813d2ff",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "equity",
+      "value": {
+        "amount": 175573.0,
+        "currency": "NOK"
+      },
+      "value_key": "equity",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_775faf7a845d9a4853b9"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_10787fa6c8701744a925",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "total_debt",
+      "value": {
+        "amount": 273716.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_debt",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e45eb8029a6295b80955"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_018ffc27662afdbdaafc",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "accounting_type",
+      "value": {
+        "type": "SELSKAP",
+        "small_enterprise": true
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_678c22a409a9adc30821"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_2c83f35ba019ce44de58",
+      "organisation_number": "815076702",
+      "family": "financials",
+      "field": "audit_status",
+      "value": {
+        "ikkeRevidertAarsregnskap": false,
+        "fravalgRevisjon": true
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_678c22a409a9adc30821"
+      ],
+      "first_observed_at": "2026-09-27T22:36:41Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_774b0f1d52938e0e387f",
+      "organisation_number": "815076702",
+      "family": "financial_history",
+      "field": "filed_years",
+      "value": [
+        "2015",
+        "2016",
+        "2017",
+        "2018",
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_6deb920746e51daf6756"
+      ],
+      "first_observed_at": "2026-09-27T22:36:49Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_be21285d94635f1067ec",
+      "organisation_number": "815076702",
+      "family": "website",
+      "field": "official_website",
+      "value": {
+        "url": "https://kogger.no/",
+        "domain": "kogger.no",
+        "brand_name": "Kogger"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_declared",
+      "relationship": "exact",
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_2334b18530a875f09a9f",
+        "e_3e5596be1ad12bba3112",
+        "e_fa3f6447c29ed92f732e",
+        "e_6ce249c8ed5b5821b91c"
+      ],
+      "first_observed_at": "2026-09-27T22:36:57Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_333f537336a786520d33",
+      "organisation_number": "815076702",
+      "family": "website",
+      "field": "site_contact_email",
+      "value": "KOGGERASOscarHovland@kogger.no",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": "exact",
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_148464ee8aeb95f6c311"
+      ],
+      "first_observed_at": "2026-09-27T22:36:57Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_330a9ec82d945d585560",
+      "organisation_number": "815076702",
+      "family": "description",
+      "field": "company_description",
+      "value": "Kogger hjelper bedrifter å kommunisere på en måte som gjør kundene tryggere: ærlig, transparent, praktisk og tydelig.",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": "exact",
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_105950647985eedd9ed3"
+      ],
+      "first_observed_at": "2026-09-27T22:36:58Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_edc1009d84b31603f819",
+      "organisation_number": "815076702",
+      "family": "jobs",
+      "field": "active_postings_count",
+      "value": {
+        "verified": 0,
+        "name_matched_total": 0,
+        "checked_at": "2026-09-27T22:36:49Z"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "job_feed_org_number",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_69436ae9c54edb7b1871"
+      ],
+      "first_observed_at": "2026-09-27T22:36:15Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_cb72600a1f0db2d3929d",
+      "organisation_number": "815076702",
+      "family": "activity",
+      "field": "activity_item",
+      "value": {
+        "title": "Hvem passer vi for og ikke for?",
+        "url": "https://kogger.no/innhold/artikkel/hvem-passer-vi-for-og-ikke-for/",
+        "published": "2026-02-04",
+        "source": "company website"
+      },
+      "value_key": "https://kogger.no/innhold/artikkel/hvem-passer-vi-for-og-ikke-for/",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": "2026-02-04",
+      "evidence_ids": [
+        "e_0ab0b4c0e7e2645a7a9e"
+      ],
+      "first_observed_at": "2026-09-27T22:36:59Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_b67ef940c8189d742bc0",
+      "organisation_number": "815076702",
+      "family": "activity",
+      "field": "activity_item",
+      "value": {
+        "title": "Hvorfor priser vi oss slik vi gjør?",
+        "url": "https://kogger.no/innhold/artikkel/hvorfor-priser-vi-oss-slik-vi-gjor/",
+        "published": "2026-02-04",
+        "source": "company website"
+      },
+      "value_key": "https://kogger.no/innhold/artikkel/hvorfor-priser-vi-oss-slik-vi-gjor/",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": "2026-02-04",
+      "evidence_ids": [
+        "e_0ab0b4c0e7e2645a7a9e"
+      ],
+      "first_observed_at": "2026-09-27T22:36:59Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_675b0d4c4c1046721b04",
+      "organisation_number": "815076702",
+      "family": "activity",
+      "field": "activity_item",
+      "value": {
+        "title": "Assignment selling – hvorfor det fungerer (og hva du taper på å la være)",
+        "url": "https://kogger.no/innhold/artikkel/assignment-selling-hvorfor-det-fungerer-og-hva-du-taper-pa-a-la-vaere/",
+        "published": "2026-02-04",
+        "source": "company website"
+      },
+      "value_key": "https://kogger.no/innhold/artikkel/assignment-selling-hvorfor-det-fungerer-og-hva-du-taper-pa-a-la-vaere/",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": "2026-02-04",
+      "evidence_ids": [
+        "e_0ab0b4c0e7e2645a7a9e"
+      ],
+      "first_observed_at": "2026-09-27T22:36:59Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_11458618d82561645b51",
+      "organisation_number": "815076702",
+      "family": "activity",
+      "field": "activity_item",
+      "value": {
+        "title": "Slik får du bedre svar fra AI",
+        "url": "https://kogger.no/innhold/e-bok/slik-far-du-bedre-svar-fra-ai/",
+        "published": "2026-01-14",
+        "source": "company website"
+      },
+      "value_key": "https://kogger.no/innhold/e-bok/slik-far-du-bedre-svar-fra-ai/",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "linked_from_verified_site",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": "2026-01-14",
+      "evidence_ids": [
+        "e_0ab0b4c0e7e2645a7a9e"
+      ],
+      "first_observed_at": "2026-09-27T22:36:59Z",
+      "last_observed_at": "2026-09-27T22:31:40Z",
+      "status": "current",
+      "note": null
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "e_13161a4f3b66896a23cc",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.navn",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_5f4dc541f2a6627da62b",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.organisasjonsform",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_7efeba427f74214a40f8",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.konkurs/underAvvikling",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_3a719428bd82d079af4b",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.naeringskode1",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_51e6289675d222d9be28",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.forretningsadresse",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_0d5183fe3f09e3fdff9c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.stiftelsesdato",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_207c8570a6478ceea81a",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.hjemmeside",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_52e9a17167a881ef1a55",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.epostadresse",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_638070a9952c15192ce2",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.registrertIMvaregisteret",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_c52d390095620ef57299",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.vedtektsfestetFormaal",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_63d66a11f09512dfd3e6",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:39Z",
+      "content_sha256": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "snapshot_ref": "dc23a6b4e2cf7cf47e89311d3a8c7c3a79f0ac8157185528849cf0ad13f67f62",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.historiskeNavn",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_69f841f182256b645077",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:40Z",
+      "content_sha256": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "snapshot_ref": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].sistEndret",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_abee0d762fb1283a1aaa",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:40Z",
+      "content_sha256": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "snapshot_ref": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=LEDE]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_f38a2a6bde8914281d22",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/815076702/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:40Z",
+      "content_sha256": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "snapshot_ref": "b79c496284c6887788eb76567d9528e2c284817fc8daf8023fa4e719d91ed17a",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=MEDL]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_05e4ec02182948867f24",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=815076702&size=100",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=815076702&size=100",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet=815076702&size=100"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-09-27T22:36:40Z",
+      "content_sha256": "5d2696569492dda9138798f4578d4c8c8a06fabf0863b4b87a3cd184a973a2e5",
+      "snapshot_ref": "5d2696569492dda9138798f4578d4c8c8a06fabf0863b4b87a3cd184a973a2e5",
+      "extraction_method": "brreg_subunits_v1",
+      "extractor_version": "1",
+      "span": "$._embedded.underenheter[organisasjonsnummer=915103685]",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_4738ce4011df4225615c",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].resultatregnskapResultat.driftsresultat.driftsinntekter.sumDriftsinntekter",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_f146ce8b7027834599db",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].resultatregnskapResultat.driftsresultat.driftsresultat",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_3dca2da3ca60ab863af9",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].resultatregnskapResultat.aarsresultat",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_46276a45230979a65ce3",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].eiendeler.sumEiendeler",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_775faf7a845d9a4853b9",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].egenkapitalGjeld.egenkapital.sumEgenkapital",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_e45eb8029a6295b80955",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].egenkapitalGjeld.gjeldOversikt.sumGjeld",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_678c22a409a9adc30821",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/815076702",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/815076702"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:41Z",
+      "content_sha256": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "snapshot_ref": "b714d2dc2e039019a4081faf164dc8a1a53d7077c3f48b34023f77d3989d78c2",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6619009].regnskapstype",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_6deb920746e51daf6756",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/815076702/aar",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/815076702/aar",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/815076702/aar"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-09-27T22:36:49Z",
+      "content_sha256": "28c38f0ecfc55a226ca7189d10a2dda7842154d4aa51e4121ab7b37685bdc06d",
+      "snapshot_ref": "28c38f0ecfc55a226ca7189d10a2dda7842154d4aa51e4121ab7b37685bdc06d",
+      "extraction_method": "brreg_financial_history_v1",
+      "extractor_version": "1",
+      "span": "$",
+      "access_policy": "NLOD-2.0"
+    },
+    {
+      "evidence_id": "e_69436ae9c54edb7b1871",
+      "source_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
+      "final_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
+      "redirect_chain": [
+        "https://pam-stilling-feed.nav.no/api/v1/feed"
+      ],
+      "http_status": null,
+      "source_class": "public_job_feed",
+      "retrieved_at": "2026-09-27T22:36:15Z",
+      "content_sha256": null,
+      "snapshot_ref": null,
+      "extraction_method": "nav_feed_index_v1",
+      "extractor_version": "1",
+      "span": "active_ads_indexed=9504; window_days=60; complete=True; pages_walked_this_run=117",
+      "access_policy": "NLOD-2.0 (NAV)"
+    },
+    {
+      "evidence_id": "e_2334b18530a875f09a9f",
+      "source_url": "https://www.kogger.no/",
+      "final_url": "https://kogger.no/",
+      "redirect_chain": [
+        "https://www.kogger.no/",
+        "https://kogger.no/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:57Z",
+      "content_sha256": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "snapshot_ref": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "extraction_method": "web_registry_email_v1",
+      "extractor_version": "1",
+      "span": "post@kogger.no",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_3e5596be1ad12bba3112",
+      "source_url": "https://www.kogger.no/",
+      "final_url": "https://kogger.no/",
+      "redirect_chain": [
+        "https://www.kogger.no/",
+        "https://kogger.no/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:57Z",
+      "content_sha256": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "snapshot_ref": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "extraction_method": "web_legal_name_match_v1",
+      "extractor_version": "1",
+      "span": "Kogger – Tillit selger. Vi hjelper deg å bygge den.",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_fa3f6447c29ed92f732e",
+      "source_url": "https://www.kogger.no/",
+      "final_url": "https://kogger.no/",
+      "redirect_chain": [
+        "https://www.kogger.no/",
+        "https://kogger.no/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:57Z",
+      "content_sha256": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "snapshot_ref": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "extraction_method": "web_email_domain_match_v1",
+      "extractor_version": "1",
+      "span": "kogger.no",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_6ce249c8ed5b5821b91c",
+      "source_url": "https://www.kogger.no/",
+      "final_url": "https://kogger.no/",
+      "redirect_chain": [
+        "https://www.kogger.no/",
+        "https://kogger.no/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:57Z",
+      "content_sha256": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "snapshot_ref": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "extraction_method": "web_registry_declared_v1",
+      "extractor_version": "1",
+      "span": "https://www.kogger.no/",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_148464ee8aeb95f6c311",
+      "source_url": "https://www.kogger.no/",
+      "final_url": "https://kogger.no/",
+      "redirect_chain": [
+        "https://www.kogger.no/",
+        "https://kogger.no/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:57Z",
+      "content_sha256": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "snapshot_ref": "967efb555531d1b9c828d17ff5a479e45c5c061c7315ac9ae591b00edee57b44",
+      "extraction_method": "web_contact_email_v1",
+      "extractor_version": "1",
+      "span": "KOGGERASOscarHovland@kogger.no",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_105950647985eedd9ed3",
+      "source_url": "https://kogger.no/om-oss/",
+      "final_url": "https://kogger.no/om-oss/",
+      "redirect_chain": [
+        "https://kogger.no/om-oss/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:58Z",
+      "content_sha256": "6d3e98daa15fd21a4b5788ee39356411f972e3c6eaad356101fc06e999fa1d5e",
+      "snapshot_ref": "6d3e98daa15fd21a4b5788ee39356411f972e3c6eaad356101fc06e999fa1d5e",
+      "extraction_method": "trafilatura_first_paragraph_v1",
+      "extractor_version": "1",
+      "span": "Kogger hjelper bedrifter å kommunisere på en måte som gjør kundene tryggere: ærlig, transparent, praktisk og tydelig.",
+      "access_policy": null
+    },
+    {
+      "evidence_id": "e_0ab0b4c0e7e2645a7a9e",
+      "source_url": "https://kogger.no/feed/",
+      "final_url": "https://kogger.no/feed/",
+      "redirect_chain": [
+        "https://kogger.no/feed/"
+      ],
+      "http_status": 200,
+      "source_class": "company_owned",
+      "retrieved_at": "2026-09-27T22:36:59Z",
+      "content_sha256": "ae226c16136ba5352c995013916fc29af147b9e319a7453cfcf7a54fd5088705",
+      "snapshot_ref": "ae226c16136ba5352c995013916fc29af147b9e319a7453cfcf7a54fd5088705",
+      "extraction_method": "rss_v1",
+      "extractor_version": "1",
+      "span": "feed item count=4",
+      "access_policy": "robots-allowed"
+    }
+  ],
+  "changes": [],
+  "summary": {
+    "language": "en",
+    "sentences": [
+      {
+        "text": "KOGGER AS describes itself on its website as: \"Kogger hjelper bedrifter å kommunisere på en måte som gjør kundene tryggere: ærlig, transparent, praktisk og tydelig\".",
+        "claim_ids": [
+          "c_330a9ec82d945d585560"
+        ]
+      },
+      {
+        "text": "KOGGER AS is a private limited company (AS), founded on 2015-02-01, registered in Drammen.",
+        "claim_ids": [
+          "c_2c2adb0e24c466fc92f2",
+          "c_9c84774a1d2c1450d5c6",
+          "c_d23849ae9815f9aaca09"
+        ]
+      },
+      {
+        "text": "It reported revenue of NOK 2.24M for 2025 and an operating result of NOK 156,159 (2025).",
+        "claim_ids": [
+          "c_dca91d8d62dfb247c6ac",
+          "c_280feb403251335a2db3"
+        ]
+      },
+      {
+        "text": "KOGGER AS is led by board chair Lars-Oscar Hovland.",
+        "claim_ids": [
+          "c_09a8da66e167e291c8c4"
+        ]
+      },
+      {
+        "text": "KOGGER AS has a verified website (https://kogger.no/) and 1 registered workplace.",
+        "claim_ids": [
+          "c_be21285d94635f1067ec",
+          "c_ea02be997bf759df9086"
+        ]
+      },
+      {
+        "text": "KOGGER AS has recent public activity, most recently \"Hvem passer vi for og ikke for?\" (2026-02-04).",
+        "claim_ids": [
+          "c_cb72600a1f0db2d3929d"
+        ]
+      }
+    ],
+    "unknowns": [
+      "Its group / ownership structure: no parent relationship in registry data",
+      "Open job postings: checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified",
+      "Public social or video profiles: checked: none found",
+      "Public reviews or ratings: no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)"
+    ],
+    "method": "template_v1"
+  },
+  "errors": [],
+  "operations": {
+    "requests": 12,
+    "bytes": 0,
+    "runtime_ms": 320401,
+    "third_party_cost_usd": 0.0
+  }
+}
