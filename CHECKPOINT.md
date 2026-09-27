@@ -127,3 +127,7 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
   failures (3b48fa4, e21630b): retry connection errors, carry forward on live-registry failure for known
   companies, website compared by site, previously verified but unreachable site → failed (carry forward).
   daily100 ×3 with one state: 0 changes on runs 2 and 3 despite ~22 connection errors per run.
+- FINAL SET: <workspace>/wt-final/submission/profiles/submission-20260928 (commit 95d68b7).
+  All valid; 710–1,589 req/batch; websites 215 (174 auto-verified + 40 hand-verified same URLs, 1 unclear);
+  immediate refresh of b00 = 0 changes. Clean-clone test passed (e43e238 adds setup-request reporting only).
+- Ready for user: GitHub repo creation, author rewrite of first 3 commits, submission form. Submit only when user says.

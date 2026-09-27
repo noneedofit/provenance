@@ -106,12 +106,20 @@ Gold set (131 companies), main after the 25 Sep recall and NAV-feed merges:
 | Jobs `failed` | 0 (was 93 / 131 with per-company search) |
 | Requests / runtime | ~1,800 / ~9 min (131 companies) |
 
-Final submission set (1,000 companies, 10 batches of 100, frozen commit `7ea858b`, 27 Sep 2026): every batch
-valid; 681–1,493 requests and 2–6 minutes per batch. Available per family: identity 1000, leadership 998,
-locations 999, financials 997, financial_history 999, website 212, description 207, profiles 139,
-activity 62, jobs 5. Every published website was re-verified: 171 automatically (org number re-found on the
-evidence page, or live registry website) and 41 by hand — 211 correct, 0 wrong, 0 related, 1 unclear
-(a thin storefront whose brand name matches the legal name).
+Final submission set (1,000 companies, 10 batches of 100, frozen commit `95d68b7`, 28 Sep 2026): every batch
+valid; 710–1,589 requests and 2–7 minutes per batch. Available per family: identity 1000, leadership 1000,
+locations 999, financials 997, financial_history 1000, website 215, description 210, profiles 140,
+activity 74, jobs 6. Every published website was re-verified: 174 automatically (org number re-found on the
+evidence page, or live registry website) and the rest by hand — 0 wrong, 0 related, 1 unclear (a thin
+storefront whose brand name matches the legal name). An immediate refresh of batch 1 reported 0 changes.
+
+Refresh stability under network errors: the same 100 companies run three times with one `--state-dir`
+reported 0 changes on runs 2 and 3 despite ~22 website connection errors per run (transient failures are
+retried once, and a previously verified source that cannot be reached is carried forward, not removed).
+
+Clean-clone test: `uv sync` plus the evaluator command with no data or caches downloads the bulk file,
+builds the shared-domain and Wikidata tables, and completes (20 companies: valid, 277 requests, ~10 min
+wall including the one-time setup and 60-day NAV feed window).
 
 Refresh on real data: batch 1 of the 24 Sep profiles rerun on 27 Sep against its stored state reported
 sensible typed changes (new filings, a moved business address, a newly verified website and profile, a
