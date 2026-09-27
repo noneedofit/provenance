@@ -243,7 +243,7 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
     return found
 
 
-def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict) -> list[tuple[dict, object]]:
+def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict, *, guessed: bool = False) -> list[tuple[dict, object]]:
     resp = ctx.client.get(
         feed_url, org=ctx.org, purpose="site_feed",
         accept="application/rss+xml, application/atom+xml, application/xml, text/xml",
@@ -251,7 +251,10 @@ def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict) -> 
     )
     result["checked"] = True
     if not resp.ok:
-        result["errors"].append({"stage": "feed", "url": feed_url, "error": resp.error or f"http_{resp.status}"})
+        # A guessed URL (WordPress /feed/) that does not exist is an answer, not an error; recording it
+        # would mark the whole company "partial".
+        if not (guessed and 400 <= (resp.status or 0) < 500):
+            result["errors"].append({"stage": "feed", "url": feed_url, "error": resp.error or f"http_{resp.status}"})
         return []
     parsed = parse_feed(resp.text())
     ev = make_evidence(
@@ -368,7 +371,7 @@ def collect(ctx) -> dict:
             if homepage:
                 wp_feed_url = f"{homepage.rstrip('/')}/feed/"
                 if wp_feed_url not in feed_urls:
-                    candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result))
+                    candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result, guessed=True))
                     extra_requests_used += 1
 
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)

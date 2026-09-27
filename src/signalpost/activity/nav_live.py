@@ -388,7 +388,8 @@ class NavLiveConnector:
                 pass
 
         if resp.status == 429:
-            errors.append({"stage": "nav_search_fallback", "error": "http_429"})
+            # The capped, optional search being rate-limited is the breaker working, not a failure of this
+            # company's research: the feed-based jobs result stands and the note records the attempt.
             return [], "search fallback attempted: rate-limited (429)"
         if not resp.ok:
             errors.append({"stage": "nav_search_fallback", "error": resp.error or f"http_{resp.status}"})
