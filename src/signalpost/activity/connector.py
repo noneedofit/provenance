@@ -72,6 +72,8 @@ class ActivityConnector:
             errors.append({"stage": "nav_jobs", "error": nav_result["error"]})
         if nav_result["checked"]:
             jobs_sources.append("nav_arbeidsplassen_live" if nav_is_live else "nav_arbeidsplassen_cache")
+        if nav_result.get("search_attempted"):
+            jobs_sources.append("nav_search_fallback")
 
         active_nav_titles = {norm_title(c.value["title"]) for c in nav_result["claims"] if c.value and c.value.get("title")}
 

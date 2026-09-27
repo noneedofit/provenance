@@ -77,11 +77,12 @@ def _collect_live(ctx, shared: dict) -> dict:
     result: dict = {
         "claims": [], "evidence": [], "checked": False, "error": None,
         "recent_count": 0, "recent_evidence_ids": [], "source": "live",
-        "family_availability": None, "family_reason": None,
+        "family_availability": None, "family_reason": None, "search_attempted": False,
     }
     nav_checked = shared.get("nav_checked") or {}
     state = nav_checked.get("state")
     reason = nav_checked.get("reason")
+    result["search_attempted"] = bool(nav_checked.get("search_attempted"))
 
     if state != "ok":
         if state == "failed":

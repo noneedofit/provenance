@@ -91,7 +91,39 @@ class NavFeedIndex:
             )
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_active_ads_norm ON active_ads(business_name_norm)")
             self._conn.execute("CREATE TABLE IF NOT EXISTS nav_feed_cursor (key TEXT PRIMARY KEY, value TEXT)")
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS nav_search_history (organisation_number TEXT PRIMARY KEY, searched_at TEXT)"
+            )
             self._conn.commit()
+
+    # -- search-fallback history (nav_live.py's employee-ranked search fallback) -------------------
+
+    def record_searched(self, org: str, when: str) -> None:
+        """Record that `org` was searched (the keyless arbeidsplassen search fallback) at `when` (ISO
+        UTC), so a later run's selection can rotate through different companies instead of re-searching
+        the same ones every day - see `recently_searched`.
+        """
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO nav_search_history(organisation_number, searched_at) VALUES (?, ?) "
+                "ON CONFLICT(organisation_number) DO UPDATE SET searched_at = excluded.searched_at",
+                (org, when),
+            )
+            self._conn.commit()
+
+    def recently_searched(self, org: str, *, within_days: int, now: str) -> bool:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT searched_at FROM nav_search_history WHERE organisation_number = ?", (org,)
+            ).fetchone()
+        if row is None:
+            return False
+        try:
+            searched_at = datetime.fromisoformat(row["searched_at"].replace("Z", "+00:00"))
+            now_dt = datetime.fromisoformat(now.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        return (now_dt - searched_at).total_seconds() < within_days * 86400
 
     # -- cursor -----------------------------------------------------------------------------------
 

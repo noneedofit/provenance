@@ -49,8 +49,11 @@ homepages as website candidates, and `activity` (which runs after `web`) turns `
 from __future__ import annotations
 
 import json
+import random
 import re
 import threading
+import time
+import urllib.parse
 from typing import Any
 
 from ..context import CompanyContext
@@ -61,9 +64,22 @@ from .nav_feed import DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAY
 TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
 FEEDENTRY_URL_TMPL = "https://pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}"
 AD_URL_TMPL = "https://arbeidsplassen.nav.no/stillinger/stilling/{uuid}"
+SEARCH_URL = "https://arbeidsplassen.nav.no/stillinger/api/search"
 
 DETAIL_CAP = {"T1": 3, "T2": 5, "T3": 8}
 LIVE_TIERS = ("T1", "T2", "T3")
+
+# Limited search fallback for companies the feed index can't see at all (import-sourced ads that never
+# generate a feed event - see docs/activity.md's "Recall gap" section for the live-measured diagnosis).
+# Deliberately small and cautious: this endpoint rate-limits hard at batch scale (measured: 93/131 gold
+# companies failed when every company searched once), so only a handful of the highest-value companies
+# (by registered employee count) get one serialized, jittered, breaker-protected search per run.
+EMPLOYEE_THRESHOLD = 5          # only companies with at least this many registered employees are candidates
+SEARCH_FALLBACK_MAX = 15        # at most this many searches per run, across the whole batch
+SEARCH_MIN_INTERVAL_S = 4.0     # minimum spacing between searches (serialized across every company)
+SEARCH_JITTER_MAX_S = 2.0       # extra random jitter added on top of the minimum spacing
+SEARCH_BREAKER_CONSECUTIVE_429 = 2   # trip after this many consecutive 429s; stop searching for the run
+SEARCH_HISTORY_COOLDOWN_DAYS = 7     # prefer companies not searched within this many days (rotation)
 
 _LEGAL_SUFFIX_TOKENS = {
     "as", "asa", "sa", "da", "ans", "ba", "ks", "iks", "nuf", "enk", "sf", "esek", "brl", "sti", "sam",
@@ -96,6 +112,27 @@ def _normalize_homepage(value: Any) -> str | None:
     return value.rstrip("/")
 
 
+def _name_overlaps(candidate_norm: str, target_norms: set[str], *, min_overlap: float = 0.6) -> bool:
+    """Exact or fuzzy (token-overlap) match, same threshold/shape as `nav_feed.NavFeedIndex.match_fuzzy`
+    - used to filter search-fallback hits, which aren't in the sqlite index so can't use that method.
+    """
+    if candidate_norm in target_norms:
+        return True
+    cand_tokens = set(candidate_norm.split())
+    if not cand_tokens:
+        return False
+    for target in target_norms:
+        target_tokens = set(target.split())
+        if not target_tokens:
+            continue
+        overlap = cand_tokens & target_tokens
+        if not overlap:
+            continue
+        if len(overlap) / min(len(cand_tokens), len(target_tokens)) >= min_overlap:
+            return True
+    return False
+
+
 class NavLiveConnector:
     name = "nav"
     families: tuple[str, ...] = ()
@@ -103,11 +140,16 @@ class NavLiveConnector:
     def __init__(
         self, *, window_days: int = DEFAULT_WINDOW_DAYS, max_feed_pages: int = DEFAULT_MAX_PAGES,
         max_feed_seconds: float = DEFAULT_MAX_SECONDS, match_cap: dict[str, int] | None = None,
+        search_min_interval: float = SEARCH_MIN_INTERVAL_S, search_jitter_max: float = SEARCH_JITTER_MAX_S,
     ) -> None:
         self._window_days = window_days
         self._max_feed_pages = max_feed_pages
         self._max_feed_seconds = max_feed_seconds
         self._match_cap = match_cap or DETAIL_CAP
+        # Overridable (defaults are the live-measured-safe values) so unit tests can disable the
+        # deliberate wall-clock throttling/jitter between search-fallback requests.
+        self._search_min_interval = search_min_interval
+        self._search_jitter_max = search_jitter_max
 
         self._token_lock = threading.Lock()
         self._token: str | None = None
@@ -118,6 +160,15 @@ class NavLiveConnector:
         self._feed_index: NavFeedIndex | None = None
         self._feed_stats: dict[str, Any] = {}
         self._feed_evidence: Any = None
+
+        # Search fallback (see the constants above): selection is decided once, at prepare-time, from
+        # the bulk rows (registered employees + legal name) and the freshly-built feed index.
+        self._search_fallback_orgs: dict[str, str] = {}  # org -> query name (the legal name, suffix-stripped)
+        self._search_lock = threading.Lock()
+        self._last_search_ts = 0.0
+        self._search_consecutive_429 = 0
+        self._search_breaker_tripped = False
+        self._searches_used = 0
 
     # -- token -------------------------------------------------------------------------------------
 
@@ -150,23 +201,29 @@ class NavLiveConnector:
 
     # -- shared feed index (built once per run) -----------------------------------------------------
 
-    def start_prepare(self, client: Any, state_dir: str | None = None) -> threading.Thread | None:
+    def start_prepare(
+        self, client: Any, state_dir: str | None = None, bulk_rows: dict[str, dict] | None = None,
+    ) -> threading.Thread | None:
         """Synchronously claim the "build the shared feed index" slot (idempotent: a second/concurrent
         call is a no-op, returning `None`), then run the actual walk in a background thread and return
         it. `pipeline.run_batch` calls this - claiming the slot synchronously, on the main thread, before
         any company is submitted to the worker pool, is what guarantees no company thread can race ahead
         and call the same-thread fallback (`prepare()`, via `_ensure_prepared`) with the wrong (`None`,
         in-memory, no persistence) `state_dir` before this real one has had a chance to start.
+
+        `bulk_rows` (org -> raw Brreg bulk CSV row, the same dict `pipeline.run_batch` already loaded)
+        is used, once the feed index is ready, to select this run's search-fallback candidates - see
+        `_select_search_fallback`.
         """
         with self._prepare_lock:
             if self._prepare_started:
                 return None
             self._prepare_started = True
-        t = threading.Thread(target=self._do_prepare, args=(client, state_dir), daemon=True)
+        t = threading.Thread(target=self._do_prepare, args=(client, state_dir, bulk_rows), daemon=True)
         t.start()
         return t
 
-    def prepare(self, client: Any, state_dir: str | None = None) -> None:
+    def prepare(self, client: Any, state_dir: str | None = None, bulk_rows: dict[str, dict] | None = None) -> None:
         """Build (or resume, from `state_dir`) the shared active-ads feed index once for the whole run,
         blocking the caller until it's ready. If another caller already claimed the slot (e.g.
         `pipeline.run_batch` via `start_prepare`), this just waits for that work instead of repeating it
@@ -179,11 +236,11 @@ class NavLiveConnector:
         if already_claimed:
             self._prepared_event.wait()
             return
-        self._do_prepare(client, state_dir)
+        self._do_prepare(client, state_dir, bulk_rows)
 
-    def _do_prepare(self, client: Any, state_dir: str | None) -> None:
-        """The actual feed walk. Callers must have already claimed `_prepare_started` (via
-        `start_prepare` or `prepare`) before calling this.
+    def _do_prepare(self, client: Any, state_dir: str | None, bulk_rows: dict[str, dict] | None = None) -> None:
+        """The actual feed walk (plus search-fallback candidate selection). Callers must have already
+        claimed `_prepare_started` (via `start_prepare` or `prepare`) before calling this.
         """
         try:
             index = NavFeedIndex.open(state_dir)
@@ -206,17 +263,172 @@ class NavLiveConnector:
                     f"complete={stats['complete']}; pages_walked_this_run={stats.get('pages', 0)}"
                 ),
             )
+            if bulk_rows:
+                try:
+                    self._search_fallback_orgs = self._select_search_fallback(bulk_rows, index)
+                except Exception:  # selection must never block the run
+                    self._search_fallback_orgs = {}
         except Exception as exc:  # a broken feed walk must never take the whole run down
             self._feed_stats = {"errors": [f"prepare_crashed:{type(exc).__name__}: {exc}"], "ad_count": 0, "complete": False}
             self._feed_index = None
         finally:
             self._prepared_event.set()
 
+    def _select_search_fallback(self, bulk_rows: dict[str, dict], index: NavFeedIndex) -> dict[str, str]:
+        """Pick at most `SEARCH_FALLBACK_MAX` companies for the search fallback: registered employees
+        (bulk row `antallAnsatte`) >= `EMPLOYEE_THRESHOLD`, the feed index has no match (exact or fuzzy)
+        for their bulk-row legal name already, ranked by employees descending. Companies not searched in
+        the last `SEARCH_HISTORY_COOLDOWN_DAYS` are preferred over recently-searched ones (rotation) -
+        recently-searched companies only fill remaining capacity if there aren't enough fresh candidates.
+        Returns {org: query_name}.
+        """
+        now = utc_now()
+        candidates: list[tuple[int, str, str]] = []  # (employees, org, query_name)
+        for org, row in bulk_rows.items():
+            name = str((row or {}).get("navn") or "").strip()
+            if not name:
+                continue
+            raw_employees = str((row or {}).get("antallAnsatte") or "").strip()
+            employees = int(raw_employees) if raw_employees.isdigit() else 0
+            if employees < EMPLOYEE_THRESHOLD:
+                continue
+            query_name = _strip_legal_suffix(name)
+            name_norm = _normalize_name(query_name)
+            if not name_norm:
+                continue
+            if index.match({name_norm}) or index.match_fuzzy({name_norm}):
+                continue  # the feed already has this company covered - no need to search it
+            candidates.append((employees, str(org), query_name))
+
+        candidates.sort(key=lambda t: t[0], reverse=True)
+        fresh = [c for c in candidates if not index.recently_searched(c[1], within_days=SEARCH_HISTORY_COOLDOWN_DAYS, now=now)]
+        stale = [c for c in candidates if index.recently_searched(c[1], within_days=SEARCH_HISTORY_COOLDOWN_DAYS, now=now)]
+        selected = (fresh + stale)[:SEARCH_FALLBACK_MAX]
+        return {org: query_name for _employees, org, query_name in selected}
+
     def _ensure_prepared(self, ctx: CompanyContext) -> None:
         # Lazy fallback for a caller that never wired pipeline.py's explicit `start_prepare` step (a
         # standalone use or a unit test): `prepare()` claims-and-runs if nobody has yet, or just waits if
         # someone already has (e.g. pipeline.py's background walk) - either way this blocks until ready.
         self.prepare(ctx.client, None)
+
+    # -- search fallback (employee-ranked, capped, breaker-protected) -------------------------------
+
+    def _search_breaker_open(self) -> bool:
+        with self._search_lock:
+            return self._search_breaker_tripped
+
+    def _do_one_search(self, ctx: CompanyContext, query_name: str) -> tuple[Any, str] | None:
+        """Throttle, issue the single search request, and update the breaker/cap counters - all under
+        one lock held for the *entire* critical section (throttle sleep through breaker update), not
+        just the sleep. Holding the lock across the actual `client.get()` call fully serializes searches
+        globally (one in flight at a time): earlier drafts released the lock after the throttle sleep,
+        which let several already-queued worker threads each pass their own post-sleep breaker recheck
+        before an in-flight sibling's response had come back and updated the shared counters - measured
+        live, this let a handful of extra requests slip through after the circuit breaker should have
+        already tripped. Returns `None` if the cap/breaker closed while waiting for the lock (checked
+        again here, since another thread may have tripped it or used up the cap first).
+        """
+        org = str(ctx.org)
+        with self._search_lock:
+            if self._search_breaker_tripped:
+                return None
+            if self._searches_used >= SEARCH_FALLBACK_MAX:
+                return None
+            now = time.monotonic()
+            wait = self._search_min_interval - (now - self._last_search_ts)
+            if wait > 0:
+                time.sleep(wait)
+            if self._search_jitter_max > 0:
+                time.sleep(random.uniform(0.0, self._search_jitter_max))
+            self._last_search_ts = time.monotonic()
+
+            url = f"{SEARCH_URL}?q={urllib.parse.quote(query_name)}&size=20"
+            resp = ctx.client.get(url, org=org, purpose="nav_search_fallback", accept="application/json", respect_robots=True)
+
+            self._searches_used += 1
+            if resp.status == 429:
+                self._search_consecutive_429 += 1
+                if self._search_consecutive_429 >= SEARCH_BREAKER_CONSECUTIVE_429:
+                    self._search_breaker_tripped = True
+            else:
+                self._search_consecutive_429 = 0
+            return resp, url
+
+    def _try_search_fallback(
+        self, ctx: CompanyContext, name_norms: set[str], errors: list[dict], evidence: list[Any],
+    ) -> tuple[list[dict], str]:
+        """Runs the single, capped, serialized search-fallback query for `ctx.org` if it was selected
+        (`_select_search_fallback`) and neither the per-run cap nor the 429 circuit breaker has stopped
+        further searching. Returns (matched candidate rows in the same shape `index.match` produces,
+        a short human-readable note for `nav_checked["reason"]` - e.g. what was found, or why nothing
+        was attempted). A company that isn't selected, or that was selected but skipped because of the
+        cap/breaker, always gets a note (never silently skipped) but never `failed` on that account alone
+        - the feed-index result already computed by the caller stands on its own.
+        """
+        org = str(ctx.org)
+        query_name = self._search_fallback_orgs.get(org)
+        if query_name is None:
+            return [], ""  # not selected: no note needed, this is the common case
+        if self._search_breaker_open():
+            return [], "search fallback skipped (circuit breaker open after repeated rate-limiting)"
+        client = ctx.client
+        if client.remaining(org) < 1:
+            return [], "search fallback skipped (request_budget)"
+
+        outcome = self._do_one_search(ctx, query_name)
+        if outcome is None:
+            reason = "circuit breaker open after repeated rate-limiting" if self._search_breaker_open() else "per-run search cap reached"
+            return [], f"search fallback skipped ({reason})"
+        resp, url = outcome
+        if self._feed_index is not None:
+            try:
+                self._feed_index.record_searched(org, utc_now())
+            except Exception:
+                pass
+
+        if resp.status == 429:
+            errors.append({"stage": "nav_search_fallback", "error": "http_429"})
+            return [], "search fallback attempted: rate-limited (429)"
+        if not resp.ok:
+            errors.append({"stage": "nav_search_fallback", "error": resp.error or f"http_{resp.status}"})
+            return [], f"search fallback attempted: {resp.error or resp.status}"
+
+        try:
+            data = json.loads(resp.text())
+        except Exception as exc:  # defensive: external API response
+            errors.append({"stage": "nav_search_fallback_parse", "error": f"{type(exc).__name__}: {exc}"})
+            return [], "search fallback attempted: parse_error"
+
+        hits_block = data.get("hits") or {}
+        hits = hits_block.get("hits") or []
+        total = (hits_block.get("total") or {}).get("value")
+        ev = make_evidence(
+            source_url=resp.final_url or url, final_url=resp.final_url, redirect_chain=resp.redirect_chain,
+            http_status=resp.status, source_class="public_job_feed", retrieved_at=resp.retrieved_at,
+            content_sha256=resp.content_sha256, snapshot_ref=resp.snapshot_ref,
+            extraction_method="nav_search_fallback_v1", access_policy="NLOD-2.0 (NAV)",
+            span=f"$.hits.total.value={total}; q={query_name!r}",
+        )
+        evidence.append(ev)
+
+        matched: list[dict] = []
+        for hit in hits:
+            src = hit.get("_source") or {}
+            uuid = str(src.get("uuid") or hit.get("_id") or "").strip()
+            if not uuid or str(src.get("status") or "").upper() != "ACTIVE":
+                continue
+            employer_name = ((src.get("employer") or {}).get("name")) or ""
+            business_name = src.get("businessName") or ""
+            name_norm = _normalize_name(employer_name if employer_name.strip() else business_name)
+            if not _name_overlaps(name_norm, name_norms):
+                continue
+            matched.append({
+                "uuid": uuid, "business_name": employer_name or business_name,
+                "sist_endret": src.get("published") or "",
+            })
+        note = f"search fallback attempted: {len(hits)} hit(s), {len(matched)} name-matched"
+        return matched, note
 
     # -- main ----------------------------------------------------------------------------------------
 
@@ -296,6 +508,19 @@ class NavLiveConnector:
         by_uuid: dict[str, dict] = {m["uuid"]: m for m in index.match(name_norms)}
         for m in index.match_fuzzy(name_norms):
             by_uuid.setdefault(m["uuid"], m)
+        feed_matching = len(by_uuid)
+
+        # Search fallback: only when the feed index found nothing at all for this company, and only if
+        # it was pre-selected at prepare-time (employees >= threshold, capped, rotated - see
+        # `_select_search_fallback`). Every candidate this finds still needs feedentry+orgnr
+        # confirmation below, exactly like a feed-matched candidate - a search hit is never published
+        # on its own.
+        search_note = ""
+        if feed_matching == 0:
+            search_hits, search_note = self._try_search_fallback(ctx, name_norms, errors, evidence)
+            for m in search_hits:
+                by_uuid.setdefault(m["uuid"], m)
+
         ranked = sorted(by_uuid.values(), key=lambda m: m.get("sist_endret") or "", reverse=True)
         cap = self._match_cap.get(tier, 5)
         candidates = ranked[:cap]
@@ -387,9 +612,12 @@ class NavLiveConnector:
         index_complete = bool(stats.get("complete"))
         partial_note = "" if index_complete else " - feed index has not yet reached the live tip (partial window: a false zero is possible until it does)"
         reason = f"checked NAV arbeidsplassen feed index: {total_matching} name-matched active ad(s), {len(verified_ads)} verified{partial_note}"
+        if search_note:
+            reason += f"; {search_note}"
         shared["nav_checked"] = {
             "checked": True, "state": "ok", "reason": reason, "checked_at": utc_now(),
             "index_complete": index_complete,
+            "search_attempted": search_note.startswith("search fallback attempted"),
         }
 
         return ConnectorResult(claims=[], evidence=evidence, families={}, errors=errors, shared=shared)
