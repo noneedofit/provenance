@@ -133,8 +133,21 @@ def _period_advanced(prev: Claim | None, curr: Claim | None) -> bool:
     return curr_end > prev_end
 
 
+# Bookkeeping keys that record when a source was read, not what it said. They differ on every run and
+# must never make an otherwise identical value look changed.
+VOLATILE_VALUE_KEYS = frozenset({"checked_at", "retrieved_at", "fetched_at", "observed_at", "last_checked"})
+
+
+def _stable_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _stable_value(v) for k, v in value.items() if k not in VOLATILE_VALUE_KEYS}
+    if isinstance(value, list):
+        return [_stable_value(v) for v in value]
+    return value
+
+
 def _values_equal(prev: Claim, curr: Claim) -> bool:
-    return canonical(prev.value) == canonical(curr.value) and _period_key(prev) == _period_key(curr)
+    return canonical(_stable_value(prev.value)) == canonical(_stable_value(curr.value)) and _period_key(prev) == _period_key(curr)
 
 
 def _is_immaterial_text_change(prev: Claim, curr: Claim, family: str) -> bool:
@@ -211,7 +224,9 @@ def diff_envelopes(prev: Envelope, curr: Envelope) -> list[Change]:
 
     detected_at = curr.run.completed_at or curr.run.started_at or utc_now()
     prev_current = {c.claim_id: c for c in prev.claims if c.status == "current"}
-    curr_by_id = {c.claim_id: c for c in curr.claims}
+    # Only current claims on both sides: a claim that is withdrawn in both runs (e.g. a deregistered
+    # board member) is not new, and one that went current -> withdrawn is reported as ended below.
+    curr_by_id = {c.claim_id: c for c in curr.claims if c.status == "current"}
 
     changes: list[Change] = []
 

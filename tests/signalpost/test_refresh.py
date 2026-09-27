@@ -263,3 +263,44 @@ def test_diff_envelopes_is_pure_and_matches_apply_refresh(tmp_path: Path) -> Non
     assert changes[0].change_type == "identity_changed"
     # diff_envelopes must not mutate its inputs.
     assert envelope1.claims[0].value == "Old Name AS"
+
+
+def _claim_for_diff(org, family, field, value, *, value_key=None, status="current"):
+    from signalpost.models import Claim, claim_key
+
+    return Claim(
+        claim_id=claim_key(org, family, field, value_key), organisation_number=org, family=family, field=field,
+        value=value, value_key=value_key, availability="available", identity_basis="registry_record",
+        evidence_ids=["e_x"], status=status,
+    )
+
+
+def _env_for_diff(org, run_id, claims):
+    from signalpost.models import Envelope, RunInfo
+
+    return Envelope(organisation_number=org, run=RunInfo(run_id=run_id, started_at="2026-09-27T00:00:00Z"), claims=claims)
+
+
+def test_diff_ignores_checked_at_timestamps_in_values():
+    from signalpost.refresh import diff_envelopes
+
+    org = "123456785"
+    prev = _env_for_diff(org, "a", [_claim_for_diff(org, "jobs", "active_postings_count", {"verified": 0, "checked_at": "2026-09-27T14:01:53Z"})])
+    curr = _env_for_diff(org, "b", [_claim_for_diff(org, "jobs", "active_postings_count", {"verified": 0, "checked_at": "2026-09-27T14:03:57Z"})])
+    assert diff_envelopes(prev, curr) == []
+    curr2 = _env_for_diff(org, "c", [_claim_for_diff(org, "jobs", "active_postings_count", {"verified": 2, "checked_at": "2026-09-28T09:00:00Z"})])
+    assert len(diff_envelopes(prev, curr2)) == 1
+
+
+def test_diff_does_not_report_a_role_withdrawn_in_both_runs_as_new():
+    from signalpost.refresh import diff_envelopes
+
+    org = "123456785"
+    role = {"role_code": "MEDL", "role_label": "Styremedlem", "name": "Jan Terje Ludvigsen"}
+    prev = _env_for_diff(org, "a", [_claim_for_diff(org, "leadership", "role", role, value_key="MEDL:jan terje ludvigsen", status="withdrawn")])
+    curr = _env_for_diff(org, "b", [_claim_for_diff(org, "leadership", "role", role, value_key="MEDL:jan terje ludvigsen", status="withdrawn")])
+    assert diff_envelopes(prev, curr) == []
+    # current -> withdrawn is an ended role, not silence.
+    prev_current = _env_for_diff(org, "a", [_claim_for_diff(org, "leadership", "role", role, value_key="MEDL:jan terje ludvigsen")])
+    changes = diff_envelopes(prev_current, curr)
+    assert len(changes) == 1 and changes[0].current_value is None
