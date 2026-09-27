@@ -412,11 +412,16 @@ class BudgetedHttpClient:
             with sem:
                 status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
-            retryable = error == "timeout" or status == 429 or status >= 500
+            # Connection-level failures (TLS handshake reset, connection refused/reset) are usually
+            # transient: a live run saw ~30% of registry calls fail this way for a few minutes.
+            connection_error = error in ("ssl_error", "network_error")
+            retryable = error == "timeout" or status == 429 or status >= 500 or connection_error
             if retryable:
                 if not self.budget.charge(org, 1, purpose=purpose):
                     return self._fail(url, redirect_chain, "budget_exhausted", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
                 total_requests_used += 1
+                if connection_error:
+                    time.sleep(1.0)
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 

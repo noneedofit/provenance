@@ -560,6 +560,13 @@ class RegistryConnector:
                 families["identity"] = FamilyState(family="identity", availability="not_available", reason=f"registry entity {resp.status}")
             else:
                 errors.append({"stage": "registry_entity", "status": resp.status, "error": resp.error})
+                if ctx.previous:
+                    # Live registry unreachable for a company we have profiled before: report the family
+                    # as failed so refresh carries the stored facts forward. The bulk file formats
+                    # addresses differently and lacks historic names, so using it here would publish
+                    # false changes and removals.
+                    families["identity"] = FamilyState(family="identity", availability="failed", reason=f"live registry unavailable ({resp.error or resp.status}); previous profile kept")
+                    families["locations"] = FamilyState(family="locations", availability="failed", reason="live registry unavailable; previous profile kept")
 
         if entity_ok and entity_body is not None:
             identity_claims_from_live(builder, entity_body, resp)
@@ -620,11 +627,13 @@ class RegistryConnector:
                 pass
             else:
                 errors.append({"stage": "registry_subunits", "status": resp.status, "error": resp.error})
+                if ctx.previous:
+                    families["locations"] = FamilyState(family="locations", availability="failed", reason=f"registry subunits unavailable ({resp.error or resp.status}); previous profile kept")
 
         business_address = None
         if entity_ok and entity_body is not None:
             business_address = _address_dict(entity_body.get("forretningsadresse"))
-        elif bulk_row:
+        elif bulk_row and families.get("locations") is None:
             business_address = {
                 "street": bulk_row.get("forretningsadresse.adresse"), "postcode": bulk_row.get("forretningsadresse.postnummer"),
                 "city": bulk_row.get("forretningsadresse.poststed"), "municipality": bulk_row.get("forretningsadresse.kommune"),

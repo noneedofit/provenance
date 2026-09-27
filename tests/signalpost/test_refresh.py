@@ -304,3 +304,14 @@ def test_diff_does_not_report_a_role_withdrawn_in_both_runs_as_new():
     prev_current = _env_for_diff(org, "a", [_claim_for_diff(org, "leadership", "role", role, value_key="MEDL:jan terje ludvigsen")])
     changes = diff_envelopes(prev_current, curr)
     assert len(changes) == 1 and changes[0].current_value is None
+
+
+def test_diff_treats_http_and_https_of_the_same_site_as_unchanged():
+    from signalpost.refresh import diff_envelopes
+
+    org = "123456785"
+    prev = _env_for_diff(org, "a", [_claim_for_diff(org, "website", "official_website", {"url": "https://www.acme.no/", "domain": "acme.no", "brand_name": "Acme"})])
+    curr = _env_for_diff(org, "b", [_claim_for_diff(org, "website", "official_website", {"url": "http://acme.no", "domain": "acme.no", "brand_name": None})])
+    assert diff_envelopes(prev, curr) == []
+    moved = _env_for_diff(org, "c", [_claim_for_diff(org, "website", "official_website", {"url": "https://acme-group.no/", "domain": "acme-group.no"})])
+    assert len(diff_envelopes(prev, moved)) == 1

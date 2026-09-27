@@ -154,3 +154,33 @@ def test_registry_facts_fall_back_to_bulk_contact_fields_when_live_entity_lacks_
     assert facts["email_domain"] == "example-firma.no"
     assert set(facts["phones"]) == {"22334455", "91234567"}
     assert facts["website"] and "example-firma.no" in facts["website"]
+
+
+def _client_without_entity() -> FakeHttpClient:
+    # The entity URL is not routed, so the fake returns a status-0 error like a dropped connection.
+    client = FakeHttpClient()
+    for module in ("roles", "subunits", "accounts", "years"):
+        data = _load(module)
+        client.add_json(data["url"], data["status"], data["body"])
+    return client
+
+
+_BULK = {"navn": "TEST AS", "organisasjonsform.kode": "AS", "forretningsadresse.adresse": "c/o X\nGata 1",
+         "forretningsadresse.postnummer": "0150", "forretningsadresse.poststed": "OSLO"}
+
+
+def test_live_registry_failure_on_known_company_keeps_previous_profile():
+    ctx = CompanyContext(org=ORG, run_id="r2", now=utc_now(), tier="T3", bulk=dict(_BULK),
+                         client=_client_without_entity(), previous={"organisation_number": ORG})
+    result = registry.RegistryConnector().run(ctx)
+    assert result.families["identity"].availability == "failed"
+    assert result.families["locations"].availability == "failed"
+    assert not [c for c in result.claims if c.family in ("identity", "locations")]
+
+
+def test_live_registry_failure_on_first_run_falls_back_to_bulk():
+    ctx = CompanyContext(org=ORG, run_id="r1", now=utc_now(), tier="T3", bulk=dict(_BULK),
+                         client=_client_without_entity())
+    result = registry.RegistryConnector().run(ctx)
+    assert result.families["identity"].availability == "available"
+    assert [c for c in result.claims if c.family == "identity"]
