@@ -314,8 +314,27 @@ class NavLiveConnector:
 
     # -- search fallback (employee-ranked, capped, breaker-protected) -------------------------------
 
-    def _search_throttle(self) -> None:
+    def _search_breaker_open(self) -> bool:
         with self._search_lock:
+            return self._search_breaker_tripped
+
+    def _do_one_search(self, ctx: CompanyContext, query_name: str) -> tuple[Any, str] | None:
+        """Throttle, issue the single search request, and update the breaker/cap counters - all under
+        one lock held for the *entire* critical section (throttle sleep through breaker update), not
+        just the sleep. Holding the lock across the actual `client.get()` call fully serializes searches
+        globally (one in flight at a time): earlier drafts released the lock after the throttle sleep,
+        which let several already-queued worker threads each pass their own post-sleep breaker recheck
+        before an in-flight sibling's response had come back and updated the shared counters - measured
+        live, this let a handful of extra requests slip through after the circuit breaker should have
+        already tripped. Returns `None` if the cap/breaker closed while waiting for the lock (checked
+        again here, since another thread may have tripped it or used up the cap first).
+        """
+        org = str(ctx.org)
+        with self._search_lock:
+            if self._search_breaker_tripped:
+                return None
+            if self._searches_used >= SEARCH_FALLBACK_MAX:
+                return None
             now = time.monotonic()
             wait = self._search_min_interval - (now - self._last_search_ts)
             if wait > 0:
@@ -324,19 +343,17 @@ class NavLiveConnector:
                 time.sleep(random.uniform(0.0, self._search_jitter_max))
             self._last_search_ts = time.monotonic()
 
-    def _search_breaker_open(self) -> bool:
-        with self._search_lock:
-            return self._search_breaker_tripped
+            url = f"{SEARCH_URL}?q={urllib.parse.quote(query_name)}&size=20"
+            resp = ctx.client.get(url, org=org, purpose="nav_search_fallback", accept="application/json", respect_robots=True)
 
-    def _record_search_status(self, status: int) -> None:
-        with self._search_lock:
             self._searches_used += 1
-            if status == 429:
+            if resp.status == 429:
                 self._search_consecutive_429 += 1
                 if self._search_consecutive_429 >= SEARCH_BREAKER_CONSECUTIVE_429:
                     self._search_breaker_tripped = True
             else:
                 self._search_consecutive_429 = 0
+            return resp, url
 
     def _try_search_fallback(
         self, ctx: CompanyContext, name_norms: set[str], errors: list[dict], evidence: list[Any],
@@ -355,20 +372,15 @@ class NavLiveConnector:
             return [], ""  # not selected: no note needed, this is the common case
         if self._search_breaker_open():
             return [], "search fallback skipped (circuit breaker open after repeated rate-limiting)"
-        with self._search_lock:
-            if self._searches_used >= SEARCH_FALLBACK_MAX:
-                return [], "search fallback skipped (per-run search cap reached)"
         client = ctx.client
         if client.remaining(org) < 1:
             return [], "search fallback skipped (request_budget)"
 
-        self._search_throttle()
-        if self._search_breaker_open():  # re-check: another company's search may have tripped it while we slept
-            return [], "search fallback skipped (circuit breaker open after repeated rate-limiting)"
-
-        url = f"{SEARCH_URL}?q={urllib.parse.quote(query_name)}&size=20"
-        resp = client.get(url, org=org, purpose="nav_search_fallback", accept="application/json", respect_robots=True)
-        self._record_search_status(resp.status)
+        outcome = self._do_one_search(ctx, query_name)
+        if outcome is None:
+            reason = "circuit breaker open after repeated rate-limiting" if self._search_breaker_open() else "per-run search cap reached"
+            return [], f"search fallback skipped ({reason})"
+        resp, url = outcome
         if self._feed_index is not None:
             try:
                 self._feed_index.record_searched(org, utc_now())

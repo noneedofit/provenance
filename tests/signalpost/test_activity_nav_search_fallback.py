@@ -233,3 +233,38 @@ def test_search_history_is_recorded_after_an_attempt(tmp_path: Path):
     from signalpost.models import utc_now
 
     assert connector._feed_index.recently_searched(org, within_days=SEARCH_HISTORY_COOLDOWN_DAYS, now=utc_now())
+
+
+def test_breaker_holds_under_real_concurrency(tmp_path: Path):
+    # Regression: an earlier version released the search lock after the throttle sleep but before the
+    # request/response, so several already-queued worker threads could each pass their own post-sleep
+    # breaker recheck before an in-flight sibling's response had come back and updated the shared
+    # counters - measured live as extra requests slipping through after the breaker should have tripped.
+    # Fire many companies at once (real threads, zero throttle) against an always-429 responder and
+    # assert the search endpoint is hit exactly SEARCH_BREAKER_CONSECUTIVE_429 times, never more.
+    import threading
+
+    n_companies = 30
+    bulk = {f"91990{i:04d}": _bulk_row(f"Concurrent Co {i} AS", 100 - i) for i in range(n_companies)}
+
+    def responder(url, n):
+        return 429, b'{"status":429}'
+
+    client = _empty_feed_client(search_responder=responder)
+    connector = NavLiveConnector(search_min_interval=0.0, search_jitter_max=0.0)
+    connector.prepare(client, str(tmp_path), bulk)
+    assert len(connector._search_fallback_orgs) == SEARCH_FALLBACK_MAX  # more eligible than the cap allows
+
+    def worker(org: str) -> None:
+        ctx = make_ctx(org=org, tier="T2", client=client, registry_facts={
+            "name": bulk[org]["navn"], "aliases": [], "subunits": [],
+        })
+        connector.run(ctx)
+
+    threads = [threading.Thread(target=worker, args=(org,)) for org in bulk]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10)
+
+    assert client.search_calls == SEARCH_BREAKER_CONSECUTIVE_429
