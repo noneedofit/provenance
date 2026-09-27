@@ -123,3 +123,7 @@ W7 merged to main (eval harness + gold batches 1,3,5,6). Baseline (registry only
 - Final 1,000 profiles: <workspace>/wt-final/submission/profiles/submission-20260927 (commit 7ea858b).
   All valid; batches 681–1,493 req. Website hand-check: 211/212 correct, 0 wrong, 1 unclear (Soulcake).
 - Remaining before submit (user): GitHub repo, author rewrite of first 3 commits, submission form.
+- 28 Sep: merged activity (+4.4 pts site-activity coverage on gold). Refresh hardened against transient network
+  failures (3b48fa4, e21630b): retry connection errors, carry forward on live-registry failure for known
+  companies, website compared by site, previously verified but unreachable site → failed (carry forward).
+  daily100 ×3 with one state: 0 changes on runs 2 and 3 despite ~22 connection errors per run.
