@@ -216,3 +216,19 @@ def test_short_time_budget_falls_back_to_registry_only_for_every_company(tmp_pat
         assert env["families"]["identity"]["availability"] == "not_available"
         assert env["families"]["website"]["availability"] == "failed"
         assert env["families"]["website"]["reason"].startswith("time_budget")
+
+
+def test_small_request_cap_still_lets_registry_calls_through(tmp_path: Path):
+    # A cap below 5 requests per company must not leave a negative budget that refuses everything.
+    orgs = [f"9{i:08d}" for i in range(10)]
+    seen = []
+
+    class _ChargingRegistry(_NamedStub):
+        def run(self, ctx: CompanyContext) -> ConnectorResult:
+            seen.append(ctx.client.budget.charge(ctx.org, 1, purpose="registry_entity"))
+            return super().run(ctx)
+
+    pipeline.run_batch(orgs, output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={o: {} for o in orgs}, connectors=[_ChargingRegistry("registry", "identity")],
+                       workers=1, max_requests=20)
+    assert seen and all(seen)

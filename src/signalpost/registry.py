@@ -281,6 +281,24 @@ def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, sn
     builder.note_checked("identity", BULK_DOWNLOAD_URL)
 
 
+def _carry_previous_claim(builder: "_ClaimBuilder", previous: dict[str, Any] | None, family: str, field: str) -> None:
+    """Re-publish a stored claim (with its evidence) that this run could not re-check.
+
+    Used when the live entity call fails for a known company: the registry description shares its family
+    with the website description, so family-level carry-forward in refresh cannot keep it.
+    """
+    envelope = (previous or {}).get("last_envelope") or {}
+    evidence = {e.get("evidence_id"): e for e in envelope.get("evidence", [])}
+    for raw in envelope.get("claims", []):
+        if raw.get("family") == family and raw.get("field") == field and raw.get("status") == "current":
+            claim = Claim.model_validate(raw)
+            builder.claims.append(claim)
+            for eid in claim.evidence_ids:
+                if eid in evidence and eid not in builder.evidence:
+                    builder.evidence[eid] = Evidence.model_validate(evidence[eid])
+            return
+
+
 def _registry_activity_text(activity: Any, purpose: Any) -> str | None:
     """What the company says it does, as registered: `aktivitet`, else the statutory purpose.
 
@@ -592,6 +610,7 @@ class RegistryConnector:
                     # false changes and removals.
                     families["identity"] = FamilyState(family="identity", availability="failed", reason=f"live registry unavailable ({resp.error or resp.status}); previous profile kept")
                     families["locations"] = FamilyState(family="locations", availability="failed", reason="live registry unavailable; previous profile kept")
+                    _carry_previous_claim(builder, ctx.previous, "description", "registry_activity")
 
         if entity_ok and entity_body is not None:
             identity_claims_from_live(builder, entity_body, resp)

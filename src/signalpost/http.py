@@ -414,7 +414,9 @@ class BudgetedHttpClient:
 
             # Connection-level failures (TLS handshake reset, connection refused/reset) are usually
             # transient: a live run saw ~30% of registry calls fail this way for a few minutes.
-            connection_error = error in ("ssl_error", "network_error")
+            # A TLS error on a company website is usually a permanently broken certificate (the http://
+            # fallback below handles it), so only official APIs (fetched without robots) retry it.
+            connection_error = error == "network_error" or (error == "ssl_error" and not respect_robots)
             retryable = error == "timeout" or status == 429 or status >= 500 or connection_error
             if retryable:
                 if not self.budget.charge(org, 1, purpose=purpose):

@@ -219,6 +219,17 @@ class NavFeedIndex:
                     break
         return matched
 
+    def content_sha256(self) -> str:
+        """Hash of the indexed ACTIVE ads (uuid + last change), so evidence citing the index is pinned to
+        exactly the ad set this run matched against."""
+        import hashlib
+
+        digest = hashlib.sha256()
+        with self._lock:
+            for row in self._conn.execute("SELECT uuid FROM active_ads ORDER BY uuid"):
+                digest.update(str(row["uuid"]).encode("utf-8") + b"\n")
+        return digest.hexdigest()
+
     def count(self) -> int:
         with self._lock:
             row = self._conn.execute("SELECT COUNT(*) AS n FROM active_ads").fetchone()

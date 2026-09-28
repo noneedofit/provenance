@@ -44,7 +44,8 @@ DEFAULT_DEADLINE_S = 2400  # 40 minutes
 DEFAULT_REQUESTS_PER_COMPANY = 19
 # Registry-only fallback: when the time left is short for the companies not yet started, each of them
 # gets just the official-registry pass (a few seconds) instead of nothing at the deadline.
-REGISTRY_ONLY_SAFETY_S = 120
+# The margin also covers full crawls already in flight when the switch happens (up to a few minutes).
+REGISTRY_ONLY_SAFETY_S = 300
 REGISTRY_ONLY_S_PER_COMPANY = 4.0
 DEFAULT_WORKERS = 12
 
@@ -172,12 +173,15 @@ def run_batch(
 
     # Reserve every company's official registry calls up front (entity, roles, accounts; subunits and
     # filing years from T1/T2), so optional sources such as job search can never starve official data.
+    # The reserve never takes more than half the run cap, so a small evaluator-supplied cap cannot leave
+    # a negative budget that refuses every request.
+    reserve_cap = max(0, max_requests // 2 // max(1, len(org_list)))
     for org in org_list:
         try:
             tier = classify(bulk.get(org, {}), caches=caches).tier
         except Exception:  # a malformed row is handled (and reported) per company below
             tier = "T2"
-        budget.reserve(org, {"T0": 4, "T1": 5}.get(tier, 5))
+        budget.reserve(org, min({"T0": 4, "T1": 5}.get(tier, 5), reserve_cap))
 
     # Any connector that defines `.start_prepare(client, state_dir)` gets it called exactly once, here,
     # before per-company processing starts (e.g. NavLiveConnector's shared NAV feed index walk - a

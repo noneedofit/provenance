@@ -191,3 +191,19 @@ def test_registry_publishes_activity_as_a_description_claim():
     result = registry.RegistryConnector().run(ctx)
     desc = [c for c in result.claims if c.family == "description" and c.field == "registry_activity"]
     assert len(desc) == 1 and len(desc[0].value) >= 12 and desc[0].evidence_ids
+
+
+def test_live_registry_failure_keeps_the_stored_registry_description():
+    stored = {"last_envelope": {
+        "claims": [{"claim_id": "c_prev", "organisation_number": ORG, "family": "description", "field": "registry_activity",
+                    "value": "Drift av restaurant", "availability": "available", "identity_basis": "registry_record",
+                    "evidence_ids": ["e_prev"], "status": "current"}],
+        "evidence": [{"evidence_id": "e_prev", "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/x",
+                      "source_class": "official_registry", "retrieved_at": "2026-09-24T00:00:00Z", "extraction_method": "brreg_v1"}],
+    }}
+    ctx = CompanyContext(org=ORG, run_id="r2", now=utc_now(), tier="T3", bulk=dict(_BULK),
+                         client=_client_without_entity(), previous=stored)
+    result = registry.RegistryConnector().run(ctx)
+    desc = [c for c in result.claims if c.field == "registry_activity"]
+    assert len(desc) == 1 and desc[0].value == "Drift av restaurant"
+    assert any(e.evidence_id == "e_prev" for e in result.evidence)
