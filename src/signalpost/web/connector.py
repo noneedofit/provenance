@@ -5,6 +5,7 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
+import hashlib
 import urllib.parse
 from typing import Any
 
@@ -115,6 +116,67 @@ def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
         extraction_method=method,
         span=(span or "")[:500] or None,
     )
+
+
+def _profile_key(url: str) -> str:
+    parts = urllib.parse.urlsplit(url.strip())
+    host = (parts.hostname or "").lower().removeprefix("www.").removeprefix("m.")
+    return f"https://{host}{parts.path.rstrip('/')}"
+
+
+def _add_wikidata_profiles(ctx: Any, result: ConnectorResult) -> None:
+    """Public social profiles listed on the Wikidata item that carries this organisation number (P2333).
+
+    The org number on the item makes the attribution exact, so these are published even when no website
+    was verified. Profiles already linked from the verified site are not duplicated.
+    """
+    caches = getattr(ctx, "caches", None)
+    wikidata = getattr(caches, "wikidata", None) if caches is not None else None
+    if wikidata is None:
+        return
+    try:
+        row = wikidata.lookup(ctx.org)
+    except Exception:
+        return
+    profiles = (row or {}).get("profiles") or {}
+    if not profiles:
+        return
+    org = ctx.org
+    existing = {_profile_key(c.value["url"]) for c in result.claims if c.family == "profiles" and isinstance(c.value, dict) and c.value.get("url")}
+    added = 0
+    for platform, url in sorted(profiles.items()):
+        if not isinstance(url, str) or not url.startswith("http"):
+            continue
+        key = _profile_key(url)
+        if key in existing:
+            continue
+        existing.add(key)
+        source = row.get("source_url") or "https://query.wikidata.org/sparql"
+        ev = Evidence(
+            evidence_id=evidence_id(source, row.get("qid") or "", f"{row.get('qid')}:{platform}"),
+            source_url=f"https://www.wikidata.org/wiki/{row['qid']}" if row.get("qid") else source,
+            source_class="open_knowledge_base", retrieved_at=row.get("retrieved_at") or utc_now(),
+            content_sha256=hashlib.sha256(f"{row.get('qid')}|{platform}|{url}".encode("utf-8")).hexdigest(),
+            extraction_method="wikidata_profiles_v1", span=f"{row.get('qid')} {platform} (item has P2333={org})",
+            access_policy="CC0 (Wikidata)",
+        )
+        result.evidence.append(ev)
+        result.claims.append(Claim(
+            claim_id=claim_key(org, "profiles", "profile", key), organisation_number=org,
+            family="profiles", field="profile", value={"platform": platform, "url": key},
+            value_key=key, availability="available", identity_basis="wikidata_org_number",
+            relationship="exact", evidence_ids=[ev.evidence_id],
+        ))
+        added += 1
+    if not added:
+        return
+    state = result.families.get("profiles")
+    if state is None or state.availability in ("not_available", "not_applicable"):
+        count = sum(1 for c in result.claims if c.family == "profiles")
+        result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=count,
+                                                  sources_checked=list((state.sources_checked if state else []) or []) + ["wikidata"])
+    elif state.availability == "available":
+        state.claim_count = (state.claim_count or 0) + added
 
 
 class WebConnector:
@@ -233,6 +295,7 @@ class WebConnector:
             result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no verified site to link profiles from")
             result.families["description"] = FamilyState(family="description", availability="not_available", reason="no verified site to extract description from")
 
+        _add_wikidata_profiles(ctx, result)
         return result
 
     # -- publication helpers -------------------------------------------------------------------------

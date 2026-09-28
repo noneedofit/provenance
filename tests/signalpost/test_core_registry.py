@@ -207,3 +207,22 @@ def test_live_registry_failure_keeps_the_stored_registry_description():
     desc = [c for c in result.claims if c.field == "registry_activity"]
     assert len(desc) == 1 and desc[0].value == "Drift av restaurant"
     assert any(e.evidence_id == "e_prev" for e in result.evidence)
+
+
+def test_parent_company_flag_in_accounts_is_published_as_a_group_fact():
+    result = registry.RegistryConnector().run(_ctx(_client()))
+    group = [c for c in result.claims if c.family == "group" and c.field == "group_role"]
+    assert len(group) == 1 and group[0].value["role"] == "parent_company"
+    assert result.families["group"].availability == "available"
+    ev = {e.evidence_id: e for e in result.evidence}
+    assert ev[group[0].evidence_ids[0]].span.endswith("virksomhet.morselskap")
+
+
+def test_group_is_failed_not_empty_when_accounts_cannot_be_read():
+    client = FakeHttpClient()
+    for module in ("entity", "roles", "subunits", "years"):  # accounts not routed -> fetch error
+        data = _load(module)
+        client.add_json(data["url"], data["status"], data["body"])
+    result = registry.RegistryConnector().run(_ctx(client))
+    assert result.families["financials"].availability == "failed"
+    assert result.families["group"].availability == "failed"

@@ -246,6 +246,10 @@ def _sentence_legal_form(envelope: Envelope) -> SummarySentence | None:
     if municipality is not None:
         parts.append(f"registered in {_display(municipality.value).title()}")
         claim_ids.append(municipality.claim_id)
+    parent = _single(envelope, "group", "group_role")
+    if parent is not None and isinstance(parent.value, dict) and parent.value.get("role") == "parent_company":
+        parts.append("filing its annual accounts as a parent company")
+        claim_ids.append(parent.claim_id)
     return SummarySentence(text=f"{name} " + ", ".join(parts) + ".", claim_ids=claim_ids)
 
 

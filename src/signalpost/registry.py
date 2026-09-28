@@ -536,6 +536,19 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             "small_enterprise": _get(latest, "regnkapsprinsipper", "smaaForetak"),
         }, value_key=None, reporting_period=period, evidence_ids=[eid_meta],
     )
+    if _get(latest, "virksomhet", "morselskap") is True:
+        # The filed accounts mark this company as a parent company (morselskap): an official group fact.
+        eid_parent = builder.add_evidence(
+            source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+            extraction_method="brreg_financials_v1", span=f"$[id={record_id}].virksomhet.morselskap",
+            content_sha256=response.content_sha256, final_url=response.final_url,
+            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+        )
+        builder.add_claim(
+            family="group", field="group_role", value={"role": "parent_company", "basis": "annual accounts: morselskap"},
+            reporting_period=period, evidence_ids=[eid_parent],
+        )
+        builder.note_checked("group", response.url)
     audit = latest.get("revisjon")
     if audit is not None:
         builder.add_claim(
@@ -767,10 +780,14 @@ class RegistryConnector:
 
         # -------- group --------
         group_claims = [c for c in builder.claims if c.family == "group"]
+        group_sources = list(dict.fromkeys([BRREG_ENTITY.format(org=org)] + builder.sources_checked.get("group", [])))
         if group_claims:
-            families["group"] = FamilyState(family="group", availability="available", sources_checked=[BRREG_ENTITY.format(org=org)], claim_count=len(group_claims))
+            families["group"] = FamilyState(family="group", availability="available", sources_checked=group_sources, claim_count=len(group_claims))
+        elif families.get("financials") is not None and families["financials"].availability == "failed":
+            # The parent-company flag comes from the accounts; unread accounts mean "not checked".
+            families["group"] = FamilyState(family="group", availability="failed", reason="annual accounts unavailable this run", sources_checked=group_sources)
         else:
-            families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship in registry data")
+            families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship or parent-company flag in registry data", sources_checked=group_sources)
 
         ctx.registry["subunits"] = subunit_facts
         shared = {"registry_facts": registry_facts(ctx, builder=builder, entity_body=entity_body, bulk_row=bulk_row, subunit_facts=subunit_facts)}

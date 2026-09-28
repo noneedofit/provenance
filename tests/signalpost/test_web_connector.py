@@ -200,3 +200,21 @@ def test_previously_verified_site_now_404_is_reported_not_available():
     ctx.previous = _previous_with_site("example.no")
     result = WebConnector().run(ctx)
     assert result.families["website"].availability == "not_available"
+
+
+def test_wikidata_profiles_are_published_even_without_a_verified_site():
+    from types import SimpleNamespace
+
+    class _Wikidata:
+        def lookup(self, org):
+            return {"qid": "Q1", "label": "Example AS", "websites": [], "retrieved_at": "2026-09-28T00:00:00Z",
+                    "source_url": "https://query.wikidata.org/sparql",
+                    "profiles": {"facebook": "https://www.facebook.com/exampleas/", "instagram": "not-a-url"}}
+
+    ctx = make_ctx(OUR_ORG, tier="T2", client=FakeHttpClient(pages={}), caches=SimpleNamespace(wikidata=_Wikidata(), email_domains=None),
+                   registry_facts={"name": "EXAMPLE AS", "website": None, "street": "", "postcode": "", "city": ""})
+    result = WebConnector().run(ctx)
+    profiles = [c for c in result.claims if c.family == "profiles"]
+    assert [c.value["url"] for c in profiles] == ["https://facebook.com/exampleas"]
+    assert profiles[0].identity_basis == "wikidata_org_number" and profiles[0].evidence_ids
+    assert result.families["profiles"].availability == "available"
