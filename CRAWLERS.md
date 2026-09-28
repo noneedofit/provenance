@@ -20,7 +20,8 @@ Families: `identity`, `financials`, `financial_history`, `leadership`, `location
   - `GET underenheter?overordnetEnhet={org}&size=100` — locations (subunits); skipped at tier T0 (business
     address only).
   - `GET regnskapsregisteret/regnskap/{org}` — latest financials.
-  - `GET regnskap/aarsregnskap/kopi/{org}/aar` — filed years, tiers T2/T3 only.
+  - `GET regnskap/aarsregnskap/kopi/{org}/aar` — filed years, every company (rate-limited to 1/s; skipped
+    in registry-only mode).
 - **Budget**: every company's registry calls are reserved up front (3 requests at T0, 4 at T1, 5 at
   T2/T3) via `Budget.reserve`, so optional sources (web, jobs) can never starve official data; the
   reserve is released back to the shared pool as soon as the connector finishes for that company.
@@ -32,21 +33,17 @@ Families: `identity`, `financials`, `financial_history`, `leadership`, `location
 Families: none (publishes only to `ctx.shared`). Runs before `web` so a NAV-confirmed employer homepage
 can seed website candidates.
 
-- Tiers T1–T3 only (skipped at T0: "not searched: no registered staff or web footprint"), and only when
-  `ctx.client.remaining(org) >= 1`.
-- `GET arbeidsplassen.nav.no/stillinger/api/search?q=<name>&size=100` — keyless full-text search by the
-  company's legal name (legal-form suffix stripped) plus up to 2 subunit trade names at T2/T3.
-- `GET pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}` with `Authorization: Bearer <token>` (token = the
-  last non-empty line of `GET pam-stilling-feed.nav.no/api/publicToken`, fetched once per run) — confirms
-  the ad's organisation number before it is ever published as this company's job.
-- **Budget**: at most 1 (T1) or 3 (T2/T3) search requests, plus at most 3/5/8 (T1/T2/T3) detail fetches —
-  worst case 11 requests at T3, well inside that tier's ~45-request allowance.
-- **Circuit breaker / rate limiting**: the search endpoint (CDN/WAF-fronted) trips a 429 ban after a burst
-  of ~6–8 requests from one IP. All search requests across the whole batch (one shared connector
-  instance) are serialized through `_throttle_search` with a minimum spacing, plus a short bounded
-  retry-with-backoff on 429. The feedentry endpoint is not throttled (never observed to 429 in testing).
-  If every search attempt for a company still errors, that company's `jobs` family is reported `failed`
-  (reason `nav_live_search: http_4xx` or similar) — never a false `not_available`.
+- **Feed index (once per run)**: `GET pam-stilling-feed.nav.no/api/v1/feed` with `If-Modified-Since` set
+  60 days back, following `next_url` to the live tip (~115 pages on a fresh state, capped at 200 pages /
+  12 minutes). Keeps the latest state of every ACTIVE ad in `--state-dir/nav_feed_index.sqlite`; later
+  runs with the same state-dir read only the new pages (about 1 per day). Bearer token = last line of
+  `GET pam-stilling-feed.nav.no/api/publicToken`.
+- **Per company**: match ACTIVE ads by normalised employer name (legal name, trade names, subunit names;
+  exact then token-overlap), then `GET /api/v1/feedentry/{uuid}` to confirm the ad's organisation number.
+- **Capped search fallback**: `arbeidsplassen.nav.no/stillinger/api/search` rate-limits an IP after ~30
+  searches, so at most 15 staffed companies (≥5 employees, no feed match, largest first, rotated across
+  runs via the state-dir) are searched per run, ≥4 s apart, stopping after two consecutive 429s. A company
+  not searched keeps its feed-based result, never `failed`.
 - **Fallback**: an ad is only published if `ad_content.employer.orgnr` matches this org number or one of
   its subunits; a name match with a different confirmed org number is recorded in evidence but discarded.
 
@@ -102,7 +99,7 @@ most 5 videos each; feeds/news collect at most 10 dated items total.
 
 ## Global request budget (`src/signalpost/http.py`)
 
-`Budget` (thread-safe) enforces a single hard cap (`--max-requests`, default 1,900) across the whole
+`Budget` (thread-safe) enforces a single hard cap (`--max-requests`, default 19 per input company) across the whole
 batch. Every redirect hop and every retry (timeout, 429, or 5xx — one bounded retry) counts as a request.
 `BudgetedHttpClient` resolves DNS and blocks non-public addresses before every connection
 (`assert_public_url`, reused from the starter kit), disables automatic redirect-following so each hop can

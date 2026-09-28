@@ -10,15 +10,13 @@ full detail behind each item.
 connector attempts this family at all — there is no keyless, ToS-compliant way to collect review/rating
 data for a Norwegian company today, and the $0 / no-secrets constraint rules out a licensed provider.
 
-## `group` family mostly `not_available`
+## `group` family: parent-company flag, not full ownership
 
-`registry.RegistryConnector` only publishes a `group/parent` claim when the live entity response itself
-carries `overordnetEnhet`/`hovedenhet` — i.e. when this organisation *is itself registered as a subunit*
-of another entity. For a normal parent company (the common case), there is no live/bulk field that lists
-its subsidiaries directly, so `group` reports `not_available`, reason "no parent relationship in registry
-data," for the large majority of companies. This is a genuine coverage gap, not a bug: resolving the
-reverse direction (which orgs list *this* one as their `overordnetEnhet`) would need a reverse index over
-the full subunit bulk file, which the current caches don't build.
+`group` is available for about 15% of companies: those whose filed annual accounts mark them as a parent
+company (`virksomhet.morselskap`, published as `group_role: parent_company`), plus any company registered
+as a subunit of another entity (`overordnetEnhet`). The registers publish no keyless list of subsidiaries
+or owners (the shareholder register is not an open API), so the names of a parent's subsidiaries and of
+a subsidiary's parent are not reported.
 
 ## Job postings: NAV feed window and capped search
 

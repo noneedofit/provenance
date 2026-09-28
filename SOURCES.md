@@ -39,15 +39,17 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 - **Licence**: NLOD 2.0 (Norwegian Licence for Open Government Data) — free reuse with attribution.
 - **Robots**: `respect_robots=False` — an official, keyless, public government API, not a scraping
   target.
-- **Used for**: `identity`, `leadership`, `locations`, `group` families (`src/signalpost/registry.py`).
+- **Used for**: `identity`, `leadership`, `locations`, `group` families, and `description` (the registered
+  activity `aktivitet`, else the statutory purpose, as `registry_activity`) (`src/signalpost/registry.py`).
 
 ### Brønnøysund Regnskapsregisteret
 
 - `GET https://data.brreg.no/regnskapsregisteret/regnskap/{org}` (latest filed accounts),
-  `GET .../regnskap/aarsregnskap/kopi/{org}/aar` (list of filed years, T2/T3 only).
+  `GET .../regnskap/aarsregnskap/kopi/{org}/aar` (list of filed years, every company; 1 request/s).
 - **Licence**: NLOD 2.0.
 - **Robots**: `respect_robots=False`.
-- **Used for**: `financials`, `financial_history` families.
+- **Used for**: `financials`, `financial_history` families, and `group` (the accounts' parent-company
+  flag `virksomhet.morselskap` → `group_role: parent_company`).
 
 ---
 
@@ -85,8 +87,10 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
   P1581 (blog).
 - **Licence**: CC0 (public domain dedication) — Wikidata's standard licence for all its data.
 - **Robots**: `respect_robots=False` (a documented, public query API, not a scraped website).
-- **Used for**: building the offline `caches/wikidata.py` cache — decisive website/profile candidates
-  already tied to a specific organisation number (`identity_basis="wikidata_org_number"`).
+- **Used for**: building the offline `caches/wikidata.py` cache — decisive website candidates, and social
+  profiles published directly (the item carries our org number, so attribution is exact;
+  `identity_basis="wikidata_org_number"`). Built at run start when absent; a bundled CC0 snapshot is the
+  fallback.
 
 ---
 
@@ -100,7 +104,7 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 - **Robots**: `respect_robots=True` on every request (`web/crawl.py`, `activity/ats.py`,
   `activity/feeds.py`) — robots.txt is fetched and cached per host (itself charged as one request the
   first time a host is seen), and a disallowed path is never fetched.
-- **User-Agent**: `SignalpostResearchAgent/0.1 (+contact in repo README)`
+- **User-Agent**: `SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)`
   (`src/signalpost/http.py:USER_AGENT`) — identifies the agent and points back to this repository, sent
   on every request to every source, not just company sites.
 - **Used for**: `website`, `profiles`, `description` families (only from a candidate that passed the

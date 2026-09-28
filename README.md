@@ -64,7 +64,7 @@ the first run also downloads the bulk file and a 60-day NAV job-feed window (~11
 
 Optional: the fuller pre-built offline **caches** (shared/service-provider email
 and website domains, subunit trade-name aliases, Wikidata company profiles, and a NAV job-feed index).
-These are built once, outside the timed 45-minute run, and reused across many batches:
+These are built once, outside the timed run, and reused across many batches:
 
 ```bash
 uv run python -m signalpost prepare \
@@ -90,7 +90,7 @@ uv run python -m signalpost run \
   --run-id <run-id> \
   [--bulk data/brreg-enheter.csv] \
   [--caches cache/] \
-  [--max-requests 1900] \
+  [--max-requests <N>] \
   [--deadline-seconds 2400] \
   [--workers 12]
 ```
@@ -100,10 +100,19 @@ per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), o
 (one number per line). Every input must be a 9-digit Norwegian organisation number with no duplicates.
 
 `--bulk` is optional (see "Data prerequisites" above for the default-path/auto-download behaviour).
-`--caches` is optional; when omitted, `./cache` is used and built automatically (see above). `--max-requests` defaults to 1,900 (leaving headroom under the competition's 2,000-request
-cap), `--deadline-seconds` to 2,400 (40 minutes, leaving headroom under the 45-minute cap; the run still
-emits one envelope per input past that point, with unfinished families marked `failed` reason
-`deadline`), `--workers` to 12 (thread pool size).
+`--caches` is optional; when omitted, `./cache` is used and built automatically (see above).
+
+Run budget (the official batch is 1,000 companies in one run, and may grow to 1,100):
+- `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 19 per input
+  company (1,900 per 100, 19,000 per 1,000). Measured use: about 9 per company.
+- `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes). When the time
+  left is short for the companies not yet started, each remaining company gets the official-registry pass
+  only (identity, leadership, locations, financials), with skipped families reported `failed` reason
+  `time_budget` — never an empty result.
+- `--workers` (env `SIGNALPOST_WORKERS`) — thread pool size, default 12.
+
+Measured: 1,000 companies in one run with the defaults took about 25 minutes and 9,100 requests, with no
+deadline or budget hits.
 
 Output, written to `--output-dir`:
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.
@@ -174,8 +183,8 @@ Full source-by-source detail, robots handling and licence basis: see `SOURCES.md
 ## Request budgeting
 
 Every outbound HTTP request — including every redirect hop and every retry — is charged against a single
-global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 1,900, under the
-competition's 2,000 cap). Each company gets a soft per-company allowance from `planner.classify` (5/15/
+global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 19 per input company, overridable
+by the evaluator). Each company gets a soft per-company allowance from `planner.classify` (5/15/
 30/45 requests for tiers T0–T3, based only on bulk-registry signals — staff count, NACE code, legal
 form, presence of a registered site/domain), but may borrow from the shared pool up to the hard cap.
 Every company's official-registry calls are reserved up front so optional sources (website discovery,
@@ -184,6 +193,6 @@ jobs, activity) can never starve them. Robots.txt is honoured per host for every
 SSRF guard (`assert_public_url`) that resolves DNS and rejects private/loopback/link-local/reserved
 addresses before connecting.
 
-## Expected cost per 100-company run
+## Expected cost per run
 
-**$0.** No third-party API spend; `run-report.json`'s `third_party_cost_usd` is always `0.0`.
+**$0** for a 1,000-company batch or any other size. No third-party API spend; `run-report.json`'s `third_party_cost_usd` is always `0.0`.
