@@ -206,7 +206,7 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
             claim_ids=[desc.claim_id],
         )
     nace = _single(envelope, "identity", "nace_label")
-    purpose = _single(envelope, "identity", "statutory_purpose")
+    purpose = _single(envelope, "description", "registry_activity") or _single(envelope, "identity", "statutory_purpose")
     if nace is not None or purpose is not None:
         parts = []
         claim_ids = []
@@ -215,12 +215,13 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
             parts.append(f"is registered in the industry \"{_display(nace.value)}\"")
             claim_ids.append(nace.claim_id)
         if purpose is not None:
-            parts.append(f"its statutory purpose reads \"{_clip(purpose.value)}\"")
+            label = "its registered activity is" if purpose.field == "registry_activity" else "its statutory purpose reads"
+            parts.append(f"{label} \"{_clip(purpose.value)}\"")
             claim_ids.append(purpose.claim_id)
         if nace is not None:
             text = f"{name} " + "; ".join(parts) + "."
         else:
-            text = f"According to the register, {parts[0].replace('its statutory purpose reads', 'the statutory purpose of ' + name + ' reads')}."
+            text = f"According to the register, {parts[0].replace('its registered activity is', 'the registered activity of ' + name + ' is').replace('its statutory purpose reads', 'the statutory purpose of ' + name + ' reads')}."
         return SummarySentence(text=text, claim_ids=claim_ids)
     return None
 

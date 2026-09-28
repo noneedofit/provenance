@@ -274,7 +274,27 @@ def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, sn
         builder.add_claim(family="identity", field="vat_registered", value=_bulk_bool(row, "registrertIMvaRegisteret"), evidence_ids=[eid])
     if row.get("vedtektsfestetFormaal"):
         builder.add_claim(family="identity", field="statutory_purpose", value=row["vedtektsfestetFormaal"], evidence_ids=[eid])
+    activity = _registry_activity_text(row.get("aktivitet"), row.get("vedtektsfestetFormaal"))
+    if activity:
+        builder.add_claim(family="description", field="registry_activity", value=activity, evidence_ids=[eid])
+        builder.note_checked("description", BULK_DOWNLOAD_URL)
     builder.note_checked("identity", BULK_DOWNLOAD_URL)
+
+
+def _registry_activity_text(activity: Any, purpose: Any) -> str | None:
+    """What the company says it does, as registered: `aktivitet`, else the statutory purpose.
+
+    Published as a registry-sourced description (field `registry_activity`) so every registered company
+    has one, separate from a description taken from its own website (`company_description`).
+    """
+    for raw in (activity, purpose):
+        if not raw:
+            continue
+        text = " ".join(str(x) for x in raw) if isinstance(raw, list) else str(raw)
+        text = " ".join(text.split())
+        if len(text) >= 12:
+            return text
+    return None
 
 
 def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], response: Any) -> None:
@@ -327,6 +347,11 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
     if purpose:
         text = " ".join(purpose) if isinstance(purpose, list) else str(purpose)
         builder.add_claim(family="identity", field="statutory_purpose", value=text, evidence_ids=[ev(f"{span_prefix}.vedtektsfestetFormaal")])
+    activity = _registry_activity_text(body.get("aktivitet"), purpose)
+    if activity:
+        span = "aktivitet" if body.get("aktivitet") else "vedtektsfestetFormaal"
+        builder.add_claim(family="description", field="registry_activity", value=activity, evidence_ids=[ev(f"{span_prefix}.{span}")])
+        builder.note_checked("description", getattr(response, "url", "") or "")
     historic = body.get("historiskeNavn") or []
     if historic:
         names = [item.get("navn") for item in historic if item.get("navn")]

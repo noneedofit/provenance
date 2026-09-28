@@ -37,6 +37,8 @@ from .planner import classify
 from .snapshots import SnapshotStore
 
 DEFAULT_MAX_REQUESTS = 1900
+# Families fed by more than one connector (registry activity + website description).
+MULTI_SOURCE_FAMILIES = frozenset({"description"})
 DEFAULT_DEADLINE_S = 2400  # 40 minutes
 DEFAULT_WORKERS = 12
 
@@ -242,6 +244,23 @@ def run_batch(
             budget.release(org)
             if client.remaining(org) <= 0:
                 budget_exhausted = True
+
+            # Several connectors can feed one family (description: registry activity + website text).
+            # The last connector's state wins above, so a family that holds current claims but was
+            # reported not_available/not_applicable by a later connector is corrected to available.
+            # failed/blocked/ambiguous stay as reported so refresh still carries earlier facts forward.
+            for fam_name, state in list(families.items()):
+                if fam_name not in MULTI_SOURCE_FAMILIES:
+                    continue  # e.g. jobs always carries a count claim, even when the count is 0
+                current = [c for c in claims_by_id.values() if c.family == fam_name and c.status == "current" and c.availability == "available"]
+                if current and state.availability in ("not_available", "not_applicable"):
+                    families[fam_name] = FamilyState(
+                        family=fam_name, availability="available",
+                        reason=None, claim_count=len(current),
+                        sources_checked=list(dict.fromkeys(list(state.sources_checked or []) + [
+                            evidence_by_id[e].source_url for c in current for e in c.evidence_ids if e in evidence_by_id
+                        ])),
+                    )
 
             for fam in FAMILIES:
                 if fam not in families:

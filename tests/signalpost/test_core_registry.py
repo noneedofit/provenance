@@ -184,3 +184,10 @@ def test_live_registry_failure_on_first_run_falls_back_to_bulk():
     result = registry.RegistryConnector().run(ctx)
     assert result.families["identity"].availability == "available"
     assert [c for c in result.claims if c.family == "identity"]
+
+
+def test_registry_publishes_activity_as_a_description_claim():
+    ctx = _ctx(_client())
+    result = registry.RegistryConnector().run(ctx)
+    desc = [c for c in result.claims if c.family == "description" and c.field == "registry_activity"]
+    assert len(desc) == 1 and len(desc[0].value) >= 12 and desc[0].evidence_ids

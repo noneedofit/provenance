@@ -126,3 +126,64 @@ def test_rerun_publishes_refresh_changes_and_links_previous_run(tmp_path: Path):
     assert claim["first_observed_at"] and claim["last_observed_at"]
     # Unchanged rerun: no false changes.
     assert third["changes"] == [] and third["run"]["previous_run_id"] == "r2"
+
+
+class _DescriptionNotAvailableConnector:
+    """Runs after a connector that published a description claim, and reports the family empty."""
+
+    name = "late"
+    families = ("description",)
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        return ConnectorResult(families={"description": FamilyState(family="description", availability="not_available", reason="no verified site")})
+
+
+class _DescriptionConnector:
+    name = "early"
+    families = ("description",)
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        eid = evidence_id("https://example.test/entity", "abc", "$.aktivitet")
+        claim = Claim(
+            claim_id=claim_key(ctx.org, "description", "registry_activity", None), organisation_number=ctx.org,
+            family="description", field="registry_activity", value="Drift av restaurant", availability="available",
+            identity_basis="registry_record", evidence_ids=[eid],
+        )
+        ev = Evidence(evidence_id=eid, source_url="https://example.test/entity", source_class="official_registry",
+                      retrieved_at=ctx.now, extraction_method="stub_v1", span="$.aktivitet")
+        return ConnectorResult(claims=[claim], evidence=[ev], families={})
+
+
+def test_family_with_claims_is_available_even_if_a_later_connector_found_nothing(tmp_path: Path):
+    org = "666666666"
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[_DescriptionConnector(), _DescriptionNotAvailableConnector()], workers=1)
+    env = _envelopes(tmp_path / "o" / "envelopes.jsonl")[0]
+    assert env["families"]["description"]["availability"] == "available"
+    assert env["families"]["description"]["claim_count"] == 1
+    assert "https://example.test/entity" in env["families"]["description"]["sources_checked"]
+
+
+class _ZeroJobsConnector:
+    name = "jobs0"
+    families = ("jobs",)
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        eid = evidence_id("https://example.test/nav", "abc", "$")
+        claim = Claim(
+            claim_id=claim_key(ctx.org, "jobs", "active_postings_count", None), organisation_number=ctx.org,
+            family="jobs", field="active_postings_count", value={"verified": 0}, availability="available",
+            identity_basis="registry_record", evidence_ids=[eid],
+        )
+        ev = Evidence(evidence_id=eid, source_url="https://example.test/nav", source_class="official_registry",
+                      retrieved_at=ctx.now, extraction_method="stub_v1", span="$")
+        return ConnectorResult(claims=[claim], evidence=[ev], families={
+            "jobs": FamilyState(family="jobs", availability="not_available", reason="checked NAV: no active postings")})
+
+
+def test_jobs_with_only_a_zero_count_claim_stays_not_available(tmp_path: Path):
+    org = "777777777"
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[_ZeroJobsConnector()], workers=1)
+    env = _envelopes(tmp_path / "o" / "envelopes.jsonl")[0]
+    assert env["families"]["jobs"]["availability"] == "not_available"
