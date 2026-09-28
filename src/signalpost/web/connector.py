@@ -362,7 +362,7 @@ class WebConnector:
                     value_key=link["url"], availability="available", identity_basis="linked_from_verified_site",
                     relationship="exact", evidence_ids=[ev.evidence_id],
                 ))
-            result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=len(extraction.social_links))
+            result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=len(extraction.social_links), sources_checked=[cand.domain])
         else:
             result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
 
@@ -377,7 +377,7 @@ class WebConnector:
                 availability="available", identity_basis="linked_from_verified_site", relationship="exact",
                 evidence_ids=[ev.evidence_id],
             ))
-            result.families["description"] = FamilyState(family="description", availability="available", claim_count=1)
+            result.families["description"] = FamilyState(family="description", availability="available", claim_count=1, sources_checked=[cand.domain])
         else:
             result.families["description"] = FamilyState(family="description", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
 

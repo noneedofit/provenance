@@ -243,6 +243,22 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
     return found
 
 
+_COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på|svar til|svar på)\b", re.I)
+_PLACEHOLDER_TITLES = {"hello world!", "hei verden!", "hallo verden!", "sample page", "eksempelside"}
+
+
+def is_company_item(item: dict, feed_url: str = "") -> bool:
+    """False for items that are not the company's own publication: blog comments (a comments feed,
+    '#comment-' links, 'Comment on ...' titles) and CMS placeholder posts ('Hello world!')."""
+    url = str(item.get("url") or "")
+    title = str(item.get("title") or "").strip()
+    if "/comments/feed" in feed_url or "/comments/" in url or "#comment" in url or "replytocom=" in url:
+        return False
+    if _COMMENT_TITLE.search(title) or title.lower() in _PLACEHOLDER_TITLES:
+        return False
+    return True
+
+
 def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict, *, guessed: bool = False) -> list[tuple[dict, object]]:
     resp = ctx.client.get(
         feed_url, org=ctx.org, purpose="site_feed",
@@ -266,7 +282,7 @@ def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict, *, 
     out = []
     for item in parsed:
         url = item.get("url")
-        if not url or not item.get("published") or url in seen_urls:
+        if not url or not item.get("published") or url in seen_urls or not is_company_item(item, feed_url):
             continue
         seen_urls.add(url)
         out.append((item, ev))
@@ -289,7 +305,7 @@ def _process_wp_rest_url(ctx, rest_url: str, seen_urls: set[str], result: dict) 
     out = []
     for item in parsed:
         url = item.get("url")
-        if not url or url in seen_urls:
+        if not url or url in seen_urls or not is_company_item(item, rest_url):
             continue
         seen_urls.add(url)
         out.append((item, ev))

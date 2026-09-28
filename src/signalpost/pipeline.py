@@ -281,7 +281,7 @@ def run_batch(
                 if fam_name not in MULTI_SOURCE_FAMILIES:
                     continue  # e.g. jobs always carries a count claim, even when the count is 0
                 current = [c for c in claims_by_id.values() if c.family == fam_name and c.status == "current" and c.availability == "available"]
-                if current and state.availability in ("not_available", "not_applicable"):
+                if current and state.availability in ("not_available", "not_applicable", "available"):
                     families[fam_name] = FamilyState(
                         family=fam_name, availability="available",
                         reason=None, claim_count=len(current),

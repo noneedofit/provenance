@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import urllib.robotparser
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .context import Response
@@ -401,7 +401,7 @@ class BudgetedHttpClient:
             redirect_chain.append(current_url)
             try:
                 assert_public_url(current_url)
-            except ValueError as exc:
+            except ValueError:
                 return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 
             if respect_robots:

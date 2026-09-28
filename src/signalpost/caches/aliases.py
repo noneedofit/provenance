@@ -6,11 +6,9 @@ distinct from the legal entity name (e.g. "HAGELAND HOKKSUND" under "EIKER HAGES
 """
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 from pathlib import Path
-from typing import Iterable
 
 from . import store
 from .email_domains import iter_bulk_rows  # gzip-aware CSV row iterator, reused as-is
@@ -46,7 +44,6 @@ def clean_subunit_name(subunit_name: str, parent_name: str | None) -> str | None
                        parent_cf.startswith(cleaned_cf + " ")):
         # The subunit name is just "<parent> <city/dept>" or a prefix/superset of the parent name:
         # no new brand information (covers "DIPS AS AVD BERGEN" under "DIPS AS").
-        remainder = cleaned_cf.replace(parent_cf, "").strip()
         # A short remainder (a place/department qualifier) isn't a brand; a long distinct remainder
         # can still be a real alias, but conservatively drop anything that's a strict prefix match.
         if cleaned_cf.startswith(parent_cf):

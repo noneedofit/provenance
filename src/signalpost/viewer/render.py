@@ -11,8 +11,8 @@ from typing import Any
 from .helpers import (
     AVAILABILITY_CLASS, AVAILABILITY_LABELS, FAMILY_LABELS, SECTION_LABELS, COVERAGE_FAMILIES,
     esc, fmt_date, fmt_money, fmt_value, display_value, label_from_field, org_registry_api_url,
-    org_registry_search_url, coverage_counts, coverage_score, employee_band, claims_by_family, evidence_by_id,
-    field_value, fields_values, first_available, plain_scalar, address_text, short_hash,
+    org_registry_search_url, coverage_score, employee_band, claims_by_family, evidence_by_id,
+    field_value, first_available, plain_scalar, short_hash,
 )
 
 SITE_TITLE = "Signalpost"
@@ -300,6 +300,15 @@ def _reporting_period_text(claim: dict) -> str:
     return esc(start or end or "")
 
 
+def _linked(title: Any, url: Any) -> str:
+    """A readable title, linked to its source page when the URL is http(s)."""
+    text = esc(title or url or "")
+    link = str(url or "")
+    if link.startswith(("http://", "https://")):
+        return f'<a href="{esc(link)}" rel="noopener noreferrer" target="_blank">{text}</a>'
+    return text
+
+
 def fact_row(claim_id: str, label: str, value_html: str, source_html: str, note: str | None = None) -> str:
     note_html = f'<div class="fact-note">{esc(note)}</div>' if note else ""
     return (
@@ -521,7 +530,12 @@ def _render_identity_section(by_family: dict, ev_by_id: dict) -> str:
     for c in by_family.get("group", []):
         if c.get("availability") == "available":
             src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-            group_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]), fmt_value(c["field"], c["value"]), src, c.get("note")))
+            v = c.get("value")
+            if c["field"] == "group_role" and isinstance(v, dict) and v.get("role") == "parent_company":
+                value_html = "Parent company (its filed annual accounts are marked <i>morselskap</i>)"
+            else:
+                value_html = fmt_value(c["field"], v)
+            group_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]), value_html, src, c.get("note")))
     body = "".join(rows) or '<p class="muted">No identity claims available.</p>'
     group_html = ("<h3>Group / ownership</h3>" + "".join(group_rows)) if group_rows else \
         '<h3>Group / ownership</h3><p class="muted">not available</p>'
@@ -628,18 +642,30 @@ def _render_leadership_locations(by_family: dict, ev_by_id: dict) -> str:
     return f'<div class="section"><h3>Leadership</h3>{role_html}<h3>Locations &amp; workplaces</h3>{loc_html}</div>'
 
 
+def _website_value_html(c: dict) -> str:
+    value = c.get("value")
+    if c.get("field") == "official_website":
+        v = value if isinstance(value, dict) else {"url": value}
+        url = str(v.get("url") or "")
+        label = v.get("domain") or url
+        return _linked(label, url)
+    if isinstance(value, str) and "@" in value and " " not in value:
+        return f'<a href="mailto:{esc(value)}">{esc(value)}</a>'
+    return display_value(c["field"], value)
+
+
 def _render_website_profiles(by_family: dict, ev_by_id: dict) -> str:
     site_rows = []
     for c in by_family.get("website", []):
         if c.get("status", "current") != "current":
             continue
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        if c.get("availability") == "available" and c.get("relationship") == "exact":
-            tag = '<span class="website-exact-tag">verified exact</span>'
-            value_html = f'<a href="{esc(c["value"])}" target="_blank" rel="noopener noreferrer">{esc(c["value"])}</a> {tag}'
+        if c.get("availability") == "available" and c.get("relationship") in (None, "exact"):
+            tag = ' <span class="website-exact-tag">verified exact</span>' if c.get("field") == "official_website" else ""
+            value_html = _website_value_html(c) + tag
         elif c.get("value"):
-            tag = f'<span class="website-relationship">related / ambiguous ({esc(c.get("relationship") or "unclear")})</span>'
-            value_html = f'<a href="{esc(c["value"])}" target="_blank" rel="noopener noreferrer">{esc(c["value"])}</a> {tag}'
+            tag = f' <span class="website-relationship">related / ambiguous ({esc(c.get("relationship") or "unclear")})</span>'
+            value_html = _website_value_html(c) + tag
         else:
             value_html = f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
         site_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]), value_html, src, c.get("note")))
@@ -647,29 +673,36 @@ def _render_website_profiles(by_family: dict, ev_by_id: dict) -> str:
 
     desc_rows = []
     for c in by_family.get("description", []):
-        if c.get("availability") != "available":
+        if c.get("availability") != "available" or c.get("status", "current") != "current":
             continue
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        desc_rows.append(fact_row(c["claim_id"], "Description", esc(c["value"]), src))
+        label = "From the register" if c.get("field") == "registry_activity" else "From the website"
+        text = c["value"] if isinstance(c["value"], str) else display_value(c["field"], c["value"])
+        desc_rows.append(fact_row(c["claim_id"], label, esc(text), src))
     desc_html = "".join(desc_rows) or '<p class="muted">No description available.</p>'
 
     prof_rows = []
     for c in by_family.get("profiles", []):
-        if c.get("availability") != "available":
+        if c.get("availability") != "available" or c.get("status", "current") != "current":
             continue
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        prof_rows.append(fact_row(c["claim_id"], "Profile", f'<a href="{esc(c["value"])}" target="_blank" rel="noopener noreferrer">{esc(c["value"])}</a>', src))
+        v = c["value"] if isinstance(c["value"], dict) else {"url": c["value"]}
+        platform = str(v.get("platform") or "Profile").replace("_", " ").title()
+        prof_rows.append(fact_row(c["claim_id"], platform, _linked(v.get("url"), v.get("url")), src))
     prof_html = "".join(prof_rows) or '<p class="muted">No linked profiles found.</p>'
 
     return f'<div class="section"><h3>Website</h3>{site_html}<h3>Description</h3>{desc_html}<h3>Profiles</h3>{prof_html}</div>'
 
 
 def _render_hiring_activity(by_family: dict, ev_by_id: dict) -> str:
-    jobs = [c for c in by_family.get("jobs", []) if c.get("availability") == "available"]
+    jobs = [c for c in by_family.get("jobs", []) if c.get("availability") == "available" and c.get("field") == "job_posting"]
     job_rows = []
     for c in jobs:
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        job_rows.append(fact_row(c["claim_id"], "Open role", esc(c["value"]), src))
+        v = c["value"] if isinstance(c["value"], dict) else {"title": c["value"]}
+        details = ", ".join(x for x in (v.get("location"), f"apply by {str(v['application_due'])[:10]}" if v.get("application_due") else "") if x)
+        job_rows.append(fact_row(c["claim_id"], "Open role", _linked(v.get("title"), v.get("ad_url") or v.get("url"))
+                                 + (f' <span class="muted small">({esc(details)})</span>' if details else ""), src))
     job_html = "".join(job_rows) or '<p class="muted">No open roles found.</p>'
 
     activity = sorted(
@@ -680,11 +713,12 @@ def _render_hiring_activity(by_family: dict, ev_by_id: dict) -> str:
     act_rows = []
     for c in activity:
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        date = f' <span class="muted small">({esc(c.get("effective_date") or "")})</span>' if c.get("effective_date") else ""
-        act_rows.append(fact_row(c["claim_id"], "Activity", esc(c["value"]) + date, src))
+        v = c["value"] if isinstance(c["value"], dict) else {"title": c["value"]}
+        when = c.get("effective_date") or v.get("published")
+        date = f' <span class="muted small">({esc(str(when)[:10])})</span>' if when else ""
+        act_rows.append(fact_row(c["claim_id"], "Activity", _linked(v.get("title"), v.get("url")) + date, src))
     act_html = "".join(act_rows) or '<p class="muted">No recent activity found.</p>'
 
-    reviews_state = "not_applicable"
     return f'<div class="section"><h3>Hiring</h3>{job_html}<h3>Activity</h3>{act_html}</div>'
 
 

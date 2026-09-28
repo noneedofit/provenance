@@ -14,7 +14,6 @@ import time
 
 import csv
 import gzip
-import io
 import re
 from typing import Any
 
@@ -26,7 +25,6 @@ from .models import (
     FamilyState,
     claim_key,
     evidence_id,
-    utc_now,
 )
 
 BRREG_ENTITY = "https://data.brreg.no/enhetsregisteret/api/enheter/{org}"
@@ -316,7 +314,6 @@ def _registry_activity_text(activity: Any, purpose: Any) -> str | None:
 
 
 def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], response: Any) -> None:
-    org = builder.org
     span_prefix = "$"
 
     def ev(span: str) -> str:
@@ -394,7 +391,6 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
         return
     for group in groups:
         group_code = _get(group, "type", "kode")
-        group_label = _get(group, "type", "beskrivelse")
         last_changed = group.get("sistEndret")
         if last_changed:
             eid = builder.add_evidence(
@@ -816,7 +812,6 @@ def registry_facts(
         street = ", ".join(street) if isinstance(street, list) else street
         postcode = _get(entity_body, "forretningsadresse", "postnummer")
         city = _get(entity_body, "forretningsadresse", "poststed")
-        phone = entity_body.get("telefon") or entity_body.get("mobil")
         email = entity_body.get("epostadresse")
         website = normalize_website(entity_body.get("hjemmeside"))
         historic = [item.get("navn") for item in entity_body.get("historiskeNavn") or [] if item.get("navn")]
@@ -825,7 +820,6 @@ def registry_facts(
         street = bulk_row.get("forretningsadresse.adresse")
         postcode = bulk_row.get("forretningsadresse.postnummer")
         city = bulk_row.get("forretningsadresse.poststed")
-        phone = bulk_row.get("telefon") or bulk_row.get("mobil")
         email = bulk_row.get("epostadresse")
         website = normalize_website(bulk_row.get("hjemmeside"))
         historic = []

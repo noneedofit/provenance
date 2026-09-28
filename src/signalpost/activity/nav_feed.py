@@ -30,7 +30,6 @@ import json
 import sqlite3
 import threading
 import time
-import urllib.parse
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 from pathlib import Path

@@ -201,3 +201,13 @@ def test_collect_extra_discovery_spends_at_most_the_budget():
     assert result["claims"] == []
     # 3 link candidates on offer, but the budget caps spend at EXTRA_DISCOVERY_BUDGET requests.
     assert len(client.calls) <= feeds.EXTRA_DISCOVERY_BUDGET
+
+
+def test_blog_comments_and_placeholder_posts_are_not_company_activity():
+    from signalpost.activity.feeds import is_company_item
+
+    assert not is_company_item({"title": "Comment on Oversize Sweatshirt by Willie Clark", "url": "https://x.no/p/#comment-77"})
+    assert not is_company_item({"title": "Kommentar til Solplassen av Ola", "url": "https://x.no/solplassen/"})
+    assert not is_company_item({"title": "Hello world!", "url": "https://x.no/hello-world/"})
+    assert not is_company_item({"title": "Nytt prosjekt", "url": "https://x.no/a/"}, "https://x.no/comments/feed/")
+    assert is_company_item({"title": "Vi åpner ny avdeling i Bergen", "url": "https://x.no/nyheter/ny-avdeling"})
