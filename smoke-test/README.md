@@ -1,7 +1,7 @@
 # 100-company smoke test
 
 A clean run of the submitted agent, done the way the evaluator runs it: fresh clone of this repository at
-commit `1a5b09fe806ef3385be5fa9e60c798cc7caa4b94``67ddc7b983e42049431251bfd85cb8e460db9991`, `uv sync`, then one command, with no pre-built data or
+commit `1a5b09fe806ef3385be5fa9e60c798cc7caa4b94`, `uv sync`, then one command, with no pre-built data or
 caches.
 
 ```bash
@@ -19,7 +19,7 @@ uv run python -m signalpost run --organisations organisations.txt --output-dir s
 | Third-party cost | $0 |
 | Available | identity, leadership, locations, financials, financial history: 100 each; description 98 (registry activity or website text), website 15, profiles 8, activity 4 |
 
-An immediate second run with the same  reported **0 changes** (idempotent refresh).
+An immediate second run with the same `--state-dir` reported **0 changes** (idempotent refresh).
 
 Files: `envelopes.jsonl` (one result per company), `run-report.json`, `requests.jsonl` (every outbound
 request), and `site/` — the static viewer for these 100 profiles (open `site/index.html`).
