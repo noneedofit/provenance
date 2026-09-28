@@ -5,8 +5,8 @@
   "run": {
     "run_id": "smoke-100",
     "previous_run_id": null,
-    "started_at": "2026-09-28T08:15:25Z",
-    "completed_at": "2026-09-28T08:20:16Z",
+    "started_at": "2026-09-28T11:54:28Z",
+    "completed_at": "2026-09-28T11:59:21Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T1"
@@ -48,17 +48,7 @@
       "c_75c2f56b97361775ad31"
     ],
     "hiring_and_activity": [
-      "c_c274a3922686bede74b0",
-      "c_981a77ba1851bdb1b94a",
-      "c_4654000c728421f9957e",
-      "c_e6945b9f2c7e72c6a7ee",
-      "c_c88d4f12cef773df9fdc",
-      "c_6b3354216e5b68ef12ec",
-      "c_8c8e1f35008659b60abc",
-      "c_b7da93a2601e15fe80b5",
-      "c_1cf437ed8b7f718dbdd4",
-      "c_1acaa1cf0ee842a9e4d0",
-      "c_e9562a6a1c1c3709d25e"
+      "c_c274a3922686bede74b0"
     ],
     "evidence_and_availability": [],
     "refresh_and_changes": []
@@ -112,8 +102,10 @@
     "group": {
       "family": "group",
       "availability": "not_available",
-      "reason": "no parent relationship in registry data",
-      "sources_checked": [],
+      "reason": "no parent relationship or parent-company flag in registry data",
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/926781995"
+      ],
       "claim_count": 0
     },
     "website": {
@@ -138,8 +130,12 @@
       "family": "description",
       "availability": "available",
       "reason": null,
-      "sources_checked": [],
-      "claim_count": 1
+      "sources_checked": [
+        "nagra.no",
+        "https://data.brreg.no/enhetsregisteret/api/enheter/926781995",
+        "https://nagra.no/"
+      ],
+      "claim_count": 2
     },
     "reviews": {
       "family": "reviews",
@@ -159,12 +155,12 @@
     },
     "activity": {
       "family": "activity",
-      "availability": "available",
-      "reason": null,
+      "availability": "not_available",
+      "reason": "checked: none found",
       "sources_checked": [
         "site_feeds_and_news"
       ],
-      "claim_count": 10
+      "claim_count": 0
     }
   },
   "claims": [
@@ -184,8 +180,8 @@
       "evidence_ids": [
         "e_8394ee3bfb148336af49"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -208,8 +204,8 @@
       "evidence_ids": [
         "e_b74b7b297f1e8e305674"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -229,8 +225,8 @@
       "evidence_ids": [
         "e_1919235ec7b87e9ab654"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -253,8 +249,8 @@
       "evidence_ids": [
         "e_cc24d34fc7fabf9a0ac5"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -280,8 +276,8 @@
       "evidence_ids": [
         "e_05b5e4f0a40d94ffb24e"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -301,8 +297,8 @@
       "evidence_ids": [
         "e_d3b738e738a1196611bc"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -322,8 +318,8 @@
       "evidence_ids": [
         "e_9216d08fb7f027b51624"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -343,8 +339,8 @@
       "evidence_ids": [
         "e_945c70feef646c426da2"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -364,8 +360,8 @@
       "evidence_ids": [
         "e_844386b680be5d4094a2"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -385,8 +381,8 @@
       "evidence_ids": [
         "e_f58f10cab8fccacbc2b7"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -406,8 +402,8 @@
       "evidence_ids": [
         "e_f40a5f33198b20c801ad"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -427,8 +423,8 @@
       "evidence_ids": [
         "e_8f2879876e291050b629"
       ],
-      "first_observed_at": "2026-09-28T08:15:39Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:42Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -452,8 +448,8 @@
       "evidence_ids": [
         "e_3159c43fc5b5709ca03c"
       ],
-      "first_observed_at": "2026-09-28T08:15:39Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:42Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -481,8 +477,8 @@
       "evidence_ids": [
         "e_2c75290513c5121687b2"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:44Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -508,8 +504,8 @@
       "evidence_ids": [
         "e_05b5e4f0a40d94ffb24e"
       ],
-      "first_observed_at": "2026-09-28T08:15:37Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:41Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -535,8 +531,8 @@
       "evidence_ids": [
         "e_e187474da04c167196b8"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -562,8 +558,8 @@
       "evidence_ids": [
         "e_2739784a65e37c8bbabe"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -589,8 +585,8 @@
       "evidence_ids": [
         "e_2d4d1ce250a5c97e9597"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -616,8 +612,8 @@
       "evidence_ids": [
         "e_ae6105a8286d5004a8bf"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -643,8 +639,8 @@
       "evidence_ids": [
         "e_9e540e09459879fcb027"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -670,8 +666,8 @@
       "evidence_ids": [
         "e_f1df8a3b04a9624abbe0"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -697,8 +693,8 @@
       "evidence_ids": [
         "e_7a583b1f18bb97dea1cb"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -724,8 +720,8 @@
       "evidence_ids": [
         "e_7a583b1f18bb97dea1cb"
       ],
-      "first_observed_at": "2026-09-28T08:15:41Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:45Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -751,8 +747,8 @@
       "evidence_ids": [
         "e_417e56ab8f1095267760"
       ],
-      "first_observed_at": "2026-09-28T08:15:51Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:54:54Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -774,14 +770,14 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_296582df561ea26721fd",
-        "e_5467ffcef11117192db0",
-        "e_099b286c535805a3d3ea",
-        "e_3d21561df5472d9cd3e4",
-        "e_43c821d94e52fb479fee"
+        "e_ff087823fe86b5a3c7cc",
+        "e_acc10207b16261c10c2c",
+        "e_3b1323c30da1ed1e4af3",
+        "e_11a27a28f08e9360eaa5",
+        "e_5789865aeda7e84a1d1e"
       ],
-      "first_observed_at": "2026-09-28T08:20:09Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:15Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -799,10 +795,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_3d21561df5472d9cd3e4"
+        "e_11a27a28f08e9360eaa5"
       ],
-      "first_observed_at": "2026-09-28T08:20:09Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:15Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -820,10 +816,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_f6254177f6b0a900220a"
+        "e_f7461391d7d5b965276f"
       ],
-      "first_observed_at": "2026-09-28T08:20:09Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:15Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -835,7 +831,7 @@
       "value": {
         "verified": 0,
         "name_matched_total": 0,
-        "checked_at": "2026-09-28T08:20:03Z"
+        "checked_at": "2026-09-28T11:59:13Z"
       },
       "value_key": null,
       "availability": "available",
@@ -845,270 +841,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_3163261b873aa8c402b6"
+        "e_e52253fce5350963424e"
       ],
-      "first_observed_at": "2026-09-28T08:20:03Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_981a77ba1851bdb1b94a",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Oversize Sweatshirt by Willie Clark",
-        "url": "https://nagra.no/product/oversize-sweatshirt/#comment-77",
-        "published": "2022-05-25",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/oversize-sweatshirt/#comment-77",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-25",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_4654000c728421f9957e",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Oversize Sweatshirt by Jennifer Freeman",
-        "url": "https://nagra.no/product/oversize-sweatshirt/#comment-76",
-        "published": "2022-05-25",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/oversize-sweatshirt/#comment-76",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-25",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_e6945b9f2c7e72c6a7ee",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Presto Nagoya Top by Jennifer Freeman",
-        "url": "https://nagra.no/product/presto-nagoya-top/#comment-71",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/presto-nagoya-top/#comment-71",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_c88d4f12cef773df9fdc",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Oceanside Navy by Jennifer Freeman",
-        "url": "https://nagra.no/product/oceanside-navy/#comment-72",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/oceanside-navy/#comment-72",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_6b3354216e5b68ef12ec",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Susanne Brent Lounge by Jennifer Freeman",
-        "url": "https://nagra.no/product/susanne-brent-lounge/#comment-73",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/susanne-brent-lounge/#comment-73",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_8c8e1f35008659b60abc",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Sedute Maugham by Jennifer Freeman",
-        "url": "https://nagra.no/product/sedute-maugham/#comment-74",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/sedute-maugham/#comment-74",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_b7da93a2601e15fe80b5",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Sawyer Rose Sofa by Jennifer Freeman",
-        "url": "https://nagra.no/product/sawyer-rose-sofa/#comment-75",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/sawyer-rose-sofa/#comment-75",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_1cf437ed8b7f718dbdd4",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Apple iWatch by Jennifer Freeman",
-        "url": "https://nagra.no/product/apple-iwatch/#comment-78",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/apple-iwatch/#comment-78",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_1acaa1cf0ee842a9e4d0",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on Savvy Sling Model 2 by Jennifer Freeman",
-        "url": "https://nagra.no/product/savvy-sling-model-2/#comment-79",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/savvy-sling-model-2/#comment-79",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_e9562a6a1c1c3709d25e",
-      "organisation_number": "926781995",
-      "family": "activity",
-      "field": "activity_item",
-      "value": {
-        "title": "Comment on iPhone Gum Case by Jennifer Freeman",
-        "url": "https://nagra.no/product/iphone-gum-case/#comment-80",
-        "published": "2022-05-16",
-        "source": "company website"
-      },
-      "value_key": "https://nagra.no/product/iphone-gum-case/#comment-80",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "linked_from_verified_site",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": "2022-05-16",
-      "evidence_ids": [
-        "e_93903365133fedba11bb"
-      ],
-      "first_observed_at": "2026-09-28T08:20:16Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     }
@@ -1123,7 +859,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1140,7 +876,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1157,7 +893,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1174,7 +910,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1191,7 +927,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1208,7 +944,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1225,7 +961,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1242,7 +978,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1259,7 +995,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1276,7 +1012,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1293,7 +1029,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:37Z",
+      "retrieved_at": "2026-09-28T11:54:41Z",
       "content_sha256": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "snapshot_ref": "50dda0579ad151912bb1566874041291e433a18fcc12f878a9876818dc822d7a",
       "extraction_method": "brreg_entity_v1",
@@ -1310,7 +1046,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:39Z",
+      "retrieved_at": "2026-09-28T11:54:42Z",
       "content_sha256": "6eaa9df7d695125276f5f8791846297a551f452478c7a0bcee621d45c45d9d3c",
       "snapshot_ref": "6eaa9df7d695125276f5f8791846297a551f452478c7a0bcee621d45c45d9d3c",
       "extraction_method": "brreg_roles_v1",
@@ -1327,7 +1063,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:39Z",
+      "retrieved_at": "2026-09-28T11:54:42Z",
       "content_sha256": "6eaa9df7d695125276f5f8791846297a551f452478c7a0bcee621d45c45d9d3c",
       "snapshot_ref": "6eaa9df7d695125276f5f8791846297a551f452478c7a0bcee621d45c45d9d3c",
       "extraction_method": "brreg_roles_v1",
@@ -1344,7 +1080,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:44Z",
       "content_sha256": "c405f2c3ec579c54497a0231e41d0b929f913f6dd47f074a19fed258a1f2f7d4",
       "snapshot_ref": "c405f2c3ec579c54497a0231e41d0b929f913f6dd47f074a19fed258a1f2f7d4",
       "extraction_method": "brreg_subunits_v1",
@@ -1361,7 +1097,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1378,7 +1114,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1395,7 +1131,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1412,7 +1148,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1429,7 +1165,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1446,7 +1182,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1463,7 +1199,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:41Z",
+      "retrieved_at": "2026-09-28T11:54:45Z",
       "content_sha256": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "snapshot_ref": "268826d04cf96223c8c78ce503f215756990078edaa7d0ce71747a67c7435007",
       "extraction_method": "brreg_financials_v1",
@@ -1480,7 +1216,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:15:51Z",
+      "retrieved_at": "2026-09-28T11:54:54Z",
       "content_sha256": "3224f0706bd3ffc731997668057588188a2f2ceb01a45d0d434e8929f7100c8e",
       "snapshot_ref": "3224f0706bd3ffc731997668057588188a2f2ceb01a45d0d434e8929f7100c8e",
       "extraction_method": "brreg_financial_history_v1",
@@ -1489,7 +1225,7 @@
       "access_policy": "NLOD-2.0"
     },
     {
-      "evidence_id": "e_3163261b873aa8c402b6",
+      "evidence_id": "e_e52253fce5350963424e",
       "source_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
       "final_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
       "redirect_chain": [
@@ -1497,16 +1233,16 @@
       ],
       "http_status": null,
       "source_class": "public_job_feed",
-      "retrieved_at": "2026-09-28T08:20:03Z",
-      "content_sha256": "7e25643c1ac2da50e29e624830e3e1b199aefdf37850ebd8e9e932278eec4fb5",
+      "retrieved_at": "2026-09-28T11:59:12Z",
+      "content_sha256": "d77b31dba06a3788f2fa6370d548336fd8f510a2939d7df0532e6fd5c6b8957c",
       "snapshot_ref": null,
       "extraction_method": "nav_feed_index_v1",
       "extractor_version": "1",
-      "span": "active_ads_indexed=9617; window_days=60; complete=True; pages_walked_this_run=118",
+      "span": "active_ads_indexed=9850; window_days=60; complete=True; pages_walked_this_run=118",
       "access_policy": "NLOD-2.0 (NAV)"
     },
     {
-      "evidence_id": "e_296582df561ea26721fd",
+      "evidence_id": "e_ff087823fe86b5a3c7cc",
       "source_url": "https://nagra.no/",
       "final_url": "https://nagra.no/",
       "redirect_chain": [
@@ -1514,16 +1250,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:09Z",
-      "content_sha256": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
-      "snapshot_ref": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
+      "retrieved_at": "2026-09-28T11:59:15Z",
+      "content_sha256": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
+      "snapshot_ref": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
       "extraction_method": "web_org_number_on_source_v1",
       "extractor_version": "1",
       "span": "Org nr. 926781995",
       "access_policy": null
     },
     {
-      "evidence_id": "e_5467ffcef11117192db0",
+      "evidence_id": "e_acc10207b16261c10c2c",
       "source_url": "https://nagra.no/privacypolicy",
       "final_url": "https://nagra.no/privacypolicy/",
       "redirect_chain": [
@@ -1532,16 +1268,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:14Z",
-      "content_sha256": "707f34c1b321bb2d1d2c00ee5a7838d8341feb6f32b3be3d2d7cac52fa5c83a0",
-      "snapshot_ref": "707f34c1b321bb2d1d2c00ee5a7838d8341feb6f32b3be3d2d7cac52fa5c83a0",
+      "retrieved_at": "2026-09-28T11:59:19Z",
+      "content_sha256": "7f623888ca55c6e68222b70106010ce5b9c91a710b0addf5ee7c598a12161830",
+      "snapshot_ref": "7f623888ca55c6e68222b70106010ce5b9c91a710b0addf5ee7c598a12161830",
       "extraction_method": "web_org_number_on_source_v1",
       "extractor_version": "1",
       "span": "Org nr. 926781995",
       "access_policy": null
     },
     {
-      "evidence_id": "e_099b286c535805a3d3ea",
+      "evidence_id": "e_3b1323c30da1ed1e4af3",
       "source_url": "https://nagra.no/",
       "final_url": "https://nagra.no/",
       "redirect_chain": [
@@ -1549,16 +1285,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:09Z",
-      "content_sha256": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
-      "snapshot_ref": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
+      "retrieved_at": "2026-09-28T11:59:15Z",
+      "content_sha256": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
+      "snapshot_ref": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
       "extraction_method": "web_registry_phone_v1",
       "extractor_version": "1",
       "span": "46415908",
       "access_policy": null
     },
     {
-      "evidence_id": "e_3d21561df5472d9cd3e4",
+      "evidence_id": "e_11a27a28f08e9360eaa5",
       "source_url": "https://nagra.no/",
       "final_url": "https://nagra.no/",
       "redirect_chain": [
@@ -1566,16 +1302,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:09Z",
-      "content_sha256": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
-      "snapshot_ref": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
+      "retrieved_at": "2026-09-28T11:59:15Z",
+      "content_sha256": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
+      "snapshot_ref": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
       "extraction_method": "web_contact_email_v1",
       "extractor_version": "1",
       "span": "abida@nagra.no",
       "access_policy": null
     },
     {
-      "evidence_id": "e_43c821d94e52fb479fee",
+      "evidence_id": "e_5789865aeda7e84a1d1e",
       "source_url": "https://nagra.no/",
       "final_url": "https://nagra.no/",
       "redirect_chain": [
@@ -1583,16 +1319,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:09Z",
-      "content_sha256": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
-      "snapshot_ref": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
+      "retrieved_at": "2026-09-28T11:59:15Z",
+      "content_sha256": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
+      "snapshot_ref": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
       "extraction_method": "web_role_name_v1",
       "extractor_version": "1",
       "span": "Abida Nagra",
       "access_policy": null
     },
     {
-      "evidence_id": "e_f6254177f6b0a900220a",
+      "evidence_id": "e_f7461391d7d5b965276f",
       "source_url": "https://nagra.no/",
       "final_url": "https://nagra.no/",
       "redirect_chain": [
@@ -1600,30 +1336,13 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:09Z",
-      "content_sha256": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
-      "snapshot_ref": "ece919e56661af45bc81a918346892e75261e84dcd958d53ef609d5c33a81945",
+      "retrieved_at": "2026-09-28T11:59:15Z",
+      "content_sha256": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
+      "snapshot_ref": "add813203629f3afe86fa052b53ecc0f4f43fd2ff9debd56e08d89fd9c3cb7ef",
       "extraction_method": "trafilatura_first_paragraph_v1",
       "extractor_version": "1",
       "span": "We help leaders with strategy, business development, structural, project management, change management and compliance related concerns. Our work often starts with brief advisory agreements, and where needed, ends up in long term relationships with clients. We are flexible and available on short notice. Our clients include public, private, not-for-profit and multilateral organisations of all sizes,",
       "access_policy": null
-    },
-    {
-      "evidence_id": "e_93903365133fedba11bb",
-      "source_url": "https://nagra.no/comments/feed/",
-      "final_url": "https://nagra.no/comments/feed/",
-      "redirect_chain": [
-        "https://nagra.no/comments/feed/"
-      ],
-      "http_status": 200,
-      "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:20:16Z",
-      "content_sha256": "13b2689c3ce48e670a6b3fce32eaf49f4459be5dadb25a5a1268575ae96befc0",
-      "snapshot_ref": "13b2689c3ce48e670a6b3fce32eaf49f4459be5dadb25a5a1268575ae96befc0",
-      "extraction_method": "rss_v1",
-      "extractor_version": "1",
-      "span": "feed item count=10",
-      "access_policy": "robots-allowed"
     }
   ],
   "changes": [],
@@ -1663,16 +1382,11 @@
           "c_d8742449fcd0e7fad5c3",
           "c_8e76221b4e78e7d76f6c"
         ]
-      },
-      {
-        "text": "NAGRA AS has recent public activity, most recently \"Comment on Oversize Sweatshirt by Willie Clark\" (2022-05-25).",
-        "claim_ids": [
-          "c_981a77ba1851bdb1b94a"
-        ]
       }
     ],
     "unknowns": [
-      "Its group / ownership structure: no parent relationship in registry data",
+      "Public activity (news, posts, videos): checked: none found",
+      "Its group / ownership structure: no parent relationship or parent-company flag in registry data",
       "Open job postings: checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified",
       "Public social or video profiles: checked: none found",
       "Public reviews or ratings: no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)"
@@ -1683,7 +1397,7 @@
   "operations": {
     "requests": 12,
     "bytes": 0,
-    "runtime_ms": 290903,
+    "runtime_ms": 292754,
     "third_party_cost_usd": 0.0
   }
 }

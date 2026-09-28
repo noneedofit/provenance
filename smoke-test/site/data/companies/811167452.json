@@ -5,8 +5,8 @@
   "run": {
     "run_id": "smoke-100",
     "previous_run_id": null,
-    "started_at": "2026-09-28T08:15:25Z",
-    "completed_at": "2026-09-28T08:21:15Z",
+    "started_at": "2026-09-28T11:54:28Z",
+    "completed_at": "2026-09-28T12:00:22Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T3"
@@ -68,6 +68,7 @@
       "c_af866f468dc2f4f77d63"
     ],
     "hiring_and_activity": [
+      "c_0f58c26cf45753a7fa17",
       "c_339fc42032aa09c0e146",
       "c_bcff84d1a5928f5c5ea6"
     ],
@@ -123,8 +124,10 @@
     "group": {
       "family": "group",
       "availability": "not_available",
-      "reason": "no parent relationship in registry data",
-      "sources_checked": [],
+      "reason": "no parent relationship or parent-company flag in registry data",
+      "sources_checked": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/811167452"
+      ],
       "claim_count": 0
     },
     "website": {
@@ -140,15 +143,21 @@
       "family": "profiles",
       "availability": "available",
       "reason": null,
-      "sources_checked": [],
+      "sources_checked": [
+        "dns.no"
+      ],
       "claim_count": 3
     },
     "description": {
       "family": "description",
       "availability": "available",
       "reason": null,
-      "sources_checked": [],
-      "claim_count": 1
+      "sources_checked": [
+        "dns.no",
+        "https://data.brreg.no/enhetsregisteret/api/enheter/811167452",
+        "https://www.dns.no/"
+      ],
+      "claim_count": 2
     },
     "reviews": {
       "family": "reviews",
@@ -159,12 +168,12 @@
     },
     "jobs": {
       "family": "jobs",
-      "availability": "not_available",
-      "reason": "checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified; search fallback skipped (circuit breaker open after repeated rate-limiting)",
+      "availability": "available",
+      "reason": null,
       "sources_checked": [
         "nav_arbeidsplassen_live"
       ],
-      "claim_count": 0
+      "claim_count": 2
     },
     "activity": {
       "family": "activity",
@@ -193,8 +202,8 @@
       "evidence_ids": [
         "e_8f0a55d2c8b78330ff1d"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -217,8 +226,8 @@
       "evidence_ids": [
         "e_d4bfb1ae9e7f4e05f36a"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -238,8 +247,8 @@
       "evidence_ids": [
         "e_3be7d6eaacb487a69b45"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -262,8 +271,8 @@
       "evidence_ids": [
         "e_ee15e9e25f477b30a622"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -286,8 +295,8 @@
       "evidence_ids": [
         "e_9d3e6e8f7d68e85057dc"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -313,8 +322,8 @@
       "evidence_ids": [
         "e_91657cd46afcbf9920e3"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -340,8 +349,8 @@
       "evidence_ids": [
         "e_0438aefef9d3c6219ac1"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -361,8 +370,8 @@
       "evidence_ids": [
         "e_262898876bc884a494d2"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -382,8 +391,8 @@
       "evidence_ids": [
         "e_12e90d658e5f06ab3812"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -403,8 +412,8 @@
       "evidence_ids": [
         "e_7d015715c00593dffc6e"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -424,8 +433,8 @@
       "evidence_ids": [
         "e_355484f44ce26ed7d301"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -445,8 +454,8 @@
       "evidence_ids": [
         "e_7e0bda671ed777358d66"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -466,8 +475,8 @@
       "evidence_ids": [
         "e_5f5171fe2456dad99c87"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -487,8 +496,8 @@
       "evidence_ids": [
         "e_265b16904430419f7fc6"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -508,8 +517,8 @@
       "evidence_ids": [
         "e_220c26f42b41759aece5"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -533,8 +542,8 @@
       "evidence_ids": [
         "e_78df22526711af27ae15"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -554,8 +563,8 @@
       "evidence_ids": [
         "e_c55c6316fb564b73ca54"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -579,8 +588,8 @@
       "evidence_ids": [
         "e_6f6e788d37bd401068c6"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -604,8 +613,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -629,8 +638,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -654,8 +663,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -679,8 +688,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -704,8 +713,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -729,8 +738,8 @@
       "evidence_ids": [
         "e_aa8e502e34c27f962e5f"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -754,8 +763,8 @@
       "evidence_ids": [
         "e_427a7738c4fd2aa58989"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -779,8 +788,8 @@
       "evidence_ids": [
         "e_427a7738c4fd2aa58989"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -804,8 +813,8 @@
       "evidence_ids": [
         "e_427a7738c4fd2aa58989"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -829,8 +838,8 @@
       "evidence_ids": [
         "e_427a7738c4fd2aa58989"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -850,8 +859,8 @@
       "evidence_ids": [
         "e_5703a2d8a503272837c8"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -877,8 +886,8 @@
       "evidence_ids": [
         "e_5dda8f4ca291b43943e9"
       ],
-      "first_observed_at": "2026-09-28T08:20:55Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:56Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -906,8 +915,8 @@
       "evidence_ids": [
         "e_0a984e40c4f08887625e"
       ],
-      "first_observed_at": "2026-09-28T08:20:56Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:57Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -933,8 +942,8 @@
       "evidence_ids": [
         "e_91657cd46afcbf9920e3"
       ],
-      "first_observed_at": "2026-09-28T08:20:54Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:55Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -960,8 +969,8 @@
       "evidence_ids": [
         "e_036673981e9aab2bcbe3"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -987,8 +996,8 @@
       "evidence_ids": [
         "e_f5f6cad1931c9a117739"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1014,8 +1023,8 @@
       "evidence_ids": [
         "e_a1b1a774e8dbdc90e986"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1041,8 +1050,8 @@
       "evidence_ids": [
         "e_5a21e25743bd4b4a6d58"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1068,8 +1077,8 @@
       "evidence_ids": [
         "e_934ef3a547385c4e1065"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1095,8 +1104,8 @@
       "evidence_ids": [
         "e_d3bc56722b504b05978e"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1122,8 +1131,8 @@
       "evidence_ids": [
         "e_f470034495a664a4eb72"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1149,8 +1158,8 @@
       "evidence_ids": [
         "e_f470034495a664a4eb72"
       ],
-      "first_observed_at": "2026-09-28T08:20:58Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:58Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1186,8 +1195,8 @@
       "evidence_ids": [
         "e_745dae9057b621a5e053"
       ],
-      "first_observed_at": "2026-09-28T08:20:59Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:03Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1209,14 +1218,14 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_1d9e5df2cc09e7835f17",
-        "e_a29b5a0b9793a72a37c0",
-        "e_de1aacb823d8fa7e7a0d",
-        "e_83d33f1cb9d92f6282d8",
-        "e_55ecb2833459d744e04d"
+        "e_d50394dc0f8a9387c731",
+        "e_733b2d774b1cd42c2d94",
+        "e_e6239103c4f48459be3a",
+        "e_fb4383eae5b79d282ae8",
+        "e_c0df8a04698c8f198503"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1234,10 +1243,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_a29b5a0b9793a72a37c0"
+        "e_733b2d774b1cd42c2d94"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1258,10 +1267,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_457a3b52d330ee1e9eef"
+        "e_8bf5c24e290aa62dd035"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1282,10 +1291,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_673f04f73a2a4758506e"
+        "e_a2d934770273c6699984"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1306,10 +1315,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_8b096eadb21b76128c7f"
+        "e_254a2c64ca5b93876549"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1327,10 +1336,40 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_d19e82e85f1ba995cd62"
+        "e_6e27afab7533de8d44bd"
       ],
-      "first_observed_at": "2026-09-28T08:21:05Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_0f58c26cf45753a7fa17",
+      "organisation_number": "811167452",
+      "family": "jobs",
+      "field": "job_posting",
+      "value": {
+        "title": "Assistent maske-parykk DNS",
+        "employer_name": "Den Nationale Scene As",
+        "location": "BERGEN",
+        "published": "2026-09-28T12:56:57+02:00",
+        "expires": "2026-10-19T00:00:00+02:00",
+        "application_due": "Snarest",
+        "ad_url": "https://arbeidsplassen.nav.no/stillinger/stilling/117e253d-2ed8-40a7-acef-678c70924fb5",
+        "source": "NAV arbeidsplassen"
+      },
+      "value_key": "nav:117e253d-2ed8-40a7-acef-678c70924fb5",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "job_feed_org_number",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": "2026-09-28T12:56:57+02:00",
+      "evidence_ids": [
+        "e_ce0a59ed6ca698292a85"
+      ],
+      "first_observed_at": "2026-09-28T12:00:05Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1340,9 +1379,9 @@
       "family": "jobs",
       "field": "active_postings_count",
       "value": {
-        "verified": 0,
-        "name_matched_total": 0,
-        "checked_at": "2026-09-28T08:20:59Z"
+        "verified": 1,
+        "name_matched_total": 1,
+        "checked_at": "2026-09-28T12:00:05Z"
       },
       "value_key": null,
       "availability": "available",
@@ -1352,10 +1391,11 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_3163261b873aa8c402b6"
+        "e_ce0a59ed6ca698292a85",
+        "e_e52253fce5350963424e"
       ],
-      "first_observed_at": "2026-09-28T08:20:03Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T11:59:12Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     },
@@ -1378,10 +1418,10 @@
       "reporting_period": null,
       "effective_date": "2026-09-23",
       "evidence_ids": [
-        "e_f5326c9bacfd8bbdf1dc"
+        "e_ad2e1d9cddaca731e41f"
       ],
-      "first_observed_at": "2026-09-28T08:21:14Z",
-      "last_observed_at": "2026-09-28T08:15:25Z",
+      "first_observed_at": "2026-09-28T12:00:21Z",
+      "last_observed_at": "2026-09-28T11:54:28Z",
       "status": "current",
       "note": null
     }
@@ -1396,7 +1436,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1413,7 +1453,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1430,7 +1470,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1447,7 +1487,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1464,7 +1504,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1481,7 +1521,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1498,7 +1538,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1515,7 +1555,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1532,7 +1572,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1549,7 +1589,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1566,7 +1606,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1583,7 +1623,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1600,7 +1640,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1617,7 +1657,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:54Z",
+      "retrieved_at": "2026-09-28T11:59:55Z",
       "content_sha256": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "snapshot_ref": "361b1f6846ff626a20cd54de98a0050999015485a4aba7f0ad5713d7bc6ddd9c",
       "extraction_method": "brreg_entity_v1",
@@ -1634,7 +1674,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1651,7 +1691,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1668,7 +1708,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1685,7 +1725,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1702,7 +1742,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1719,7 +1759,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1736,7 +1776,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1753,7 +1793,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:55Z",
+      "retrieved_at": "2026-09-28T11:59:56Z",
       "content_sha256": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "snapshot_ref": "a325840b34eafca1b7f798b4f83c00fa4c726d86210dd05d117895501c53489b",
       "extraction_method": "brreg_roles_v1",
@@ -1770,7 +1810,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T08:20:56Z",
+      "retrieved_at": "2026-09-28T11:59:57Z",
       "content_sha256": "57ce8fc6135d6758ac4606f0e8b3337dce773680c54629a7b95d81c9c59c4e12",
       "snapshot_ref": "57ce8fc6135d6758ac4606f0e8b3337dce773680c54629a7b95d81c9c59c4e12",
       "extraction_method": "brreg_subunits_v1",
@@ -1787,7 +1827,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1804,7 +1844,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1821,7 +1861,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1838,7 +1878,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1855,7 +1895,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1872,7 +1912,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1889,7 +1929,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:58Z",
+      "retrieved_at": "2026-09-28T11:59:58Z",
       "content_sha256": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "snapshot_ref": "cb3ad4479ab516a75d98921ad43872f4c5458ce0c92445853fcf3d2803111916",
       "extraction_method": "brreg_financials_v1",
@@ -1906,7 +1946,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T08:20:59Z",
+      "retrieved_at": "2026-09-28T12:00:03Z",
       "content_sha256": "b7bcd20d8a4607bc9ca49fbdfebf5e51cb31e39858edb985dc98a82e8d2b7cd1",
       "snapshot_ref": "b7bcd20d8a4607bc9ca49fbdfebf5e51cb31e39858edb985dc98a82e8d2b7cd1",
       "extraction_method": "brreg_financial_history_v1",
@@ -1915,7 +1955,24 @@
       "access_policy": "NLOD-2.0"
     },
     {
-      "evidence_id": "e_3163261b873aa8c402b6",
+      "evidence_id": "e_ce0a59ed6ca698292a85",
+      "source_url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/117e253d-2ed8-40a7-acef-678c70924fb5",
+      "final_url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/117e253d-2ed8-40a7-acef-678c70924fb5",
+      "redirect_chain": [
+        "https://pam-stilling-feed.nav.no/api/v1/feedentry/117e253d-2ed8-40a7-acef-678c70924fb5"
+      ],
+      "http_status": 200,
+      "source_class": "public_job_feed",
+      "retrieved_at": "2026-09-28T12:00:05Z",
+      "content_sha256": "0cdf591e2880d2d4bd0149d3b261527ee326a4628a45f250134d35e42088ff18",
+      "snapshot_ref": "0cdf591e2880d2d4bd0149d3b261527ee326a4628a45f250134d35e42088ff18",
+      "extraction_method": "nav_live_feedentry_v1",
+      "extractor_version": "1",
+      "span": "$.ad_content.employer.orgnr=971677503",
+      "access_policy": "NLOD-2.0 (NAV)"
+    },
+    {
+      "evidence_id": "e_e52253fce5350963424e",
       "source_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
       "final_url": "https://pam-stilling-feed.nav.no/api/v1/feed",
       "redirect_chain": [
@@ -1923,16 +1980,16 @@
       ],
       "http_status": null,
       "source_class": "public_job_feed",
-      "retrieved_at": "2026-09-28T08:20:03Z",
-      "content_sha256": "7e25643c1ac2da50e29e624830e3e1b199aefdf37850ebd8e9e932278eec4fb5",
+      "retrieved_at": "2026-09-28T11:59:12Z",
+      "content_sha256": "d77b31dba06a3788f2fa6370d548336fd8f510a2939d7df0532e6fd5c6b8957c",
       "snapshot_ref": null,
       "extraction_method": "nav_feed_index_v1",
       "extractor_version": "1",
-      "span": "active_ads_indexed=9617; window_days=60; complete=True; pages_walked_this_run=118",
+      "span": "active_ads_indexed=9850; window_days=60; complete=True; pages_walked_this_run=118",
       "access_policy": "NLOD-2.0 (NAV)"
     },
     {
-      "evidence_id": "e_1d9e5df2cc09e7835f17",
+      "evidence_id": "e_d50394dc0f8a9387c731",
       "source_url": "https://dns.no/kontakt/",
       "final_url": "https://dns.no/kontakt/",
       "redirect_chain": [
@@ -1940,16 +1997,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:07Z",
-      "content_sha256": "723cf084f56f4453f5b7fefc322c87449c88aa0ce799d59554add7a1abf08823",
-      "snapshot_ref": "723cf084f56f4453f5b7fefc322c87449c88aa0ce799d59554add7a1abf08823",
+      "retrieved_at": "2026-09-28T12:00:15Z",
+      "content_sha256": "25cbc38b3dbc6926c762a1ecc4e6acc709f80f51ee9a932eb49d22153b788fac",
+      "snapshot_ref": "25cbc38b3dbc6926c762a1ecc4e6acc709f80f51ee9a932eb49d22153b788fac",
       "extraction_method": "web_org_number_on_source_v1",
       "extractor_version": "1",
       "span": "Organisasjonsnummer: 811167452",
       "access_policy": null
     },
     {
-      "evidence_id": "e_a29b5a0b9793a72a37c0",
+      "evidence_id": "e_733b2d774b1cd42c2d94",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -1958,16 +2015,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_contact_email_v1",
       "extractor_version": "1",
       "span": "dns@dns.no",
       "access_policy": null
     },
     {
-      "evidence_id": "e_de1aacb823d8fa7e7a0d",
+      "evidence_id": "e_e6239103c4f48459be3a",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -1976,16 +2033,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_role_name_v1",
       "extractor_version": "1",
       "span": "Solrun Toft Iversen",
       "access_policy": null
     },
     {
-      "evidence_id": "e_83d33f1cb9d92f6282d8",
+      "evidence_id": "e_fb4383eae5b79d282ae8",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -1994,16 +2051,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_legal_name_match_v1",
       "extractor_version": "1",
       "span": "Den Nationale Scene",
       "access_policy": null
     },
     {
-      "evidence_id": "e_55ecb2833459d744e04d",
+      "evidence_id": "e_c0df8a04698c8f198503",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -2012,16 +2069,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_email_domain_match_v1",
       "extractor_version": "1",
       "span": "dns.no",
       "access_policy": null
     },
     {
-      "evidence_id": "e_457a3b52d330ee1e9eef",
+      "evidence_id": "e_8bf5c24e290aa62dd035",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -2030,16 +2087,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_social_link_v1",
       "extractor_version": "1",
       "span": "https://facebook.com/teateret",
       "access_policy": null
     },
     {
-      "evidence_id": "e_673f04f73a2a4758506e",
+      "evidence_id": "e_a2d934770273c6699984",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -2048,16 +2105,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_social_link_v1",
       "extractor_version": "1",
       "span": "https://instagram.com/dennationalescene",
       "access_policy": null
     },
     {
-      "evidence_id": "e_8b096eadb21b76128c7f",
+      "evidence_id": "e_254a2c64ca5b93876549",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -2066,16 +2123,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "web_social_link_v1",
       "extractor_version": "1",
       "span": "https://linkedin.com/company/den-nationale-scene",
       "access_policy": null
     },
     {
-      "evidence_id": "e_d19e82e85f1ba995cd62",
+      "evidence_id": "e_6e27afab7533de8d44bd",
       "source_url": "https://www.dns.no/",
       "final_url": "https://dns.no/",
       "redirect_chain": [
@@ -2084,16 +2141,16 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:05Z",
-      "content_sha256": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
-      "snapshot_ref": "4a673d4489fa18fe7542ff626980b54755ab1f828e501863e5c6a9e6983101ba",
+      "retrieved_at": "2026-09-28T12:00:12Z",
+      "content_sha256": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
+      "snapshot_ref": "5071b24521eda69f7a3a52a20b958f0483a71c588b2f1ba7106c1261da4dda3f",
       "extraction_method": "meta_description_v1",
       "extractor_version": "1",
       "span": "Den Nationale Scene skaper engasjerende, underholdende og samfunnsrelevant teater. Se program og kjøp billetter.",
       "access_policy": null
     },
     {
-      "evidence_id": "e_f5326c9bacfd8bbdf1dc",
+      "evidence_id": "e_ad2e1d9cddaca731e41f",
       "source_url": "https://dns.no/nyheter/",
       "final_url": "https://dns.no/nyheter/",
       "redirect_chain": [
@@ -2101,9 +2158,9 @@
       ],
       "http_status": 200,
       "source_class": "company_owned",
-      "retrieved_at": "2026-09-28T08:21:14Z",
-      "content_sha256": "65d278fda5deac2973f5d698db29769bd4a371b8a18de27dd0c0078e742cf81f",
-      "snapshot_ref": "65d278fda5deac2973f5d698db29769bd4a371b8a18de27dd0c0078e742cf81f",
+      "retrieved_at": "2026-09-28T12:00:21Z",
+      "content_sha256": "1934180a80d29ec69bf219657ca5775aa021ed40cde345f289e91d59e3515107",
+      "snapshot_ref": "1934180a80d29ec69bf219657ca5775aa021ed40cde345f289e91d59e3515107",
       "extraction_method": "html_news_v1",
       "extractor_version": "1",
       "span": "regex Norwegian date pattern",
@@ -2154,24 +2211,24 @@
         ]
       },
       {
-        "text": "AS DEN NATIONALE SCENE has recent public activity, most recently \"Nyheter fra DNS\" (2026-09-23).",
+        "text": "AS DEN NATIONALE SCENE has 1 active job posting on NAV, most recently \"Assistent maske-parykk DNS\" and recent public activity, most recently \"Nyheter fra DNS\" (2026-09-23).",
         "claim_ids": [
+          "c_0f58c26cf45753a7fa17",
           "c_bcff84d1a5928f5c5ea6"
         ]
       }
     ],
     "unknowns": [
-      "Its group / ownership structure: no parent relationship in registry data",
-      "Open job postings: checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified; search fallback skipped (circuit breaker open after repeated rate-limiting)",
+      "Its group / ownership structure: no parent relationship or parent-company flag in registry data",
       "Public reviews or ratings: no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)"
     ],
     "method": "template_v1"
   },
   "errors": [],
   "operations": {
-    "requests": 13,
+    "requests": 14,
     "bytes": 0,
-    "runtime_ms": 349700,
+    "runtime_ms": 353903,
     "third_party_cost_usd": 0.0
   }
 }
