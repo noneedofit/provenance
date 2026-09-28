@@ -49,6 +49,17 @@ except Exception:  # pragma: no cover - fallback if the starter kit package is e
                 raise ValueError("Private, loopback, link-local, multicast, and reserved addresses are blocked")
 
 
+def _retry_after_seconds(headers: dict | None, default: float = 5.0, cap: float = 20.0) -> float:
+    value = ""
+    for key, val in (headers or {}).items():
+        if str(key).lower() == "retry-after":
+            value = str(val).strip()
+    try:
+        return max(1.0, min(cap, float(value)))
+    except ValueError:
+        return default
+
+
 USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"
 DEFAULT_HOST_CONCURRENCY = 2
 HOST_CONCURRENCY_OVERRIDES = {
@@ -424,6 +435,10 @@ class BudgetedHttpClient:
                 total_requests_used += 1
                 if connection_error:
                     time.sleep(1.0)
+                elif status == 429:
+                    # Back off before retrying a rate limit (Retry-After when given, capped), instead of
+                    # retrying immediately into the same limit window.
+                    time.sleep(_retry_after_seconds(headers))
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 

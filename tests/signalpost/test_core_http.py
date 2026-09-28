@@ -178,3 +178,12 @@ def test_request_log_total_matches_budget_with_robots_and_redirects(server):
     client.get(f"http://127.0.0.1:{port}/flaky", org="orgE", purpose="test", respect_robots=True)
     log = client.request_log() if callable(client.request_log) else client.request_log
     assert sum(e.requests_used for e in log) == budget.used_total()
+
+
+def test_retry_after_seconds_is_bounded():
+    from signalpost.http import _retry_after_seconds
+
+    assert _retry_after_seconds({"Retry-After": "3"}) == 3.0
+    assert _retry_after_seconds({"retry-after": "600"}) == 20.0
+    assert _retry_after_seconds({}) == 5.0
+    assert _retry_after_seconds({"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}) == 5.0
