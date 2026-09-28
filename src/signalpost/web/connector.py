@@ -17,6 +17,7 @@ from . import verify as verify_mod
 from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, crawl_candidate
+from norway_company_agent.website import normalize_social_url
 
 DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage"}
 
@@ -118,10 +119,11 @@ def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
     )
 
 
-def _profile_key(url: str) -> str:
-    parts = urllib.parse.urlsplit(url.strip())
-    host = (parts.hostname or "").lower().removeprefix("www.").removeprefix("m.")
-    return f"https://{host}{parts.path.rstrip('/')}"
+def _profile_key(url: str) -> str | None:
+    """Same normalisation as site-linked profiles (starter-kit rules: rejects share/personal/post URLs),
+    so a profile has one claim id whichever source found it."""
+    normalized = normalize_social_url(url)
+    return normalized["url"] if normalized else None
 
 
 def _add_wikidata_profiles(ctx: Any, result: ConnectorResult) -> None:
@@ -142,13 +144,13 @@ def _add_wikidata_profiles(ctx: Any, result: ConnectorResult) -> None:
     if not profiles:
         return
     org = ctx.org
-    existing = {_profile_key(c.value["url"]) for c in result.claims if c.family == "profiles" and isinstance(c.value, dict) and c.value.get("url")}
+    existing = {c.value["url"] for c in result.claims if c.family == "profiles" and isinstance(c.value, dict) and c.value.get("url")}
     added = 0
     for platform, url in sorted(profiles.items()):
         if not isinstance(url, str) or not url.startswith("http"):
             continue
         key = _profile_key(url)
-        if key in existing:
+        if key is None or key in existing:
             continue
         existing.add(key)
         source = row.get("source_url") or "https://query.wikidata.org/sparql"

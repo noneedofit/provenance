@@ -642,6 +642,10 @@ def _render_leadership_locations(by_family: dict, ev_by_id: dict) -> str:
     return f'<div class="section"><h3>Leadership</h3>{role_html}<h3>Locations &amp; workplaces</h3>{loc_html}</div>'
 
 
+_PLATFORM_LABELS = {"linkedin": "LinkedIn", "youtube": "YouTube", "facebook": "Facebook", "instagram": "Instagram",
+                    "x": "X", "twitter": "X (Twitter)", "tiktok": "TikTok", "vimeo": "Vimeo", "pinterest": "Pinterest"}
+
+
 def _website_value_html(c: dict) -> str:
     value = c.get("value")
     if c.get("field") == "official_website":
@@ -687,7 +691,7 @@ def _render_website_profiles(by_family: dict, ev_by_id: dict) -> str:
             continue
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
         v = c["value"] if isinstance(c["value"], dict) else {"url": c["value"]}
-        platform = str(v.get("platform") or "Profile").replace("_", " ").title()
+        platform = _PLATFORM_LABELS.get(str(v.get("platform") or "").lower(), str(v.get("platform") or "Profile").title())
         prof_rows.append(fact_row(c["claim_id"], platform, _linked(v.get("url"), v.get("url")), src))
     prof_html = "".join(prof_rows) or '<p class="muted">No linked profiles found.</p>'
 

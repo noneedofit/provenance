@@ -211,3 +211,9 @@ def test_blog_comments_and_placeholder_posts_are_not_company_activity():
     assert not is_company_item({"title": "Hello world!", "url": "https://x.no/hello-world/"})
     assert not is_company_item({"title": "Nytt prosjekt", "url": "https://x.no/a/"}, "https://x.no/comments/feed/")
     assert is_company_item({"title": "Vi åpner ny avdeling i Bergen", "url": "https://x.no/nyheter/ny-avdeling"})
+
+
+def test_formal_replies_are_still_company_activity():
+    from signalpost.activity.feeds import is_company_item
+
+    assert is_company_item({"title": "Svar på høring om ny avfallsforskrift", "url": "https://x.no/nyheter/horing"})

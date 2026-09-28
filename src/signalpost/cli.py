@@ -41,21 +41,29 @@ BULK_DOWNLOAD_ATTEMPTS = 3
 
 
 def _bulk_file_ok(path: Path) -> bool:
-    """True when the bulk file reads to the end: a truncated gzip download must never be used."""
+    """True when the bulk file is usable: a plain CSV with the registry header, or a gzip that reads to
+    the end (a truncated download must never be used). A verified file gets a `.ok` marker so the full
+    gzip scan happens once, not on every run."""
     import gzip
     import zlib
 
+    marker = path.with_name(path.name + ".ok")
     try:
-        if path.stat().st_size < 1_000_000:
-            return False
-        with open(path, "rb") as raw:
-            is_gzip = raw.read(2) == b"\x1f\x8b"
-        if not is_gzip:
+        stat = path.stat()
+        if marker.exists() and marker.read_text().strip() == str(stat.st_size):
             return True
-        with gzip.open(path, "rb") as f:
-            while f.read(1 << 22):
-                pass
-        return True
+        with open(path, "rb") as raw:
+            head = raw.read(4096)
+        if head[:2] != b"\x1f\x8b":
+            ok = b"organisasjonsnummer" in head
+        else:
+            with gzip.open(path, "rb") as f:
+                while f.read(1 << 22):
+                    pass
+            ok = True
+        if ok:
+            marker.write_text(str(stat.st_size))
+        return ok
     except (OSError, EOFError, zlib.error):
         return False
 
@@ -71,6 +79,7 @@ def _resolve_bulk_path(explicit: str | None) -> tuple[str | None, int]:
                 return candidate, 0
             print(f"bulk file {candidate} is incomplete or corrupt; downloading a fresh copy", file=sys.stderr)
             Path(candidate).unlink(missing_ok=True)
+            Path(candidate + ".ok").unlink(missing_ok=True)
     Path("./data").mkdir(parents=True, exist_ok=True)
     dest = Path("./data/brreg-enheter.csv")
     tmp = dest.with_suffix(".csv.part")
@@ -88,12 +97,14 @@ def _resolve_bulk_path(explicit: str | None) -> tuple[str | None, int]:
                     f.write(chunk)
             if _bulk_file_ok(tmp):
                 tmp.replace(dest)
+                tmp.with_name(tmp.name + ".ok").replace(dest.with_name(dest.name + ".ok"))
                 return str(dest), requests_used
             print("downloaded bulk file is incomplete", file=sys.stderr)
         except Exception as exc:  # network drop, IncompleteRead, timeout
             print(f"bulk download failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         tmp.unlink(missing_ok=True)
-        time.sleep(5 * attempt)
+        if attempt < BULK_DOWNLOAD_ATTEMPTS:
+            time.sleep(5 * attempt)
     print("continuing without the bulk file (live registry API only; bundled shared-domain table)", file=sys.stderr)
     return None, requests_used
 

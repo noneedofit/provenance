@@ -81,3 +81,11 @@ def test_missing_bulk_uses_bundled_shared_domain_table(tmp_path, monkeypatch):
     monkeypatch.setattr(wd, "build", lambda d: (d / "wikidata.sqlite").write_text("x") and {})
     cache_dir, _ = cli._ensure_caches(str(tmp_path / "c"), None)
     assert (tmp_path / "c" / "email_domains.sqlite").stat().st_size > 1_000_000
+
+
+def test_small_plain_csv_bulk_file_is_accepted_not_deleted(tmp_path):
+    from signalpost import cli
+
+    small = tmp_path / "brreg-enheter.csv"
+    small.write_text('"organisasjonsnummer","navn"\n"123456785","TEST AS"\n', encoding="utf-8")
+    assert cli._bulk_file_ok(small) and small.exists()

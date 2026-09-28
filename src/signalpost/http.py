@@ -435,9 +435,9 @@ class BudgetedHttpClient:
                 total_requests_used += 1
                 if connection_error:
                     time.sleep(1.0)
-                elif status == 429:
-                    # Back off before retrying a rate limit (Retry-After when given, capped), instead of
-                    # retrying immediately into the same limit window.
+                elif status == 429 and not respect_robots:
+                    # Official APIs: back off before retrying a rate limit (Retry-After when given,
+                    # capped). Rate-limited optional sources (NAV search) have their own breaker.
                     time.sleep(_retry_after_seconds(headers))
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)

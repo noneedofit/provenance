@@ -243,7 +243,7 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
     return found
 
 
-_COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på|svar til|svar på)\b", re.I)
+_COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på)\b", re.I)
 _PLACEHOLDER_TITLES = {"hello world!", "hei verden!", "hallo verden!", "sample page", "eksempelside"}
 
 
