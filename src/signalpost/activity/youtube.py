@@ -81,7 +81,10 @@ def collect(ctx) -> dict:
         resp = ctx.client.get(feed_url, org=ctx.org, purpose="youtube_feed", accept="application/atom+xml, application/xml", respect_robots=True)
         result["checked"] = True
         if not resp.ok:
-            result["errors"].append({"stage": "youtube_feed", "url": feed_url, "error": resp.error or f"http_{resp.status}"})
+            # YouTube's robots.txt disallows the channel feed; respecting it is the expected outcome, not
+            # a failure of this company's research.
+            if resp.error != "robots_disallowed":
+                result["errors"].append({"stage": "youtube_feed", "url": feed_url, "error": resp.error or f"http_{resp.status}"})
             continue
 
         items = [it for it in parse_feed(resp.text()) if it.get("url") and it.get("published")]

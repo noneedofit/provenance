@@ -545,7 +545,9 @@ class NavLiveConnector:
                     continue
                 resp = self._fetch_feedentry(client, ctx.org, uuid, token)
             if not resp.ok:
-                errors.append({"stage": "nav_live_feedentry", "uuid": uuid, "error": resp.error or f"http_{resp.status}"})
+                # 404/410: the ad closed between the feed walk and this lookup -- nothing to confirm.
+                if resp.status not in (404, 410):
+                    errors.append({"stage": "nav_live_feedentry", "uuid": uuid, "error": resp.error or f"http_{resp.status}"})
                 continue
             try:
                 entry = json.loads(resp.text())
