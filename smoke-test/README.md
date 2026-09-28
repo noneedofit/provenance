@@ -1,7 +1,7 @@
 # 100-company smoke test
 
 A clean run of the submitted agent, done the way the evaluator runs it: fresh clone of this repository at
-commit `1a5b09fe806ef3385be5fa9e60c798cc7caa4b94`, `uv sync`, then one command, with no pre-built data or
+commit `b53294e168862566e2d4ed6869213180f8d00cad`, `uv sync`, then one command, with no pre-built data or
 caches.
 
 ```bash
@@ -14,8 +14,8 @@ uv run python -m signalpost run --organisations organisations.txt --output-dir s
 | | |
 |---|---|
 | Results | 100 of 100 envelopes, all `completed`; validation passed |
-| Requests | 952 in the batch + 2 one-time setup (bulk file download, Wikidata) |
-| Time | 6.4 min for the batch; first-run setup (bulk file download, lookup tables) adds 4–11 min depending on the network |
+| Requests | 943 in the batch + 2 one-time setup (bulk file download, Wikidata) |
+| Time | 6.7 min for the batch; first-run setup (bulk file download, lookup tables) adds 4–11 min depending on the network |
 | Third-party cost | $0 |
 | Available | identity, leadership, locations, financials, financial history: 100 each; description 98 (registry activity or website text), website 15, profiles 8, activity 4 |
 
