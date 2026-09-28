@@ -12,6 +12,7 @@ order, even when a company crashes.
 from __future__ import annotations
 
 import json
+import sys
 import os
 import tempfile
 import threading
@@ -161,7 +162,11 @@ def run_batch(
     if bulk_rows is not None:
         bulk = {org: bulk_rows.get(org, {}) for org in org_list}
     elif bulk_path:
-        bulk = registry.load_bulk(bulk_path, org_list)
+        try:
+            bulk = registry.load_bulk(bulk_path, org_list)
+        except Exception as exc:  # a corrupt bulk file must not crash the batch; live API covers identity
+            print(f"bulk file unreadable ({type(exc).__name__}: {exc}); continuing without it", file=sys.stderr)
+            bulk = {}
     else:
         bulk = {}
 

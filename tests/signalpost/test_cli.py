@@ -38,3 +38,46 @@ def test_run_falls_back_to_bundled_wikidata_snapshot(tmp_path, monkeypatch):
     cache_dir, used = cli._ensure_caches(str(tmp_path / "c"), "bulk.csv")
     assert used == 1
     assert (tmp_path / "c" / "wikidata.sqlite").stat().st_size > 100_000
+
+
+def _gzip_file(path, n_bytes):
+    import gzip, os
+    with gzip.open(path, "wb") as f:
+        f.write(os.urandom(n_bytes))
+
+
+def test_bulk_file_check_rejects_a_truncated_download(tmp_path):
+    from signalpost import cli
+
+    good = tmp_path / "good.csv"
+    _gzip_file(good, 1_500_000)
+    assert cli._bulk_file_ok(good)
+    bad = tmp_path / "bad.csv"
+    bad.write_bytes(good.read_bytes()[:-30_000])  # IncompleteRead-style truncation
+    assert not cli._bulk_file_ok(bad)
+
+
+def test_failed_bulk_download_never_crashes_the_run(tmp_path, monkeypatch):
+    from signalpost import cli
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "brreg-enheter.csv").write_bytes(b"\x1f\x8b" + b"x" * 10)  # corrupt leftover
+
+    def boom(*a, **k):
+        raise OSError("connection reset")
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", boom)
+    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    path, used = cli._resolve_bulk_path(None)
+    assert path is None and used == cli.BULK_DOWNLOAD_ATTEMPTS
+    assert not (tmp_path / "data" / "brreg-enheter.csv").exists()
+
+
+def test_missing_bulk_uses_bundled_shared_domain_table(tmp_path, monkeypatch):
+    from signalpost import cli
+    import signalpost.caches.wikidata as wd
+
+    monkeypatch.setattr(wd, "build", lambda d: (d / "wikidata.sqlite").write_text("x") and {})
+    cache_dir, _ = cli._ensure_caches(str(tmp_path / "c"), None)
+    assert (tmp_path / "c" / "email_domains.sqlite").stat().st_size > 1_000_000

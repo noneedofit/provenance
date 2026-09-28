@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -36,19 +37,65 @@ def _read_organisation_inputs(path: str) -> list[str]:
     return orgs
 
 
-def _resolve_bulk_path(explicit: str | None) -> str:
+BULK_DOWNLOAD_ATTEMPTS = 3
+
+
+def _bulk_file_ok(path: Path) -> bool:
+    """True when the bulk file reads to the end: a truncated gzip download must never be used."""
+    import gzip
+    import zlib
+
+    try:
+        if path.stat().st_size < 1_000_000:
+            return False
+        with open(path, "rb") as raw:
+            is_gzip = raw.read(2) == b"\x1f\x8b"
+        if not is_gzip:
+            return True
+        with gzip.open(path, "rb") as f:
+            while f.read(1 << 22):
+                pass
+        return True
+    except (OSError, EOFError, zlib.error):
+        return False
+
+
+def _resolve_bulk_path(explicit: str | None) -> tuple[str | None, int]:
+    """Return (bulk file path or None, requests used). Never raises: the run can proceed without the
+    bulk file (the live registry API covers identity), so a failed download must not crash the batch."""
     if explicit:
-        return explicit
+        return explicit, 0
     for candidate in DEFAULT_BULK_PATHS:
         if Path(candidate).exists():
-            return candidate
+            if _bulk_file_ok(Path(candidate)):
+                return candidate, 0
+            print(f"bulk file {candidate} is incomplete or corrupt; downloading a fresh copy", file=sys.stderr)
+            Path(candidate).unlink(missing_ok=True)
     Path("./data").mkdir(parents=True, exist_ok=True)
     dest = Path("./data/brreg-enheter.csv")
-    print(f"No bulk file found; downloading {BULK_DOWNLOAD_URL} -> {dest} (counts as 1 request)", file=sys.stderr)
-    request = urllib.request.Request(BULK_DOWNLOAD_URL, headers={"User-Agent": "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"})
-    with urllib.request.urlopen(request, timeout=120) as resp, open(dest, "wb") as f:
-        f.write(resp.read())
-    return str(dest)
+    tmp = dest.with_suffix(".csv.part")
+    requests_used = 0
+    for attempt in range(1, BULK_DOWNLOAD_ATTEMPTS + 1):
+        requests_used += 1
+        print(f"downloading {BULK_DOWNLOAD_URL} -> {dest} (attempt {attempt}/{BULK_DOWNLOAD_ATTEMPTS})", file=sys.stderr)
+        try:
+            request = urllib.request.Request(BULK_DOWNLOAD_URL, headers={"User-Agent": "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"})
+            with urllib.request.urlopen(request, timeout=120) as resp, open(tmp, "wb") as f:
+                while True:
+                    chunk = resp.read(1 << 20)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            if _bulk_file_ok(tmp):
+                tmp.replace(dest)
+                return str(dest), requests_used
+            print("downloaded bulk file is incomplete", file=sys.stderr)
+        except Exception as exc:  # network drop, IncompleteRead, timeout
+            print(f"bulk download failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        tmp.unlink(missing_ok=True)
+        time.sleep(5 * attempt)
+    print("continuing without the bulk file (live registry API only; bundled shared-domain table)", file=sys.stderr)
+    return None, requests_used
 
 
 DEFAULT_CACHE_DIR = "./cache"
@@ -61,7 +108,7 @@ def _env_int(name: str) -> int | None:
     return int(value) if value.isdigit() else None
 
 
-def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, int]:
+def _ensure_caches(explicit: str | None, bulk_path: str | None) -> tuple[str | None, int]:
     """Return a caches directory, building the identity-critical parts when none was supplied.
 
     The shared-domain table (email_domains) is what stops a registry website shared by many
@@ -79,9 +126,19 @@ def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, in
         return explicit, 0
     cache_dir.mkdir(parents=True, exist_ok=True)
     if not (cache_dir / "email_domains.sqlite").exists():
-        print(f"building {cache_dir}/email_domains.sqlite from {bulk_path} (0 requests)", file=sys.stderr)
-        info = email_domains_mod.build(bulk_path, cache_dir)
-        store.update_meta_part(cache_dir, "email_domains", info)
+        try:
+            if not bulk_path:
+                raise FileNotFoundError("no bulk file")
+            print(f"building {cache_dir}/email_domains.sqlite from {bulk_path} (0 requests)", file=sys.stderr)
+            info = email_domains_mod.build(bulk_path, cache_dir)
+            store.update_meta_part(cache_dir, "email_domains", info)
+        except Exception as exc:
+            # The shared-domain table guards against wrong-company websites; never run without it.
+            snapshot = Path(__file__).parent / "caches" / "snapshot" / "email_domains.sqlite"
+            (cache_dir / "email_domains.sqlite").unlink(missing_ok=True)
+            import shutil
+            shutil.copyfile(snapshot, cache_dir / "email_domains.sqlite")
+            print(f"email_domains build failed ({exc}); using the bundled snapshot", file=sys.stderr)
     if not (cache_dir / "wikidata.sqlite").exists():
         print(f"building {cache_dir}/wikidata.sqlite from Wikidata SPARQL", file=sys.stderr)
         try:
@@ -102,10 +159,9 @@ def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, in
 
 def cmd_run(args: argparse.Namespace) -> int:
     orgs = _read_organisation_inputs(args.organisations)
-    bulk_downloaded = not args.bulk and not any(Path(p).exists() for p in DEFAULT_BULK_PATHS)
-    bulk_path = _resolve_bulk_path(args.bulk)
+    bulk_path, bulk_requests = _resolve_bulk_path(args.bulk)
     caches_dir, setup_requests = _ensure_caches(args.caches, bulk_path)
-    setup_requests += 1 if bulk_downloaded else 0
+    setup_requests += bulk_requests
     max_requests = args.max_requests or pipeline.DEFAULT_REQUESTS_PER_COMPANY * max(1, len(orgs))
     if setup_requests and max_requests:
         max_requests = max(0, max_requests - setup_requests)
