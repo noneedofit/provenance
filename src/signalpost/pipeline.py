@@ -40,6 +40,12 @@ DEFAULT_MAX_REQUESTS = 1900
 # Families fed by more than one connector (registry activity + website description).
 MULTI_SOURCE_FAMILIES = frozenset({"description"})
 DEFAULT_DEADLINE_S = 2400  # 40 minutes
+# Requests allowed per input company when --max-requests is not given (100 companies -> 1,900).
+DEFAULT_REQUESTS_PER_COMPANY = 19
+# Registry-only fallback: when the time left is short for the companies not yet started, each of them
+# gets just the official-registry pass (a few seconds) instead of nothing at the deadline.
+REGISTRY_ONLY_SAFETY_S = 120
+REGISTRY_ONLY_S_PER_COMPANY = 4.0
 DEFAULT_WORKERS = 12
 
 
@@ -200,9 +206,20 @@ def run_batch(
     results: list[_CompanyOutcome | None] = [None] * len(org_list)
     done_count = 0
     done_lock = threading.Lock()
+    started = [0]
+    started_lock = threading.Lock()
+    worker_count = max(1, workers)
+
+    def registry_only_now() -> bool:
+        with started_lock:
+            started[0] += 1
+            not_started = len(org_list) - started[0]
+        time_left = deadline_at - time.monotonic()
+        return time_left < REGISTRY_ONLY_SAFETY_S + REGISTRY_ONLY_S_PER_COMPANY * (not_started + 1) / worker_count
 
     def process(index: int, org: str) -> _CompanyOutcome:
         now = utc_now()
+        registry_only = registry_only_now()
         deadline_hit = time.monotonic() > deadline_at
         budget_exhausted = False
         errors: list[dict[str, Any]] = []
@@ -217,10 +234,12 @@ def run_batch(
             budget.allocate(org, tier_result.allowance)
             ctx = CompanyContext(
                 org=org, run_id=run_id, now=now, tier=tier_result.tier, bulk=row, caches=caches,
-                client=client, snapshots=snapshots, shared={}, previous=_load_previous(state_path, org),
+                client=client, snapshots=snapshots, shared={"registry_only": registry_only}, previous=_load_previous(state_path, org),
             )
             if not deadline_hit:
                 for connector in conn_list:
+                    if registry_only and getattr(connector, "name", "") != "registry":
+                        continue
                     if time.monotonic() > deadline_at:
                         deadline_hit = True
                         break
@@ -264,7 +283,8 @@ def run_batch(
 
             for fam in FAMILIES:
                 if fam not in families:
-                    reason = "deadline" if deadline_hit else ("request_budget" if budget_exhausted else "not_run")
+                    reason = "deadline" if deadline_hit else (
+                        "request_budget" if budget_exhausted else ("time_budget: registry-only pass" if registry_only else "not_run"))
                     families[fam] = FamilyState(family=fam, availability="failed", reason=reason)
 
             envelope = Envelope(
@@ -272,7 +292,7 @@ def run_batch(
                 legal_name=_legal_name(list(claims_by_id.values())),
                 run=RunInfo(
                     run_id=run_id, started_at=started_at, completed_at=None,
-                    terminal_status="partial" if (deadline_hit or budget_exhausted or errors) else "completed",
+                    terminal_status="partial" if (deadline_hit or budget_exhausted or registry_only or errors) else "completed",
                     tier=tier_result.tier,
                 ),
                 families=families,

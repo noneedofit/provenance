@@ -713,7 +713,10 @@ class RegistryConnector:
             families["financials"] = FamilyState(family="financials", availability="failed", reason="not_run")
 
         # -------- financial_history (every filing company; one cheap call) --------
-        if client is not None:
+        if client is not None and (ctx.shared or {}).get("registry_only"):
+            # Time budget is short for the rest of the batch; this endpoint is rate-limited to 1/s.
+            families["financial_history"] = FamilyState(family="financial_history", availability="failed", reason="time_budget: registry-only pass")
+        elif client is not None:
             _history_slot()
             resp = client.get(BRREG_ACCOUNT_YEARS.format(org=org), org=org, purpose="registry_financial_history", accept="application/json", respect_robots=False)
             if resp.error == "budget_exhausted":

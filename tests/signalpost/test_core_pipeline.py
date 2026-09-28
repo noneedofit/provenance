@@ -187,3 +187,32 @@ def test_jobs_with_only_a_zero_count_claim_stays_not_available(tmp_path: Path):
                        bulk_rows={org: {}}, connectors=[_ZeroJobsConnector()], workers=1)
     env = _envelopes(tmp_path / "o" / "envelopes.jsonl")[0]
     assert env["families"]["jobs"]["availability"] == "not_available"
+
+
+class _NamedStub(_StubConnector):
+    def __init__(self, name: str, family: str):
+        self.name = name
+        self.families = (family,)
+        self.calls = 0
+        self._family = family
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        self.calls += 1
+        return ConnectorResult(families={self._family: FamilyState(family=self._family, availability="not_available", reason="checked")})
+
+
+def test_short_time_budget_falls_back_to_registry_only_for_every_company(tmp_path: Path):
+    # With too little time for full research, every company still gets the registry pass and an
+    # honest "time_budget" reason for what was skipped, instead of nothing at the deadline.
+    orgs = ["811111111", "822222222", "833333333"]
+    registry_stub, web_stub = _NamedStub("registry", "identity"), _NamedStub("web", "website")
+    pipeline.run_batch(orgs, output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={o: {} for o in orgs}, connectors=[registry_stub, web_stub], workers=1,
+                       deadline_s=60)
+    envs = _envelopes(tmp_path / "o" / "envelopes.jsonl")
+    assert len(envs) == 3
+    assert registry_stub.calls == 3 and web_stub.calls == 0
+    for env in envs:
+        assert env["families"]["identity"]["availability"] == "not_available"
+        assert env["families"]["website"]["availability"] == "failed"
+        assert env["families"]["website"]["reason"].startswith("time_budget")

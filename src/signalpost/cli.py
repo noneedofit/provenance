@@ -54,6 +54,13 @@ def _resolve_bulk_path(explicit: str | None) -> str:
 DEFAULT_CACHE_DIR = "./cache"
 
 
+def _env_int(name: str) -> int | None:
+    import os
+
+    value = os.environ.get(name, "").strip()
+    return int(value) if value.isdigit() else None
+
+
 def _ensure_caches(explicit: str | None, bulk_path: str) -> tuple[str | None, int]:
     """Return a caches directory, building the identity-critical parts when none was supplied.
 
@@ -99,7 +106,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     bulk_path = _resolve_bulk_path(args.bulk)
     caches_dir, setup_requests = _ensure_caches(args.caches, bulk_path)
     setup_requests += 1 if bulk_downloaded else 0
-    max_requests = args.max_requests
+    max_requests = args.max_requests or pipeline.DEFAULT_REQUESTS_PER_COMPANY * max(1, len(orgs))
     if setup_requests and max_requests:
         max_requests = max(0, max_requests - setup_requests)
     report = pipeline.run_batch(
@@ -144,9 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--run-id", required=True)
     p_run.add_argument("--bulk", default=None, help="Path to the (gzip) Brreg bulk enheter CSV")
     p_run.add_argument("--caches", default=None, help="Path to a prepared caches directory")
-    p_run.add_argument("--max-requests", type=int, default=pipeline.DEFAULT_MAX_REQUESTS)
-    p_run.add_argument("--workers", type=int, default=pipeline.DEFAULT_WORKERS)
-    p_run.add_argument("--deadline-seconds", type=int, default=pipeline.DEFAULT_DEADLINE_S)
+    p_run.add_argument("--max-requests", type=int, default=_env_int("SIGNALPOST_MAX_REQUESTS"),
+                       help="Total outbound request cap for the run (default: 19 per input company; env SIGNALPOST_MAX_REQUESTS)")
+    p_run.add_argument("--workers", type=int, default=_env_int("SIGNALPOST_WORKERS") or pipeline.DEFAULT_WORKERS)
+    p_run.add_argument("--deadline-seconds", type=int, default=_env_int("SIGNALPOST_DEADLINE_SECONDS") or pipeline.DEFAULT_DEADLINE_S,
+                       help="Stop starting new work after this many seconds (default 2400; env SIGNALPOST_DEADLINE_SECONDS)")
     p_run.set_defaults(func=cmd_run)
 
     p_validate = sub.add_parser("validate", help="Validate an envelopes.jsonl file")
