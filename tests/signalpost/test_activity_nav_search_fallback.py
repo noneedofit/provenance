@@ -5,13 +5,23 @@ from pathlib import Path
 
 from nav_live_testkit import FEEDENTRY_PREFIX, SEARCH_URL, FakeNavHttpClient, make_ctx
 
+import pytest
+
+import signalpost.activity.nav_live as nav_live
 from signalpost.activity.nav_live import (
     EMPLOYEE_THRESHOLD,
     SEARCH_BREAKER_CONSECUTIVE_429,
-    SEARCH_FALLBACK_MAX,
     SEARCH_HISTORY_COOLDOWN_DAYS,
     NavLiveConnector,
 )
+
+# The search fallback is off by default (SIGNALPOST_NAV_SEARCH_MAX); these tests exercise it enabled.
+SEARCH_FALLBACK_MAX = 15
+
+
+@pytest.fixture(autouse=True)
+def _enable_search_fallback(monkeypatch):
+    monkeypatch.setattr(nav_live, "SEARCH_FALLBACK_MAX", SEARCH_FALLBACK_MAX)
 
 
 def _empty_feed_client(**kw) -> FakeNavHttpClient:

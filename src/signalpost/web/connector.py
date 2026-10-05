@@ -60,6 +60,8 @@ def _previous_site_domain(ctx: Any) -> str | None:
             value = claim.get("value") or {}
             if isinstance(value, dict) and value.get("domain"):
                 return str(value["domain"]).lower()
+            if isinstance(value, str) and value:
+                return (registered_domain(value) or "").lower() or None
     return None
 
 
@@ -320,7 +322,8 @@ class WebConnector:
             result.evidence.append(ev)
         evidence_ids = [ev.evidence_id for ev in site_evidence]
 
-        website_value = {"url": _public_url(cand, homepage), "domain": cand.domain, "brand_name": extraction.brand_name}
+        # Output contract: the official_website value is the site URL itself.
+        website_value = _public_url(cand, homepage)
         ckey = claim_key(org, "website", "official_website", None)
         result.claims.append(Claim(
             claim_id=ckey, organisation_number=org, family="website", field="official_website",
@@ -404,7 +407,7 @@ class WebConnector:
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
         ev = _make_evidence(homepage, verdict.note, "web_related_site_v1")
         result.evidence.append(ev)
-        value = {"url": homepage.final_url, "domain": cand.domain}
+        value = homepage.final_url
         result.claims.append(Claim(
             claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
             family="website", field="official_website", value=value, availability="ambiguous",

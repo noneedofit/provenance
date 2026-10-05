@@ -155,9 +155,10 @@ def _site_key(url: Any) -> str:
 
 
 def _values_equal(prev: Claim, curr: Claim) -> bool:
-    if prev.field == curr.field == "official_website" and isinstance(prev.value, dict) and isinstance(curr.value, dict):
+    if prev.field == curr.field == "official_website":
         # The site is the fact; the scheme a fetch happened to use and the page-title brand are not.
-        return _site_key(prev.value.get("url")) == _site_key(curr.value.get("url"))
+        url = lambda v: v.get("url") if isinstance(v, dict) else v  # noqa: E731 - older profiles stored a dict
+        return _site_key(url(prev.value)) == _site_key(url(curr.value))
     return canonical(_stable_value(prev.value)) == canonical(_stable_value(curr.value)) and _period_key(prev) == _period_key(curr)
 
 

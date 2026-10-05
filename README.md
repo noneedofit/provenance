@@ -110,6 +110,9 @@ Run budget (the official batch is 1,000 companies in one run, and may grow to 1,
   only (identity, leadership, locations, financials), with skipped families reported `failed` reason
   `time_budget` — never an empty result.
 - `--workers` (env `SIGNALPOST_WORKERS`) — thread pool size, default 12.
+- Deterministic by default: identical input gives identical factual output. Two timing-dependent
+  sources are opt-in: `SIGNALPOST_WIKIDATA_LIVE=1` (query Wikidata live instead of the bundled CC0
+  snapshot) and `SIGNALPOST_NAV_SEARCH_MAX=<n>` (rate-limited NAV search fallback, off by default).
 
 Measured: 1,000 companies in one run with the defaults took about 25 minutes and 9,100 requests, with no
 deadline or budget hits.

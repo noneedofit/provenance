@@ -151,20 +151,25 @@ def _ensure_caches(explicit: str | None, bulk_path: str | None) -> tuple[str | N
             shutil.copyfile(snapshot, cache_dir / "email_domains.sqlite")
             print(f"email_domains build failed ({exc}); using the bundled snapshot", file=sys.stderr)
     if not (cache_dir / "wikidata.sqlite").exists():
-        print(f"building {cache_dir}/wikidata.sqlite from Wikidata SPARQL", file=sys.stderr)
-        try:
-            info = wikidata_mod.build(cache_dir)
-            store.update_meta_part(cache_dir, "wikidata", info)
-            requests_used += 1 + int(info.get("raw_binding_count") or 0) // 20_000
-        except Exception as exc:
-            requests_used += 1
-            snapshot = Path(__file__).parent / "caches" / "snapshot" / "wikidata.sqlite"
-            if snapshot.exists():
-                import shutil
-                shutil.copyfile(snapshot, cache_dir / "wikidata.sqlite")
-                print(f"wikidata query failed ({exc}); using the bundled snapshot (CC0)", file=sys.stderr)
-            else:
-                print(f"wikidata cache build failed ({exc}); continuing without it", file=sys.stderr)
+        # Deterministic by default: the bundled CC0 snapshot, so two runs of the same input read the same
+        # Wikidata facts (and spend no request). SIGNALPOST_WIKIDATA_LIVE=1 queries the live endpoint.
+        import os
+        import shutil
+
+        snapshot = Path(__file__).parent / "caches" / "snapshot" / "wikidata.sqlite"
+        live = os.environ.get("SIGNALPOST_WIKIDATA_LIVE", "").strip() == "1" or not snapshot.exists()
+        if live:
+            print(f"building {cache_dir}/wikidata.sqlite from Wikidata SPARQL", file=sys.stderr)
+            try:
+                info = wikidata_mod.build(cache_dir)
+                store.update_meta_part(cache_dir, "wikidata", info)
+                requests_used += 1 + int(info.get("raw_binding_count") or 0) // 20_000
+            except Exception as exc:
+                requests_used += 1
+                print(f"wikidata cache build failed ({exc})", file=sys.stderr)
+        if not (cache_dir / "wikidata.sqlite").exists() and snapshot.exists():
+            shutil.copyfile(snapshot, cache_dir / "wikidata.sqlite")
+            print("using the bundled Wikidata snapshot (CC0)", file=sys.stderr)
     return str(cache_dir), requests_used
 
 

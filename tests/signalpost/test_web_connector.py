@@ -33,7 +33,7 @@ def test_connector_publishes_exact_website_and_profiles_and_description():
     website_claims = [c for c in result.claims if c.family == "website" and c.field == "official_website"]
     assert len(website_claims) == 1
     assert website_claims[0].relationship == "exact"
-    assert website_claims[0].value["domain"] == "example.no"
+    assert website_claims[0].value == "https://example.no/"  # output contract: plain URL
     assert website_claims[0].evidence_ids
     for eid in website_claims[0].evidence_ids:
         assert any(e.evidence_id == eid for e in result.evidence)

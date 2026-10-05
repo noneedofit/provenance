@@ -193,3 +193,14 @@ class ConnectorResult(BaseModel):
 Every connector returns a `ConnectorResult`; only `pipeline.run_batch` assembles these into an
 `Envelope`. `shared` is the mechanism by which `registry` → `nav` → `web` → `activity` hand facts
 forward within one company's run (e.g. `registry_facts`, `verified_site`, `nav_ads`) — see `CRAWLERS.md`.
+
+
+## Evidence record (output contract)
+
+Every evidence record carries `id` (same as `evidence_id`), `source_url` (public http/https), `retrieved_at`,
+`content_sha256` and `claim_span` — the exact supporting text from the source (e.g. `"Org nr. 926781995"`
+on the company's site) or, for registry JSON, the exact value read at `span` (e.g. `"246367 NOK"` at
+`$[id=…].sumDriftsinntekter`). A claim can therefore be verified from the saved result alone; the
+validator rejects any available claim whose evidence lacks a public URL, retrieval time or `claim_span`.
+The `official_website` claim value is the site URL as a plain string. Claims and evidence are emitted in
+a fixed order.

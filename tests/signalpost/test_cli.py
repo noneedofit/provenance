@@ -3,6 +3,8 @@
 def test_run_builds_shared_domain_cache_when_none_supplied(tmp_path, monkeypatch):
     from signalpost import cli
 
+    monkeypatch.setenv("SIGNALPOST_WIKIDATA_LIVE", "1")
+
     built = {}
 
     def fake_email_build(bulk, cache_dir):
@@ -28,6 +30,8 @@ def test_run_builds_shared_domain_cache_when_none_supplied(tmp_path, monkeypatch
 
 def test_run_falls_back_to_bundled_wikidata_snapshot(tmp_path, monkeypatch):
     from signalpost import cli
+
+    monkeypatch.setenv("SIGNALPOST_WIKIDATA_LIVE", "1")
     import signalpost.caches.email_domains as ed
     import signalpost.caches.wikidata as wd
 
@@ -89,3 +93,19 @@ def test_small_plain_csv_bulk_file_is_accepted_not_deleted(tmp_path):
     small = tmp_path / "brreg-enheter.csv"
     small.write_text('"organisasjonsnummer","navn"\n"123456785","TEST AS"\n', encoding="utf-8")
     assert cli._bulk_file_ok(small) and small.exists()
+
+
+def test_wikidata_uses_bundled_snapshot_by_default_without_requests(tmp_path, monkeypatch):
+    from signalpost import cli
+    import signalpost.caches.email_domains as ed
+    import signalpost.caches.wikidata as wd
+
+    monkeypatch.delenv("SIGNALPOST_WIKIDATA_LIVE", raising=False)
+    monkeypatch.setattr(ed, "build", lambda bulk, d: (d / "email_domains.sqlite").write_text("x") and {})
+
+    def live_query_must_not_run(cache_dir):
+        raise AssertionError("live Wikidata query in default mode")
+
+    monkeypatch.setattr(wd, "build", live_query_must_not_run)
+    cache_dir, used = cli._ensure_caches(str(tmp_path / "c"), "bulk.csv")
+    assert used == 0 and (tmp_path / "c" / "wikidata.sqlite").stat().st_size > 100_000

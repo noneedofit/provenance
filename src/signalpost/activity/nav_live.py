@@ -75,7 +75,9 @@ LIVE_TIERS = ("T1", "T2", "T3")
 # companies failed when every company searched once), so only a handful of the highest-value companies
 # (by registered employee count) get one serialized, jittered, breaker-protected search per run.
 EMPLOYEE_THRESHOLD = 5          # only companies with at least this many registered employees are candidates
-SEARCH_FALLBACK_MAX = 15        # at most this many searches per run, across the whole batch
+# Off by default: whether a rate-limited search succeeds depends on timing, which would make identical
+# runs differ. SIGNALPOST_NAV_SEARCH_MAX=<n> enables up to n searches per run.
+SEARCH_FALLBACK_MAX = int(__import__("os").environ.get("SIGNALPOST_NAV_SEARCH_MAX", "0") or 0)
 SEARCH_MIN_INTERVAL_S = 4.0     # minimum spacing between searches (serialized across every company)
 SEARCH_JITTER_MAX_S = 2.0       # extra random jitter added on top of the minimum spacing
 SEARCH_BREAKER_CONSECUTIVE_429 = 2   # trip after this many consecutive 429s; stop searching for the run
