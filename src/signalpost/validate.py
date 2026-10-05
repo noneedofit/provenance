@@ -67,6 +67,10 @@ def validate_envelope(env: Envelope) -> list[str]:
             if eid not in evidence_ids:
                 problems.append(f"claim {claim.claim_id} references missing evidence {eid}")
 
+    for ev in env.evidence:
+        if not (ev.claim_span or "").strip():
+            problems.append(f"evidence {ev.evidence_id} has no supporting text (claim_span)")
+
     for section, claim_id_list in env.sections.items():
         if section not in SECTIONS:
             problems.append(f"unknown section '{section}' in envelope.sections")

@@ -19,6 +19,7 @@ from .models import FAMILIES, Claim, Envelope, Evidence
 _LOCATOR = re.compile(
     r"^(\$|feed item count|wp-json|regex |active_ads_indexed|Q\d+ )", re.I,
 )
+_PATH_VALUE = re.compile(r"^\$\.?([^=]+)=(.*)$")
 _FAMILY_ORDER = {name: i for i, name in enumerate(FAMILIES)}
 
 
@@ -79,6 +80,12 @@ def value_text(claim: Claim) -> str:
     return "; ".join(f"{k}: {x}" for k, x in v.items() if x not in (None, "", [], {}))
 
 
+def _located_value(span: str) -> str:
+    """`$.a.b=value` -> `a.b: value`; any other span is already text."""
+    m = _PATH_VALUE.match(span.strip())
+    return f"{m.group(1)}: {m.group(2)}" if m else span.strip()
+
+
 def _supporting_text(claim: Claim, ev: Evidence) -> str:
     span = (ev.span or "").strip()
     method = ev.extraction_method or ""
@@ -113,6 +120,10 @@ def complete(envelope: Envelope) -> Envelope:
         if not ev.claim_span and texts.get(ev.evidence_id):
             # One record can back several claims (e.g. a bulk-file row): quote every supported value.
             ev.claim_span = " | ".join(texts[ev.evidence_id])[:500]
+        if not ev.claim_span and ev.span:
+            # A record no claim cites (e.g. a job ad checked and rejected because its employer org number
+            # is another company's) still quotes the exact value it read.
+            ev.claim_span = _located_value(ev.span)
     envelope.claims = claims
     envelope.evidence = sorted(envelope.evidence, key=lambda ev: ev.evidence_id)
     return envelope

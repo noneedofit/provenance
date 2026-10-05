@@ -35,3 +35,13 @@ def test_output_order_is_deterministic():
     b = evidence_text.complete(Envelope(organisation_number="123456785", run=RunInfo(run_id="r", started_at="t"), claims=list(reversed(claims)), evidence=list(reversed(evs))))
     assert [c.claim_id for c in a.claims] == [c.claim_id for c in b.claims]
     assert [e.evidence_id for e in a.evidence] == [e.evidence_id for e in b.evidence]
+
+
+def test_evidence_no_claim_cites_still_quotes_the_value_read():
+    rejected = Evidence(evidence_id="e9", source_url="https://pam-stilling-feed.nav.no/api/v1/feedentry/x",
+                        source_class="public_job_feed", retrieved_at="2026-10-05T00:00:00Z",
+                        extraction_method="nav_live_feedentry_v1", span="$.ad_content.employer.orgnr=987654321")
+    env = Envelope(organisation_number="123456785", run=RunInfo(run_id="r", started_at="t"),
+                   claims=[_claim("identity", "legal_name", "ACME AS", "e1")], evidence=[_ev("e1", "$.navn"), rejected])
+    spans = {e.evidence_id: e.claim_span for e in evidence_text.complete(env).evidence}
+    assert spans["e9"] == "ad_content.employer.orgnr: 987654321"
