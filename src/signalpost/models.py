@@ -101,6 +101,10 @@ class Evidence(BaseModel):
     extractor_version: str = "1"
     span: str | None = None               # exact supporting text / JSON path / selector (<= 500 chars)
     access_policy: str | None = None      # e.g. "NLOD-2.0", "CC0", "robots-allowed"
+    # Output-contract fields: `id` mirrors evidence_id; `claim_span` is the exact supporting text or value
+    # from the source, inline, so a claim can be verified from the saved result alone.
+    id: str | None = None
+    claim_span: str | None = None
 
 
 def evidence_id(source_url: str, content_sha256: str | None, span: str | None) -> str:

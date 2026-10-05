@@ -328,6 +328,12 @@ def run_batch(
                     claim.first_observed_at = claim.first_observed_at or now
                     claim.last_observed_at = now
 
+            # Every evidence record gets its exact supporting text inline (`claim_span`), and claims and
+            # evidence are ordered deterministically, before anything is summarised or written.
+            from . import evidence_text
+
+            envelope = evidence_text.complete(envelope)
+
             # Summarise after the refresh merge so change sentences and carried-forward facts appear.
             try:
                 from . import synthesis  # type: ignore

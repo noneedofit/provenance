@@ -43,6 +43,7 @@ def validate_envelope(env: Envelope) -> list[str]:
             problems.append(f"missing FamilyState for family '{fam}'")
 
     evidence_ids = {e.evidence_id for e in env.evidence}
+    evidence_by_id = {e.evidence_id: e for e in env.evidence}
     claim_ids = {c.claim_id for c in env.claims}
     for claim in env.claims:
         if claim.availability == "available":
@@ -50,6 +51,18 @@ def validate_envelope(env: Envelope) -> list[str]:
                 problems.append(f"claim {claim.claim_id} is 'available' but value is None")
             if not claim.evidence_ids:
                 problems.append(f"claim {claim.claim_id} is 'available' but has no evidence")
+            if claim.status == "current":
+                # Verifiable from the saved result alone: public source URL, retrieval time, supporting text.
+                for eid in claim.evidence_ids:
+                    ev = evidence_by_id.get(eid)
+                    if ev is None:
+                        continue
+                    if not str(ev.source_url or "").startswith(("http://", "https://")):
+                        problems.append(f"evidence {eid} for claim {claim.claim_id} has no public source URL")
+                    if not ev.retrieved_at:
+                        problems.append(f"evidence {eid} for claim {claim.claim_id} has no retrieval time")
+                    if not (ev.claim_span or "").strip():
+                        problems.append(f"evidence {eid} for claim {claim.claim_id} has no supporting text (claim_span)")
         for eid in claim.evidence_ids:
             if eid not in evidence_ids:
                 problems.append(f"claim {claim.claim_id} references missing evidence {eid}")

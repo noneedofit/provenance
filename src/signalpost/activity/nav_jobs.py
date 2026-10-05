@@ -97,7 +97,6 @@ def _collect_live(ctx, shared: dict) -> dict:
     result["checked"] = True
     nav_ads = shared.get("nav_ads") or []
     search_evidence_ids = list(shared.get("nav_search_evidence_ids") or [])
-    name_matched_total = shared.get("nav_total_matching_hits") or 0
 
     claims = []
     all_evidence_ids: list[str] = []
@@ -128,7 +127,9 @@ def _collect_live(ctx, shared: dict) -> dict:
     count_evidence_ids = list(dict.fromkeys(all_evidence_ids + search_evidence_ids))
     count_claim = make_claim(
         org=ctx.org, family="jobs", field="active_postings_count",
-        value={"verified": len(nav_ads), "name_matched_total": name_matched_total, "checked_at": nav_checked.get("checked_at")},
+        # The fact is the verified count only: name-match totals depend on feed timing and the check time
+        # belongs to the evidence (retrieved_at), so neither may vary the value between identical runs.
+        value={"verified": len(nav_ads)},
         value_key=None, availability="available" if count_evidence_ids else "not_available",
         identity_basis="job_feed_org_number" if count_evidence_ids else None,
         evidence_ids=count_evidence_ids,

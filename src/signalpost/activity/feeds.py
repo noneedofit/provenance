@@ -244,7 +244,7 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
 
 
 _COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på)\b", re.I)
-_PLACEHOLDER_TITLES = {"hello world!", "hei verden!", "hallo verden!", "sample page", "eksempelside"}
+_PLACEHOLDER_KEYS = {"hello world", "hei verden", "hallo verden", "sample page", "eksempelside"}
 
 
 def is_company_item(item: dict, feed_url: str = "") -> bool:
@@ -254,7 +254,7 @@ def is_company_item(item: dict, feed_url: str = "") -> bool:
     title = str(item.get("title") or "").strip()
     if "/comments/feed" in feed_url or "/comments/" in url or "#comment" in url or "replytocom=" in url:
         return False
-    if _COMMENT_TITLE.search(title) or title.lower() in _PLACEHOLDER_TITLES:
+    if _COMMENT_TITLE.search(title) or re.sub(r"[^\w ]", "", title.lower()).strip() in _PLACEHOLDER_KEYS:
         return False
     return True
 
