@@ -6,8 +6,8 @@ Every fact about a Norwegian company, with its source.
 A keyless Norwegian company-research agent for the Builderr "Signalpost" competition. Given a batch of
 Norwegian organisation numbers, it produces one evidence-backed JSON envelope per company: legal
 identity, financials, leadership, workplaces, group structure, verified website, company-owned social
-profiles, a site-derived description, job postings, dated public activity, and (honestly) an absent
-reviews family — every `available` claim carries a source URL, retrieval time, content hash and the
+profiles, a site-derived description, job postings, dated public activity, and official food-hygiene
+inspection ratings (Mattilsynet) where they exist — every `available` claim carries a source URL, retrieval time, content hash and the
 exact supporting text or JSON path. Re-running against the same state directory detects real changes,
 keeps prior evidence, and never invents a false change.
 
@@ -17,13 +17,18 @@ Built on the Builderr Signalpost starter kit.
 
 - Anchors identity in the Brønnøysund bulk registry (`data.brreg.no`), then calls the live entity,
   roles, subunits and financial-accounts APIs for the company's registry facts.
-- Generates website candidates from registry data, Wikidata, NAV job ads and name guesses, crawls each
-  one, and verifies it against the org number before publishing it as `exact` — precision over recall;
-  see `IDENTITY_RESOLUTION.md`.
+- Generates website candidates from registry data, Wikidata, NAV job ads, two bundled open places
+  datasets (Overture Maps places matched on the registry phone/e-mail or name and postcode, and
+  OpenStreetMap features tagged with the org number) and name guesses, crawls each one, and verifies it
+  live before publishing it as `exact` — precision over recall; see `IDENTITY_RESOLUTION.md`.
 - Extracts a description, social profile links and contact details only from a site that passed
   verification.
-- Reads NAV job ads (a 60-day `pam-stilling-feed` window kept incrementally in `--state-dir`, plus a small capped search), ATS feeds, site RSS/news, and YouTube channel RSS for
-  channels linked from the verified site.
+- Reads NAV job ads (a bundled snapshot of active ads with each employer's org number, plus a live walk of
+  `pam-stilling-feed` since that snapshot, kept incrementally in `--state-dir`; every posting is confirmed
+  live against the org number), ATS feeds, site RSS/news, and YouTube channel RSS for channels linked from
+  the verified site.
+- Reads Mattilsynet's public food-hygiene inspection results (smilefjes) for the company's food-service
+  locations, published only when the inspection page shows the company's or a subunit's org number.
 - Diffs every run against the previous stored profile for the same organisation, emitting `Change`
   events only for genuine differences and carrying forward claims whose source could not be re-checked
   this run.
@@ -92,7 +97,7 @@ uv run python -m signalpost run \
   [--caches cache/] \
   [--max-requests <N>] \
   [--deadline-seconds 2400] \
-  [--workers 12]
+  [--workers 24]
 ```
 
 `--organisations` accepts a `.jsonl` file (one organisation number, or `{"organisation_number": "..."}`,
@@ -102,20 +107,25 @@ per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), o
 `--bulk` is optional (see "Data prerequisites" above for the default-path/auto-download behaviour).
 `--caches` is optional; when omitted, `./cache` is used and built automatically (see above).
 
-Run budget (the official batch is 1,000 companies in one run, and may grow to 1,100):
-- `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 19 per input
-  company (1,900 per 100, 19,000 per 1,000). Measured use: about 9 per company.
+Run budget (the official batch is 1,000 companies in one run, and may grow to 1,100; the scored reference
+set is 1,500):
+- `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 26 per input
+  company (2,600 per 100, 39,000 per 1,500). Measured use: about 10 per company.
 - `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes). When the time
   left is short for the companies not yet started, each remaining company gets the official-registry pass
   only (identity, leadership, locations, financials), with skipped families reported `failed` reason
   `time_budget` — never an empty result.
-- `--workers` (env `SIGNALPOST_WORKERS`) — thread pool size, default 12.
+- `--workers` (env `SIGNALPOST_WORKERS`) — thread pool size, default 24.
 - Deterministic by default: identical input gives identical factual output. Two timing-dependent
   sources are opt-in: `SIGNALPOST_WIKIDATA_LIVE=1` (query Wikidata live instead of the bundled CC0
   snapshot) and `SIGNALPOST_NAV_SEARCH_MAX=<n>` (rate-limited NAV search fallback, off by default).
+  The open places and NAV active-ads snapshots are pinned files in `src/signalpost/caches/snapshot/`
+  (rebuilt with `scripts/build_places_snapshot.py` and `scripts/build_nav_snapshot.py`);
+  `SIGNALPOST_NAV_SNAPSHOT=0` walks the full NAV window live instead. `SIGNALPOST_WEB_DEBUG=<file>`
+  appends every website candidate verdict to a file for diagnostics (not part of the output).
 
-Measured: 1,000 companies in one run with the defaults took about 25 minutes and 9,100 requests, with no
-deadline or budget hits.
+Measured: 1,500 random companies in one run with the defaults took 26 minutes and 14,504 requests
+(peak memory 660 MB), with no deadline or budget hits.
 
 Output, written to `--output-dir`:
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.
@@ -166,7 +176,7 @@ uv run --with pytest pytest -q tests/signalpost
 ## Cost
 
 **$0 per run.** No LLM, no paid API, no required secrets. Every source used (Brønnøysund, NAV, Wikidata,
-company websites) is keyless and free. The only "spend" possible is bandwidth/compute on the runner
+Overture Maps and OpenStreetMap snapshots, Mattilsynet, company websites) is keyless and free. The only "spend" possible is bandwidth/compute on the runner
 itself.
 
 ## Models / APIs / licences
@@ -178,6 +188,9 @@ itself.
 | Brønnøysund Regnskapsregisteret | annual accounts | NLOD 2.0 |
 | NAV arbeidsplassen search + `pam-stilling-feed` | job postings | NLOD; keyless, public search token |
 | Wikidata (SPARQL) | company websites/social profile cache | CC0 |
+| Overture Maps Places (bundled snapshot) | website candidates | CDLA-Permissive-2.0 / Apache-2.0 / CC0 |
+| OpenStreetMap `ref:NO:orgnr` (bundled snapshot) | website candidates | ODbL 1.0, © OpenStreetMap contributors |
+| Mattilsynet smilefjes | food-hygiene inspection ratings | public authority data |
 | Company websites | verified official site content | robots.txt respected per host; see `SOURCES.md` |
 | YouTube `feeds/videos.xml` | channel activity, only for channels linked from a verified site | attempted, `respect_robots=True`; currently blocked by YouTube's own `robots.txt` — see `LIMITATIONS.md` |
 
@@ -186,9 +199,9 @@ Full source-by-source detail, robots handling and licence basis: see `SOURCES.md
 ## Request budgeting
 
 Every outbound HTTP request — including every redirect hop and every retry — is charged against a single
-global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 19 per input company, overridable
-by the evaluator). Each company gets a soft per-company allowance from `planner.classify` (5/15/
-30/45 requests for tiers T0–T3, based only on bulk-registry signals — staff count, NACE code, legal
+global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 26 per input company, overridable
+by the evaluator). Each company gets a soft per-company allowance from `planner.classify` (14/24/
+36/55 requests for tiers T0–T3, based only on bulk-registry signals — staff count, NACE code, legal
 form, presence of a registered site/domain), but may borrow from the shared pool up to the hard cap.
 Every company's official-registry calls are reserved up front so optional sources (website discovery,
 jobs, activity) can never starve them. Robots.txt is honoured per host for every non-official source

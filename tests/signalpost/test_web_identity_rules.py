@@ -136,3 +136,16 @@ def test_registry_site_shared_by_two_with_our_name_and_email_is_exact():
     # The same page shared by many organisations (a property manager) stays a shared site.
     v_many = assess(ORG, [p], f, Candidate(domain="ru.no", url="https://ru.no/", source="registry_website", label="t", decisive=True), website_org_count=40)
     assert v_many.status != "exact"
+
+
+def test_group_site_needs_a_word_of_our_name_in_the_domain():
+    from types import SimpleNamespace
+
+    from signalpost.web import connector
+
+    verdict = SimpleNamespace(relationship="parent")
+    def ctx(name):
+        return SimpleNamespace(shared={"registry_facts": {"name": name}}, bulk={}, caches=None)
+    wd = lambda d: Candidate(domain=d, url=f"https://{d}/", source="wikidata_website", label="t", decisive=True)
+    assert connector._is_group_site(ctx("AF GRUPPEN ASA"), wd("afgruppen.no"), verdict)
+    assert not connector._is_group_site(ctx("STIFTELSEN HAVNAHUSET BU- OG SERVICESENTER"), wd("vestbo.no"), verdict)

@@ -74,7 +74,10 @@ def _previous_site_domain(ctx: Any) -> str | None:
 
 
 _GROUP_SITE_MAX_ORGS = 9
-_GENERIC_TOKENS = {"holding", "invest", "eiendom", "norge", "norway", "group", "gruppen", "bygg", "service", "drift", "as", "asa"}
+_GENERIC_TOKENS = {
+    "holding", "invest", "eiendom", "norge", "norway", "group", "gruppen", "bygg", "service", "drift", "as", "asa",
+    "sa", "da", "ans", "stiftelsen", "og", "borettslag", "sameiet", "servicesenter", "senter",
+}
 
 
 def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
@@ -82,19 +85,18 @@ def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
     (not a property manager or franchise platform), and the domain carries a distinctive word of our name."""
     if verdict.relationship not in ("parent", "brand", "subsidiary"):
         return False
-    if cand.source in ("wikidata_website", "osm_orgnr_website"):
-        # The dataset itself ties this site to our exact organisation number (AF Gruppen ASA -> afgruppen.no,
-        # whose pages also show a subsidiary's number): our group's site by an org-number-keyed record.
-        return True
-    if cand.source != "registry_website":
+    if cand.source not in ("registry_website", "wikidata_website", "osm_orgnr_website"):
         return False
-    count = _website_org_count(ctx, cand.domain)
-    if count is not None and count > _GROUP_SITE_MAX_ORGS:
-        return False
+    if cand.source == "registry_website":
+        count = _website_org_count(ctx, cand.domain)
+        if count is not None and count > _GROUP_SITE_MAX_ORGS:
+            return False
+    # The domain must carry a distinctive word of our own name: AF GRUPPEN ASA -> afgruppen.no is our group's
+    # site; a foundation whose Wikidata entry lists its property manager's site (vestbo.no) is not.
     name = str(_registry_facts(ctx).get("name") or "")
-    tokens = {t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if len(t) >= 3 and t not in _GENERIC_TOKENS}
+    tokens = [t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if t not in _GENERIC_TOKENS]
     label = (cand.domain or "").rsplit(".", 1)[0].replace("-", "")
-    return any(t in label for t in tokens)
+    return any((len(t) >= 3 and t in label) or (len(t) == 2 and label.startswith(t)) for t in tokens)
 
 
 def _debug_log(org: str, attempts: list[dict]) -> None:
@@ -145,8 +147,16 @@ def _public_url(cand: Any, homepage: PageFetch) -> str:
     """The company's own address: keep the candidate URL when it redirects onto a hosting platform
     (barokkanerne.no -> barokkanerne.squarespace.com), otherwise the final URL after redirects."""
     if is_marketplace_or_directory(registered_domain(homepage.final_url) or "") and registered_domain(cand.url) != registered_domain(homepage.final_url):
-        return cand.url
-    return homepage.final_url
+        return _without_default_port(cand.url)
+    return _without_default_port(homepage.final_url)
+
+
+def _without_default_port(url: str) -> str:
+    """https://peab.no:443/bygg/ -> https://peab.no/bygg/ (a default port is noise in a published URL)."""
+    parts = urllib.parse.urlsplit(url or "")
+    if (parts.scheme, parts.port) in (("https", 443), ("http", 80)):
+        parts = parts._replace(netloc=parts.hostname or parts.netloc)
+    return urllib.parse.urlunsplit(parts)
 
 
 def _source_class_for(page: PageFetch) -> str:
