@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 from ..text import fold
 from .blocklist import is_franchise_chain_domain
@@ -500,27 +500,39 @@ def assess(
     if not conflicts:
         joined_text = "\n".join(_page_all_text(p) for p in live_pages)
         norm_joined = _normalize(joined_text)
+        page_texts = [(p, _page_all_text(p)) for p in live_pages]
+
+        def found_on(test: Callable[[str], bool]) -> str:
+            """URL of the first fetched page whose own text passes `test` (evidence must cite that page)."""
+            for page, text in page_texts:
+                if test(text):
+                    return page.final_url
+            return homepage.final_url
 
         street = registry_facts.get("street")
         postcode = registry_facts.get("postcode")
         if street and postcode and _normalize(street) in norm_joined and _normalize(postcode) in norm_joined:
-            signals.append(Signal("registered_address", "registered street and postcode found on site", homepage.final_url, f"{street} {postcode}"))
+            where = found_on(lambda t: _normalize(street) in _normalize(t) and _normalize(postcode) in _normalize(t))
+            signals.append(Signal("registered_address", "registered street and postcode found on site", where, f"{street} {postcode}"))
 
         site_phones = find_phones(joined_text)
         for phone in registry_facts.get("phones") or []:
             normalized = _normalize_phone(str(phone))
             if len(normalized) == 8 and normalized in site_phones:
-                signals.append(Signal("registry_phone", "registry phone number found on site", homepage.final_url, normalized))
+                where = found_on(lambda t, n=normalized: n in find_phones(t))
+                signals.append(Signal("registry_phone", "registry phone number found on site", where, normalized))
                 break
 
         email = registry_facts.get("email")
         if email and _normalize(email) in norm_joined:
-            signals.append(Signal("registry_email", "registry email address found on site", homepage.final_url, email))
+            where = found_on(lambda t: _normalize(email) in _normalize(t))
+            signals.append(Signal("registry_email", "registry email address found on site", where, email))
 
         role_persons = registry_facts.get("role_holders") or registry_facts.get("role_names") or []
         for person in role_persons:
             if person and _normalize(person) in norm_joined:
-                signals.append(Signal("role_name", "registered CEO/board member name found on site", homepage.final_url, person))
+                where = found_on(lambda t, n=person: _normalize(n) in _normalize(t))
+                signals.append(Signal("role_name", "registered CEO/board member name found on site", where, person))
                 break
 
         legal_core = _legal_name_core(registry_facts.get("name") or "")

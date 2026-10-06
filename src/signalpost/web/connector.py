@@ -13,12 +13,15 @@ import threading
 import urllib.parse
 from typing import Any
 
+from .. import registry as registry_mod
+from ..caches import places as places_mod
 from ..context import CompanyContext
 from ..models import (
     Claim,
     ConnectorResult,
     Evidence,
     FamilyState,
+    canonical,
     claim_key,
     evidence_id,
     utc_now,
@@ -175,6 +178,77 @@ _SIGNAL_RANK = {
         "role_name", "open_places_contact",
     ))
 }
+
+
+# Signals that are facts about the page (quoted from the page that showed them).
+_PAGE_SIGNALS = {
+    "org_number_on_source", "jsonld_org_number", "legal_name_match", "domain_name_match", "registry_email",
+    "registry_phone", "registered_address", "role_name",
+}
+
+
+def _sha(value: Any) -> str:
+    return hashlib.sha256(canonical(value).encode("utf-8")).hexdigest()
+
+
+def _signal_evidence(ctx: Any, sig: Any, cand: Candidate, pages: list[PageFetch], homepage: PageFetch) -> Evidence | None:
+    """Evidence for one identity signal, from the source that actually states it: the page that showed it,
+    the register bulk row, the Wikidata item, the OpenStreetMap feature or the NAV ad. Open-places matches
+    only nominate a candidate and are not evidence of their own."""
+    method = f"web_{sig.kind}_v1"
+    if sig.kind in _PAGE_SIGNALS:
+        page = next((p for p in pages if p.final_url == sig.page_url), homepage)
+        return _make_evidence(page, sig.span, method)
+    org = str(ctx.org)
+    bulk = getattr(ctx, "bulk", None) or {}
+    bulk_at = (getattr(ctx, "shared", None) or {}).get("bulk_retrieved_at")
+    if sig.kind in ("registry_declared", "registry_email_domain", "email_domain_match"):
+        key = "hjemmeside" if sig.kind == "registry_declared" else "epostadresse"
+        value = str(bulk.get(key) or "").strip()
+        if value and bulk_at:
+            return _source_evidence(
+                source_url=registry_mod.BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=bulk_at,
+                content_sha256=registry_mod.bulk_row_sha256(bulk), method=method,
+                span=f"row organisasjonsnummer={org}: {key}", quote=f"{key}: {value}",
+            )
+    elif sig.kind == "wikidata":
+        wd = ctx.caches.wikidata.lookup(org) if getattr(getattr(ctx, "caches", None), "wikidata", None) else None
+        if wd and wd.get("qid"):
+            sites = ", ".join(wd.get("websites") or [])
+            return _source_evidence(
+                source_url=f"https://www.wikidata.org/wiki/{wd['qid']}", source_class="open_knowledge_base",
+                retrieved_at=wd.get("retrieved_at") or homepage.retrieved_at or utc_now(), content_sha256=_sha(wd),
+                method=method, span=f"{wd['qid']} P2333", quote=f"{wd['qid']}: Norwegian organisation number (P2333) {org}; official website (P856) {sites}",
+            )
+    elif sig.kind == "osm_orgnr":
+        m = re.search(r"OpenStreetMap (\w+/\d+) ref:NO:orgnr=(\d{9})", cand.label or "")
+        if m:
+            return _source_evidence(
+                source_url=f"https://www.openstreetmap.org/{m.group(1)}", source_class="open_places_dataset",
+                retrieved_at=places_mod.SNAPSHOT_META["osm_base"], content_sha256=_sha([m.group(1), m.group(2), cand.url]),
+                method=method, span=f"{m.group(1)} ref:NO:orgnr", quote=f"ref:NO:orgnr={m.group(2)}; website={cand.url}",
+            )
+    elif sig.kind == "nav_employer_homepage":
+        for ad in (getattr(ctx, "shared", None) or {}).get("nav_ads") or []:
+            if registered_domain(ad.get("employer_homepage") or "") == cand.domain and ad.get("feedentry_url"):
+                return _source_evidence(
+                    source_url=ad["feedentry_url"], source_class="public_job_feed", retrieved_at=ad.get("retrieved_at") or utc_now(),
+                    content_sha256=ad.get("content_sha256"), method=method, span="$.ad_content.employer",
+                    quote=f"employer.orgnr: {ad.get('employer_orgnr')}; employer.homepage: {ad.get('employer_homepage')}",
+                )
+    if sig.kind.startswith("open_places"):
+        return None
+    page = next((p for p in pages if p.final_url == sig.page_url), homepage)
+    return _make_evidence(page, sig.span, method)
+
+
+def _source_evidence(*, source_url: str, source_class: str, retrieved_at: str, content_sha256: str | None,
+                     method: str, span: str, quote: str) -> Evidence:
+    return Evidence(
+        evidence_id=evidence_id(source_url, content_sha256, span), source_url=source_url, final_url=source_url,
+        redirect_chain=[source_url], http_status=None, source_class=source_class, retrieved_at=retrieved_at,
+        content_sha256=content_sha256, extraction_method=method, span=span, claim_span=quote[:500],
+    )
 
 
 def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
@@ -397,8 +471,9 @@ class WebConnector:
                 seen_kinds.add(sig.kind)
                 ranked.append(sig)
         for sig in ranked[:5]:
-            page = next((p for p in pages if p.final_url == sig.page_url), homepage)
-            site_evidence.append(_make_evidence(page, sig.span, f"web_{sig.kind}_v1"))
+            ev = _signal_evidence(ctx, sig, cand, pages, homepage)
+            if ev is not None:
+                site_evidence.append(ev)
         if not site_evidence:
             site_evidence = [_make_evidence(homepage, None, "web_homepage_fetch_v1")]
         for ev in site_evidence:

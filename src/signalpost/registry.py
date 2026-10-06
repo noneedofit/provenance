@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import gzip
 import hashlib
+import json
 import re
 import threading
 import time
@@ -173,15 +174,16 @@ class _ClaimBuilder:
         self, *, source_url: str, source_class: str, retrieved_at: str, extraction_method: str,
         span: str | None, content_sha256: str | None = None, final_url: str | None = None,
         redirect_chain: list[str] | None = None, http_status: int | None = None,
-        snapshot_ref: str | None = None, access_policy: str | None = "NLOD-2.0",
+        snapshot_ref: str | None = None, access_policy: str | None = "NLOD-2.0", quote: str | None = None,
     ) -> str:
+        """`quote`: the exact source text the value was read from (becomes the evidence's claim_span)."""
         eid = evidence_id(source_url, content_sha256, span)
         if eid not in self.evidence:
             self.evidence[eid] = Evidence(
                 evidence_id=eid, source_url=source_url, final_url=final_url, redirect_chain=redirect_chain or [],
                 http_status=http_status, source_class=source_class, retrieved_at=retrieved_at,
                 content_sha256=content_sha256, snapshot_ref=snapshot_ref, extraction_method=extraction_method,
-                span=span, access_policy=access_policy,
+                span=span, access_policy=access_policy, claim_span=quote,
             )
         return eid
 
@@ -320,15 +322,23 @@ def _registry_activity_text(activity: Any, purpose: Any) -> str | None:
     return None
 
 
+def json_quote(obj: Any, keys: tuple[str, ...]) -> str | None:
+    """The source JSON's own key/value pairs, verbatim: '"konkurs": false, "underAvvikling": false'."""
+    if not isinstance(obj, dict):
+        return None
+    parts = [f'"{k}": {json.dumps(obj[k], ensure_ascii=False)}' for k in keys if k in obj]
+    return ", ".join(parts) or None
+
+
 def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], response: Any) -> None:
     span_prefix = "$"
 
-    def ev(span: str) -> str:
+    def ev(span: str, quote: str | None = None) -> str:
         return builder.add_evidence(
             source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
             extraction_method="brreg_entity_v1", span=span, content_sha256=response.content_sha256,
             final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-            snapshot_ref=response.snapshot_ref,
+            snapshot_ref=response.snapshot_ref, quote=quote,
         )
 
     if body.get("navn"):
@@ -339,14 +349,20 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
             "code": form, "label": _get(body, "organisasjonsform", "beskrivelse"),
         }, evidence_ids=[ev(f"{span_prefix}.organisasjonsform")])
     status = "bankrupt" if body.get("konkurs") else "liquidating" if body.get("underAvvikling") else "active"
-    builder.add_claim(family="identity", field="status", value=status, evidence_ids=[ev(f"{span_prefix}.konkurs/underAvvikling")])
+    builder.add_claim(family="identity", field="status", value=status, evidence_ids=[ev(
+        f"{span_prefix}.konkurs/underAvvikling",
+        json_quote(body, ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")),
+    )])
     nace = body.get("naeringskode1")
     if nace:
         builder.add_claim(family="identity", field="nace", value={"code": nace.get("kode"), "label": nace.get("beskrivelse")}, evidence_ids=[ev(f"{span_prefix}.naeringskode1")])
     if body.get("harRegistrertAntallAnsatte") and body.get("antallAnsatte") is not None:
         builder.add_claim(family="identity", field="registered_employees", value={
             "count": body.get("antallAnsatte"), "registered_at": body.get("registreringsdatoAntallAnsatteEnhetsregisteret"),
-        }, evidence_ids=[ev(f"{span_prefix}.antallAnsatte")])
+        }, evidence_ids=[ev(
+            f"{span_prefix}.antallAnsatte",
+            json_quote(body, ("antallAnsatte", "registreringsdatoAntallAnsatteEnhetsregisteret")),
+        )])
     business_address = _address_dict(body.get("forretningsadresse"))
     if business_address:
         builder.add_claim(family="identity", field="business_address", value=business_address, evidence_ids=[ev(f"{span_prefix}.forretningsadresse")])
@@ -528,11 +544,13 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             family="financials", field=field, value={"amount": amount, "currency": currency}, value_key=field,
             reporting_period=period, evidence_ids=[eid],
         )
+    principles = latest.get("regnkapsprinsipper") if isinstance(latest.get("regnkapsprinsipper"), dict) else {}
     eid_meta = builder.add_evidence(
         source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
         extraction_method="brreg_financials_v1", span=f"$[id={record_id}].regnskapstype",
         content_sha256=response.content_sha256, final_url=response.final_url,
         redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+        quote=", ".join(x for x in (json_quote(latest, ("regnskapstype",)), json_quote(principles, ("smaaForetak",))) if x) or None,
     )
     builder.add_claim(
         family="financials", field="accounting_type", value={
@@ -547,6 +565,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             extraction_method="brreg_financials_v1", span=f"$[id={record_id}].virksomhet.morselskap",
             content_sha256=response.content_sha256, final_url=response.final_url,
             redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+            quote=json_quote(latest.get("virksomhet"), ("morselskap",)),
         )
         builder.add_claim(
             family="group", field="group_role", value={"role": "parent_company", "basis": "annual accounts: morselskap"},
@@ -555,9 +574,16 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
         builder.note_checked("group", response.url)
     audit = latest.get("revisjon")
     if audit is not None:
+        eid_audit = builder.add_evidence(
+            source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+            extraction_method="brreg_financials_v1", span=f"$[id={record_id}].revisjon",
+            content_sha256=response.content_sha256, final_url=response.final_url,
+            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+            quote=json_quote(audit, tuple(audit)) if isinstance(audit, dict) else None,
+        )
         builder.add_claim(
             family="financials", field="audit_status", value=audit, value_key=None,
-            reporting_period=period, evidence_ids=[eid_meta],
+            reporting_period=period, evidence_ids=[eid_audit],
         )
     builder.note_checked("financials", response.url)
 
