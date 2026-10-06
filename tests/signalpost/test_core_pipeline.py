@@ -232,3 +232,25 @@ def test_small_request_cap_still_lets_registry_calls_through(tmp_path: Path):
                        bulk_rows={o: {} for o in orgs}, connectors=[_ChargingRegistry("registry", "identity")],
                        workers=1, max_requests=20)
     assert seen and all(seen)
+
+
+
+class _CrashingDescriptionSource(_DescriptionConnector):
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        raise OSError(28, "No space left on device")
+
+
+def test_crashed_connector_does_not_report_its_facts_as_changed_to_nothing(tmp_path: Path):
+    # Regression: the registry connector crashed on rerun (full disk) while the web connector reported the
+    # shared description family "not_available"; refresh then published registry_activity "-> null".
+    org = "777777777"
+    common = dict(state_dir=str(tmp_path / "s"), bulk_rows={org: {}}, workers=1)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "r1"), run_id="r1",
+                       connectors=[_DescriptionConnector(), _DescriptionNotAvailableConnector()], **common)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "r2"), run_id="r2",
+                       connectors=[_CrashingDescriptionSource(), _DescriptionNotAvailableConnector()], **common)
+    second = _envelopes(tmp_path / "r2" / "envelopes.jsonl")[0]
+    assert second["changes"] == []
+    assert second["families"]["description"]["availability"] == "failed"
+    carried = [c for c in second["claims"] if c["field"] == "registry_activity"]
+    assert carried and carried[0]["value"] == "Drift av restaurant"

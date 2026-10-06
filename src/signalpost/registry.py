@@ -609,7 +609,7 @@ def financial_history_claims(builder: _ClaimBuilder, body: Any, response: Any, *
 
 class RegistryConnector:
     name = "registry"
-    families: tuple[str, ...] = ("identity", "financials", "financial_history", "leadership", "locations", "group")
+    families: tuple[str, ...] = ("identity", "financials", "financial_history", "leadership", "locations", "group", "description")
 
     def run(self, ctx: CompanyContext) -> ConnectorResult:
         org = ctx.org

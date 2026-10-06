@@ -251,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--bulk", default=None, help="Path to the (gzip) Brreg bulk enheter CSV")
     p_run.add_argument("--caches", default=None, help="Path to a prepared caches directory")
     p_run.add_argument("--max-requests", type=int, default=_env_int("SIGNALPOST_MAX_REQUESTS"),
-                       help="Total outbound request cap for the run (default: 19 per input company; env SIGNALPOST_MAX_REQUESTS)")
+                       help=f"Total outbound request cap for the run (default: {pipeline.DEFAULT_REQUESTS_PER_COMPANY} per input company; env SIGNALPOST_MAX_REQUESTS)")
     p_run.add_argument("--workers", type=int, default=_env_int("SIGNALPOST_WORKERS") or pipeline.DEFAULT_WORKERS)
     p_run.add_argument("--deadline-seconds", type=int, default=_env_int("SIGNALPOST_DEADLINE_SECONDS") or pipeline.DEFAULT_DEADLINE_S,
                        help="Stop starting new work after this many seconds (default 2400; env SIGNALPOST_DEADLINE_SECONDS)")

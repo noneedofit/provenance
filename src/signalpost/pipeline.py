@@ -240,6 +240,7 @@ def run_batch(
         claims_by_id: dict[str, Any] = {}
         evidence_by_id: dict[str, Any] = {}
         families: dict[str, FamilyState] = {}
+        crashed: dict[str, str] = {}  # family -> error of a connector that crashed while feeding it
         changes: list[Any] = []
         summary = Summary()
         try:
@@ -260,7 +261,10 @@ def run_batch(
                     try:
                         result = connector.run(ctx)
                     except Exception as exc:  # a connector crash never drops the company
-                        errors.append({"connector": getattr(connector, "name", str(connector)), "error": f"{type(exc).__name__}: {exc}"})
+                        error = f"{type(exc).__name__}: {exc}"
+                        errors.append({"connector": getattr(connector, "name", str(connector)), "error": error})
+                        for fam_name in getattr(connector, "families", ()):
+                            crashed.setdefault(fam_name, error)
                         continue
                     finally:
                         if getattr(connector, "name", "") == "registry":
@@ -294,6 +298,17 @@ def run_batch(
                             evidence_by_id[e].source_url for c in current for e in c.evidence_ids if e in evidence_by_id
                         ])),
                     )
+
+            # A family a crashed connector feeds was not fully checked, even if another connector reported
+            # it (description: registry activity + website text). Marking it failed lets refresh carry the
+            # earlier facts forward instead of reporting them as changed to nothing.
+            for fam_name, error in crashed.items():
+                state = families.get(fam_name)
+                families[fam_name] = FamilyState(
+                    family=fam_name, availability="failed", reason=f"connector_error: {error}"[:300],
+                    claim_count=state.claim_count if state else 0,
+                    sources_checked=list(state.sources_checked or []) if state else [],
+                )
 
             for fam in FAMILIES:
                 if fam not in families:

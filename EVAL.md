@@ -112,7 +112,7 @@ Revision-1 measurements (6 Oct 2026):
 |---|---|
 | 1,500 random companies in one run (defaults) | 26 min, 14,504 requests, peak memory 660 MB, no deadline or budget hits; 1,495 completed, 5 partial (register HTTP 500s, reported `failed`) |
 | 300 random companies, before → after | website 13.0% → 18.0% (0 lost), profiles 7.3% → 10.0%, activity 3.7% → 6.3%, reviews 0 → 2.3% |
-| Wrong-company check of every newly accepted website (independent hand-check) | round 1: 6 wrong of 28 — all from counting the name in domain and title twice; rule fixed (name signals count once, parked pages rejected). Round 2: 0 wrong among published sites |
+| Wrong-company check of every newly accepted website (independent hand-check) | round 1: 6 wrong of 28 — all from counting the name in domain and title twice; rule fixed (name signals count once, parked pages rejected). Round 2: 1 wrong of 17 (a housing manager's site listed on the company's Wikidata item, published as a group site); group sites now need a word of the company's name in the domain, and a re-run no longer publishes it |
 | Determinism, two simultaneous fresh runs of the 100 smoke-test companies | 0 fact differences, 0 evidence-quote differences |
 | Clean clone of the submitted commit | see `smoke-test/README.md` (audit 0 problems, rerun 0 changes) |
 

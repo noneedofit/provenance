@@ -492,10 +492,15 @@ class BudgetedHttpClient:
         retrieved_at = _utc_now()
         snapshot_ref = None
         if snapshot and self.snapshots is not None and 200 <= status < 300:
-            snapshot_ref = self.snapshots.put(
-                truncated_body, url=final_hop_url or current_url, retrieved_at=retrieved_at,
-                content_type=lowered_headers.get("content-type"),
-            )
+            try:
+                snapshot_ref = self.snapshots.put(
+                    truncated_body, url=final_hop_url or current_url, retrieved_at=retrieved_at,
+                    content_type=lowered_headers.get("content-type"),
+                )
+            except OSError:
+                # The archived copy is optional (content_sha256 still pins what was read); a full disk
+                # must not turn a good fetch into a failed one.
+                snapshot_ref = None
 
         elapsed_ms = int((time.monotonic() - started) * 1000)
         self._log(RequestLogEntry(purpose=purpose, org=org, url=current_url, status=status, requests_used=total_requests_used - robots_logged, elapsed_ms=hop_elapsed_ms, error=error_final))
