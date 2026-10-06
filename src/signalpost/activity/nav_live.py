@@ -59,7 +59,7 @@ from typing import Any
 from ..context import CompanyContext
 from ..models import ConnectorResult, utc_now
 from ._common import make_evidence, norm_title
-from .nav_feed import DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAYS, FEED_URL, NavFeedIndex, walk_feed
+from .nav_feed import DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAYS, FEED_URL, NavFeedIndex, walk_feed, walk_feed_segmented
 
 TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
 FEEDENTRY_URL_TMPL = "https://pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}"
@@ -247,10 +247,19 @@ class NavLiveConnector:
         try:
             index = NavFeedIndex.open(state_dir)
             token_errors: list[dict] = []
-            stats = walk_feed(
-                client, lambda force=False: self._get_token(client, token_errors, force=force), index,
-                window_days=self._window_days, max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
-            )
+            get_token = lambda force=False: self._get_token(client, token_errors, force=force)  # noqa: E731
+            if index.get_cursor() is None:
+                # Fresh state: cover the whole window, live tip included, in parallel time slices.
+                stats = walk_feed_segmented(
+                    client, get_token, index, window_days=self._window_days,
+                    max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
+                )
+            else:
+                # Persistent state: resume from the saved cursor (only the pages since the last run).
+                stats = walk_feed(
+                    client, get_token, index,
+                    window_days=self._window_days, max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
+                )
             if token_errors:
                 stats["errors"] = list(stats.get("errors") or []) + [e.get("error", "token_error") for e in token_errors]
             stats["complete"] = index.is_complete()

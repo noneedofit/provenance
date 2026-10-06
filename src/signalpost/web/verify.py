@@ -24,7 +24,7 @@ from typing import Any, Literal
 
 from .blocklist import is_franchise_chain_domain
 from .candidates import Candidate, registered_domain
-from .crawl import PARKED_MARKERS, PageFetch
+from .crawl import PARKED_MARKERS, PLACEHOLDER_MARKERS, PLACEHOLDER_MAX_TEXT, PageFetch
 
 Status = Literal["exact", "related", "ambiguous", "rejected"]
 Relationship = Literal["parent", "subsidiary", "franchise", "brand", "service_provider"]
@@ -116,7 +116,11 @@ def _normalize(text: str) -> str:
 
 def is_parked_page(html: str, text: str) -> bool:
     haystack = _normalize((html or "")[:5000] + " " + (text or "")[:2000])
-    return any(marker in haystack for marker in PARKED_MARKERS)
+    if any(marker in haystack for marker in PARKED_MARKERS):
+        return True
+    visible = _normalize(text or "")
+    return len(visible) <= PLACEHOLDER_MAX_TEXT and any(marker in visible for marker in PLACEHOLDER_MARKERS)
+
 
 
 # A registered domain can lapse and be re-registered by an unrelated party (casino/gambling, adult,
@@ -572,6 +576,13 @@ def assess(
     STRONG_CORROBORATING_KINDS = {
         "legal_name_match", "registry_email", "email_domain_match", "open_places_contact_named", "domain_name_match",
     }
+    # The name in the <title> and the name as the domain are one fact (the company's name), not two: a
+    # namesake (ottokoch.com, a German chef; activepartner.no, a same-named company) shows both. Count them
+    # as one dimension, so a name always needs an independent registry fact (address, phone, e-mail, role
+    # holder, open places contact) next to it.
+    NAME_KINDS = {"legal_name_match", "domain_name_match"}
+    distinct_corroborating = {("name" if k in NAME_KINDS else k) for k in distinct_corroborating}
+    distinct_corroborating_raw = {s.kind for s in corroborating}
 
     # A parent/umbrella or franchise/chain page (group site, "our brands", "our stores", housing
     # manager, franchise/chain wording) is exactly the "flagged as a franchise/parent site" carve-out in
@@ -693,10 +704,10 @@ def assess(
                     "corroboration alone) while the authoritative site remains unconfirmed"
                 ),
             )
-        three_independent_soft = len(distinct_corroborating & {"registered_address", "registry_phone", "role_name"}) >= 3
+        three_independent_soft = len(distinct_corroborating_raw & {"registered_address", "registry_phone", "role_name"}) >= 3
         if (
             candidate.source in ("name_guess", "open_places", "registry_email_domain")
-            and not (distinct_corroborating & STRONG_CORROBORATING_KINDS)
+            and not (distinct_corroborating_raw & STRONG_CORROBORATING_KINDS)
             and not three_independent_soft
         ):
             # ORBOTECH NORWAY AS trap: a name-guess with NO independent basis of its own (unlike

@@ -64,6 +64,7 @@ USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/proven
 DEFAULT_HOST_CONCURRENCY = 2
 HOST_CONCURRENCY_OVERRIDES = {
     "data.brreg.no": 10,
+    "pam-stilling-feed.nav.no": 8,   # NAV's bulk feed for job-board consumers; one request per time slice
 }
 
 

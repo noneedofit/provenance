@@ -194,3 +194,41 @@ def test_match_is_safe_under_concurrent_reads_and_writes(tmp_path: Path):
         t.join(timeout=10)
 
     assert errors == []
+
+
+def test_segmented_walk_applies_slices_in_time_order(tmp_path):
+    """An ad opened in an early time slice and closed in a later one ends closed, whatever order the
+    parallel slices finish in; the walk covers the live tip and marks the index complete."""
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    from signalpost.activity.nav_feed import FEED_URL, NavFeedIndex, walk_feed_segmented
+    from signalpost.context import Response
+
+    now = datetime.now(timezone.utc)
+
+    def item(uuid, status, days_ago):
+        when = (now - timedelta(days=days_ago)).isoformat()
+        return {"id": uuid, "date_modified": when,
+                "_feed_entry": {"uuid": uuid, "status": status, "title": "t", "businessName": "ACME AS", "sistEndret": when}}
+
+    pages = {
+        "early": {"id": "early", "items": [item("a", "ACTIVE", 50), item("b", "ACTIVE", 45)], "next_id": "late"},
+        "late": {"id": "late", "items": [item("a", "INACTIVE", 5), item("c", "ACTIVE", 2)], "next_id": None},
+    }
+
+    class Client:
+        def get(self, url, *, headers=None, **_):
+            page = url.rsplit("/", 1)[-1] if url != FEED_URL else None
+            if page is None:
+                since = datetime.strptime(headers["If-Modified-Since"], "%a, %d %b %Y %H:%M:%S GMT").replace(tzinfo=timezone.utc)
+                page = "early" if since < now - timedelta(days=30) else "late"
+            body = json.dumps(pages[page]).encode()
+            return Response(url=url, final_url=url, redirect_chain=[url], status=200, headers={}, body=body,
+                            retrieved_at="2026-10-06T00:00:00Z", content_sha256="x", elapsed_ms=1, requests_used=1)
+
+    index = NavFeedIndex.open(tmp_path)
+    stats = walk_feed_segmented(Client(), lambda force=False: "token", index, window_days=60, segments=4)
+    active = {r["uuid"] for r in index._conn.execute("SELECT uuid FROM active_ads")}
+    assert active == {"b", "c"}
+    assert stats["reached_end"] and index.is_complete()

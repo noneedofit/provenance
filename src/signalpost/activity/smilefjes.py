@@ -97,7 +97,7 @@ def candidates(ctx: Any) -> list[list]:
 
 
 _ORGNR_RE = re.compile(r"Orgnr\.?\s*(\d{3}\s?\d{3}\s?\d{3})")
-_LATEST_RE = re.compile(r"Siste tilsynsresultat:\s*</h2>\s*<div[^>]*title=\"([^\"]+)\"", re.S)
+_LATEST_RE = re.compile(r"Siste tilsynsresultat:\s*</h2>\s*<div[^>]*title=[\"']([^\"']+)[\"']", re.S)
 _LATEST_DATE_RE = re.compile(r"Siste tilsynsresultat:\s*(\d{2}\.\d{2}\.\d{4})")
 
 

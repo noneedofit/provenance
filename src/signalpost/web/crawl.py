@@ -47,7 +47,16 @@ PARKED_MARKERS = (
     "her flytter snart en ny gjest", "has been informing visitors",
     "find the best information and most relevant links on all topics related to",
     "buy this domain", "this domain is parked", "future home of something quite cool",
+    # Registrar parking pages (Domeneshop and similar), seen on name-guessed .no domains
+    "does not have an active website here", "currently does not have an active website",
 )
+# "Coming soon" wording only marks a placeholder when it is (nearly) all the page says: real sites also
+# write "nye produkter kommer snart".
+PLACEHOLDER_MARKERS = (
+    "lanseres snart", "kommer snart", "her kommer:", "under construction", "under oppbygging",
+    "coming soon", "nettsiden er under arbeid", "siden er under utvikling", "site under construction",
+)
+PLACEHOLDER_MAX_TEXT = 900
 
 
 @dataclass

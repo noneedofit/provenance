@@ -26,6 +26,8 @@ index is left `partial` (not `complete`) and callers must say so rather than rep
 """
 from __future__ import annotations
 
+import concurrent.futures
+
 import json
 import sqlite3
 import threading
@@ -41,7 +43,8 @@ FEED_BASE_URL = "https://pam-stilling-feed.nav.no"
 FEED_URL = FEED_BASE_URL + "/api/v1/feed"
 
 DEFAULT_WINDOW_DAYS = 60
-DEFAULT_MAX_PAGES = 200
+DEFAULT_MAX_PAGES = 800
+DEFAULT_SEGMENTS = 8
 DEFAULT_MAX_SECONDS = 720.0  # 12 minutes
 
 
@@ -352,4 +355,138 @@ def walk_feed(
     return {
         "pages": pages, "items_seen": items_seen, "active_seen": active_seen, "closed": closed,
         "reached_end": reached_end, "resumed": resumed, "elapsed_s": elapsed_s, "errors": errors,
+    }
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def walk_feed_segmented(
+    client: Any,
+    get_token: Callable[..., str | None],
+    index: NavFeedIndex,
+    *,
+    window_days: int = DEFAULT_WINDOW_DAYS,
+    segments: int = DEFAULT_SEGMENTS,
+    max_pages: int = DEFAULT_MAX_PAGES,
+    max_seconds: float = DEFAULT_MAX_SECONDS,
+    purpose: str = "nav_feed_page",
+) -> dict[str, Any]:
+    """Walk the whole window [now - window_days, live tip] as `segments` time slices in parallel.
+
+    The feed accepts `If-Modified-Since`, so each slice starts at its own time and walks forward until it
+    reaches the next slice's start (the last slice walks to the live tip). Events are buffered per slice
+    and applied to the index in time order afterwards, so an ad closed in a later slice is never re-opened
+    by an earlier one. Leaves the cursor at the live tip, so a persistent state dir resumes incrementally.
+    """
+    t0 = time.monotonic()
+    token = get_token()
+    if token is None:
+        return {"pages": 0, "items_seen": 0, "active_seen": 0, "closed": 0, "reached_end": False,
+                "resumed": False, "elapsed_s": 0.0, "errors": ["no_token"], "segments": segments}
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=window_days)
+    step = (now - start) / segments
+    bounds = [start + step * i for i in range(segments)] + [None]
+    lock = threading.Lock()
+    token_box = [token]
+    slice_max_pages = max(1, -(-max_pages // segments))
+
+    def walk_slice(i: int) -> dict[str, Any]:
+        lo, hi = bounds[i], bounds[i + 1]
+        events: list[tuple[str, dict]] = []
+        errors: list[str] = []
+        pages = 0
+        last_page_id = None
+        reached_end = False
+        url = FEED_URL
+        first = True
+        retried = False
+        while pages < slice_max_pages and (time.monotonic() - t0) < max_seconds:
+            headers = {"Authorization": f"Bearer {token_box[0]}"}
+            if first:
+                headers["If-Modified-Since"] = _http_date(lo)
+            resp = client.get(url, org=None, purpose=purpose, accept="application/json", respect_robots=True, headers=headers)
+            if resp.status == 401 and not retried:
+                retried = True
+                with lock:
+                    fresh = get_token(force=True)
+                if fresh is None:
+                    errors.append("token_refresh_failed")
+                    break
+                token_box[0] = fresh
+                continue
+            first = False
+            if not resp.ok:
+                errors.append(f"feed_page_failed:{resp.error or resp.status}")
+                break
+            try:
+                data = json.loads(resp.text())
+            except Exception as exc:  # defensive: external API response
+                errors.append(f"parse_error:{type(exc).__name__}")
+                break
+            pages += 1
+            last_page_id = data.get("id") or last_page_id
+            crossed = False
+            for item in data.get("items", []):
+                modified = _parse_iso(item.get("date_modified"))
+                if hi is not None and modified is not None and modified >= hi:
+                    crossed = True  # the next slice covers everything from here on
+                    break
+                events.append(("item", item))
+            next_id = data.get("next_id")
+            if crossed:
+                break
+            if not next_id:
+                reached_end = True
+                break
+            url = f"{FEED_URL}/{next_id}"
+        complete = reached_end or (hi is not None and not errors and pages < slice_max_pages)
+        return {"events": events, "errors": errors, "pages": pages, "complete": complete,
+                "reached_end": reached_end, "last_page_id": last_page_id}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=segments, thread_name_prefix="nav-feed") as pool:
+        results = list(pool.map(walk_slice, range(segments)))
+
+    items_seen = active_seen = closed = 0
+    now_iso = now.isoformat(timespec="seconds").replace("+00:00", "Z")
+    seen: set[tuple[str, str]] = set()
+    for res in results:
+        for _, item in res["events"]:
+            fe = item.get("_feed_entry") or {}
+            uuid = str(fe.get("uuid") or item.get("id") or "").strip()
+            if not uuid:
+                continue
+            key = (uuid, str(item.get("date_modified") or ""))
+            if key in seen:  # slice boundaries can overlap by a page
+                continue
+            seen.add(key)
+            items_seen += 1
+            if str(fe.get("status") or "").upper() == "ACTIVE":
+                active_seen += 1
+                index.upsert_active(
+                    uuid=uuid, title=fe.get("title"), business_name=fe.get("businessName"),
+                    municipal=fe.get("municipal"), sist_endret=fe.get("sistEndret"), updated_at=now_iso,
+                )
+            else:
+                closed += 1
+                index.remove(uuid)
+    errors = [e for res in results for e in res["errors"]]
+    all_complete = all(res["complete"] for res in results)
+    last = results[-1]
+    if last["last_page_id"]:
+        index.set_cursor(last["last_page_id"])
+    index.set_complete(bool(all_complete and last["reached_end"]))
+    index.commit()
+    return {
+        "pages": sum(r["pages"] for r in results), "items_seen": items_seen, "active_seen": active_seen,
+        "closed": closed, "reached_end": bool(last["reached_end"]), "resumed": False,
+        "elapsed_s": time.monotonic() - t0, "errors": errors, "segments": segments,
+        "complete_segments": sum(1 for r in results if r["complete"]),
     }

@@ -286,7 +286,8 @@ def extract_feed_urls(pages: list[PageFetch]) -> list[str]:
             link_type = str(link.get("type") or "").lower()
             if link_type in {"application/rss+xml", "application/atom+xml"}:
                 href = str(link.get("href") or "")
-                if href:
+                if href and "/comments/feed" not in href and "comments-feed" not in href:
+                    # A comments feed holds visitors' comments, never company news.
                     url = urllib.parse.urljoin(page.final_url, href)
                     if url not in found:
                         found.append(url)

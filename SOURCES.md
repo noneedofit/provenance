@@ -94,6 +94,40 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 
 ---
 
+## Open places datasets (bundled, pinned snapshots)
+
+- **Overture Maps Places**, release `2026-09-23.1`
+  (`s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/`): the Norwegian places
+  that carry a website or social link (228,308 places: name, postcode, phones, e-mails, websites,
+  socials). Built by `scripts/build_places_snapshot.py` with DuckDB, shipped as
+  `src/signalpost/caches/snapshot/places_no.jsonl.gz`.
+- **OpenStreetMap** features tagged `ref:NO:orgnr` (11,177 features, Overpass API, OSM base
+  2026-06-01), shipped as `src/signalpost/caches/snapshot/osm_orgnr_no.jsonl.gz`.
+- **Licence**: Overture places are CDLA-Permissive-2.0 / Apache-2.0 / CC0 (per source; no attribution
+  required). OpenStreetMap data is ODbL 1.0: © OpenStreetMap contributors.
+- **Requests**: none at run time. The snapshots are indexed into `cache/places.sqlite` at setup (a few
+  seconds) and pinned, so two runs of the same input read the same candidates.
+- **Used for**: website *candidates* only. A place that carries the company's registry phone or e-mail
+  (or its name core at its postcode) nominates the place's website; an OSM feature tagged with the
+  company's (or a subunit's) org number nominates its website. Every candidate is still fetched live and
+  must pass the identity gate (`IDENTITY_RESOLUTION.md`); the dataset is never claim evidence on its own.
+
+---
+
+## Mattilsynet food-hygiene inspections (smilefjes)
+
+- `GET https://smilefjes.mattilsynet.no/search/index/nb.json` (the site's own place index, one request per
+  run) and `GET https://smilefjes.mattilsynet.no/spisested/...` (one page per candidate place, at most 3
+  per company).
+- **Licence / terms basis**: public results published by the Norwegian Food Safety Authority; the site
+  has no robots.txt (404), and every request still goes through the robots check.
+- **Used for**: `reviews/inspection_rating`. A place is a candidate when its postcode equals the
+  company's or a subunit's and its name shares a distinctive name word; it is published only when the
+  page's own "Orgnr." is the company's or a subunit's organisation number. The quoted evidence is the page
+  text (place name, org number, latest inspection date and the smiley result).
+
+---
+
 ## Company websites
 
 - Whatever domain a candidate resolves to (registry `hjemmeside`, Wikidata website, NAV employer
@@ -155,5 +189,8 @@ licensed provider is used, consistent with the $0 / no-secrets constraint.
 | NAV pam-stilling-feed | `pam-stilling-feed.nav.no/api/...` | NLOD 2.0 | `respect_robots=False` (official feed) | jobs confirmation, offline NAV cache |
 | Wikidata SPARQL | `query.wikidata.org/sparql` | CC0 | `respect_robots=False` (query API) | website/profile candidate cache |
 | Company websites | verified candidate domain | site's own terms | `respect_robots=True` | website, profiles, description, jobs (ATS), activity (feeds/news) |
+| Overture Maps Places (snapshot) | bundled `places_no.jsonl.gz` (release 2026-09-23.1) | CDLA-Permissive-2.0 / Apache-2.0 / CC0 | n/a (no run-time requests) | website candidates |
+| OpenStreetMap `ref:NO:orgnr` (snapshot) | bundled `osm_orgnr_no.jsonl.gz` | ODbL 1.0, © OpenStreetMap contributors | n/a (no run-time requests) | website candidates (org-number keyed) |
+| Mattilsynet smilefjes | `smilefjes.mattilsynet.no/search/index/nb.json`, `/spisested/...` | public authority data | `respect_robots=True` (no robots.txt) | reviews (official inspection rating) |
 | YouTube RSS | `youtube.com/feeds/videos.xml` | public feed, but robots-disallowed | `respect_robots=True` → blocked in practice | activity (video items) |
 | LinkedIn / Meta / Glassdoor / Indeed / Google | — | not accessed | n/a | never scraped; only linked URLs recorded from a verified site |

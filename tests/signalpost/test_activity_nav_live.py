@@ -209,10 +209,12 @@ def test_prepare_is_idempotent_and_shared_across_companies():
     })
     connector = NavLiveConnector()
     connector.prepare(client, None)
+    feed_calls_after_first_prepare = len([c for c in client.calls if c.url == FEED_URL])
     connector.prepare(client, None)  # second call must be a no-op, not a second feed walk
 
-    feed_calls_after_first_prepare = [c for c in client.calls if c.url == FEED_URL]
-    assert len(feed_calls_after_first_prepare) == 1
+    # One walk: one entry request per time slice, and nothing more on the second prepare.
+    assert 1 <= feed_calls_after_first_prepare <= 8
+    assert len([c for c in client.calls if c.url == FEED_URL]) == feed_calls_after_first_prepare
 
     ctx1 = make_ctx(org=ORG, tier="T2", client=client, registry_facts={"name": "ATRIUM PEOPLE AS", "aliases": [], "subunits": []})
     ctx2 = make_ctx(org="879263662", tier="T2", client=client, registry_facts={"name": "NORSK SCANIA AS", "aliases": [], "subunits": []})
@@ -221,8 +223,8 @@ def test_prepare_is_idempotent_and_shared_across_companies():
 
     assert len(r1.shared["nav_ads"]) == 1
     assert len(r2.shared["nav_ads"]) == 1
-    # still exactly one feed walk (root page) across both companies
-    assert len([c for c in client.calls if c.url == FEED_URL]) == 1
+    # still exactly one feed walk across both companies
+    assert len([c for c in client.calls if c.url == FEED_URL]) == feed_calls_after_first_prepare
 
 
 def test_live_fixture_feedentry_shape():

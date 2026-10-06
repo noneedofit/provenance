@@ -79,7 +79,8 @@ feed guid — so each item has its own new/ended lifecycle independent of the ot
 official register for this org number), `org_number_on_source` (the source itself shows the exact org
 number), `registry_declared` (the register lists this website/email domain and it passed the live
 verification gate), `job_feed_org_number` (a NAV ad carries the exact org number), `wikidata_org_number`
-(Wikidata item carries the exact org number), `linked_from_verified_site` (linked from a site already
+(Wikidata item carries the exact org number), `open_map_org_number` (an OpenStreetMap feature tagged
+`ref:NO:orgnr` with the exact org number links the site), `linked_from_verified_site` (linked from a site already
 verified `exact`), `corroborated` (≥2 independent corroborating signals, no conflict).
 
 ## Evidence
@@ -104,8 +105,10 @@ class Evidence(BaseModel):
 `SourceClass`: `official_registry` (live `data.brreg.no` API), `official_registry_bulk` (bulk CSV
 download), `official_filing` (annual-account copy), `public_job_feed` (NAV), `open_knowledge_base`
 (Wikidata), `company_owned` (the verified site itself), `company_owned_platform` (a company-owned profile
-on a third-party platform — URL/feed only, never scraped content beyond the feed), `derived` (computed by
-the agent, e.g. the summary).
+on a third-party platform — URL/feed only, never scraped content beyond the feed), `official_inspection`
+(a public authority's inspection result page, e.g. Mattilsynet smilefjes), `open_places_dataset` (a record
+in a bundled open places dataset, Overture Maps or OpenStreetMap), `derived` (computed by the agent, e.g.
+the summary).
 
 Every claim marked `available` must reference at least one evidence id that exists in the same envelope's
 `evidence` list — enforced by `validate.py` (`DATA_SCHEMA.md`'s invariants are the same ones `EVAL.md`'s
