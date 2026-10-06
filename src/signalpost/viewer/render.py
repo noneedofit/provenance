@@ -274,7 +274,10 @@ def evidence_drawer(claim: dict, ev_by_id: dict, drawer_id: str) -> str:
         e = ev_by_id.get(eid)
         if not e:
             continue
+        quote = e.get("claim_span") or e.get("span")
+        locator = e.get("span") if e.get("claim_span") and e.get("span") and e.get("span") != e.get("claim_span") else None
         rows = [
+            ("Supports", f'<span class="span-text">&ldquo;{esc(quote)}&rdquo;</span>' if quote else ""),
             ("Source", f'<a href="{esc(e["source_url"])}" target="_blank" rel="noopener noreferrer">{esc(e["source_url"])}</a>'),
             ("Source class", esc(e.get("source_class"))),
             ("Retrieved", fmt_date(e.get("retrieved_at"))),
@@ -282,10 +285,10 @@ def evidence_drawer(claim: dict, ev_by_id: dict, drawer_id: str) -> str:
             ("Content hash", esc(short_hash(e.get("content_sha256")))),
             ("Extraction method", esc(e.get("extraction_method")) + (f' v{esc(e.get("extractor_version"))}' if e.get("extractor_version") else "")),
             ("Identity basis", esc(claim.get("identity_basis") or "—")),
+            ("Located at", f"<code>{esc(locator)}</code>" if locator else ""),
         ]
         rows_html = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in rows if v)
-        span = f'<div class="span-text">&ldquo;{esc(e.get("span"))}&rdquo;</div>' if e.get("span") else ""
-        parts.append(f'<div class="evidence-drawer"><dl>{rows_html}</dl>{span}</div>')
+        parts.append(f'<div class="evidence-drawer"><dl>{rows_html}</dl></div>')
     label = "source" if len(ev_ids) == 1 else f"{len(ev_ids)} sources"
     return f'<details class="source-toggle" id="{esc(drawer_id)}"><summary>{esc(label)}</summary>{"".join(parts)}</details>'
 

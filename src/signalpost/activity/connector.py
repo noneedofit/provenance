@@ -21,10 +21,10 @@ from __future__ import annotations
 
 from ..context import CompanyContext
 from ..models import Claim, ConnectorResult, Evidence, FamilyState
-from . import ats, feeds, nav_jobs, youtube
+from . import ats, feeds, nav_jobs, smilefjes, youtube
 from ._common import make_claim, norm_title
 
-REVIEWS_REASON = "no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)"
+REVIEWS_REASON = "checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)"
 MIN_REQUESTS_FOR_SITE_SOURCES = 1
 
 
@@ -60,8 +60,21 @@ class ActivityConnector:
         jobs_sources: list[str] = []
         activity_sources: list[str] = []
 
-        # ---- reviews: always not_available, no source exists ----
-        families["reviews"] = FamilyState(family="reviews", availability="not_available", reason=REVIEWS_REASON)
+        # ---- reviews: Mattilsynet food-hygiene inspection results (official public rating) ----
+        smile = smilefjes.collect(ctx) if ctx.client is not None and not (ctx.shared or {}).get("registry_only") else {"claims": [], "evidence": [], "checked": False, "error": None}
+        claims.extend(smile["claims"])
+        evidence.extend(smile["evidence"])
+        if smile["claims"]:
+            families["reviews"] = FamilyState(
+                family="reviews", availability="available", sources_checked=[smilefjes.BASE_URL], claim_count=len(smile["claims"]),
+            )
+        elif smile["checked"]:
+            families["reviews"] = FamilyState(family="reviews", availability="not_available", reason=REVIEWS_REASON, sources_checked=[smilefjes.BASE_URL])
+        elif smile.get("error"):
+            errors.append({"stage": "smilefjes", "error": smile["error"]})
+            families["reviews"] = FamilyState(family="reviews", availability="failed", reason=f"inspection-rating index unavailable: {smile['error']}")
+        else:
+            families["reviews"] = FamilyState(family="reviews", availability="not_available", reason=REVIEWS_REASON)
 
         # ---- jobs: NAV (live search+feedentry when NavLiveConnector ran; else the cached feed index) ----
         nav_result = nav_jobs.collect(ctx)
@@ -79,7 +92,9 @@ class ActivityConnector:
 
         # ---- jobs: ATS (needs HTTP + a verified site) ----
         has_verified_site = bool((ctx.shared or {}).get("verified_site"))
-        tier_allows_http = str(getattr(ctx, "tier", "") or "") != "T0"
+        # Every tier may use site-derived sources once a site is verified; the per-company request budget
+        # (planner allowance) is the limit, not the tier label.
+        tier_allows_http = True
         can_use_http = has_verified_site and tier_allows_http and _budget_available(ctx)
 
         ats_provider = None

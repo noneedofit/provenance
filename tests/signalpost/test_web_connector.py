@@ -105,10 +105,24 @@ def test_connector_uses_caches_org_count_to_reject_shared_registry_domain():
         registry_facts={"name": "AVARN SECURITY AS", "website": "www.avarn.no"},
     )
     result = WebConnector().run(ctx)
-    assert result.families["website"].availability != "available"
+    # The company's own registry entry names the group site: published, but labelled as the group's site,
+    # never as an exact own-site, and nothing (profiles, description) is taken from it.
     claim = next((c for c in result.claims if c.family == "website" and c.field == "official_website"), None)
-    if claim is not None:
-        assert claim.relationship != "exact"
+    assert claim is not None and claim.relationship != "exact"
+    assert result.families["profiles"].availability != "available"
+    assert result.families["description"].availability != "available"
+
+
+def test_connector_shared_registry_domain_with_many_orgs_is_not_published():
+    html = "<html><body>Vi forvalter over 500 borettslag. Kontakt oss.</body></html>"
+    client = FakeHttpClient(pages={"https://www.boligforvalter.no/": FakePage(html)})
+    caches = _FakeCaches(email_domains=_FakeEmailDomains({"boligforvalter.no": 549}))
+    ctx = make_ctx(
+        OUR_ORG, tier="T2", client=client, caches=caches,
+        registry_facts={"name": "BORETTSLAGET STORGATA 1", "website": "www.boligforvalter.no"},
+    )
+    result = WebConnector().run(ctx)
+    assert result.families["website"].availability != "available"
 
 
 def test_connector_requires_decisive_signal_when_registry_site_unconfirmed():

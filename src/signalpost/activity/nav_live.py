@@ -261,10 +261,9 @@ class NavLiveConnector:
                 source_url=FEED_URL, source_class="public_job_feed", retrieved_at=utc_now(),
                 extraction_method="nav_feed_index_v1", access_policy="NLOD-2.0 (NAV)",
                 content_sha256=index.content_sha256(),
-                span=(
-                    f"active_ads_indexed={stats['ad_count']}; window_days={self._window_days}; "
-                    f"complete={stats['complete']}; pages_walked_this_run={stats.get('pages', 0)}"
-                ),
+                # Stable text: run statistics (ads indexed, pages walked) change with feed timing and belong
+                # in the family reason, not in the evidence quote.
+                span=f"active_ads_indexed: NAV job feed, ads active within the last {self._window_days} days",
             )
             if bulk_rows:
                 try:

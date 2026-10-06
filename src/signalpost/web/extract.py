@@ -168,13 +168,35 @@ def extract_brand_name(pages: list[PageFetch]) -> tuple[str | None, str | None]:
     return None, None
 
 
+_CREDIT_WORDS = (
+    "levert av", "laget av", "utviklet av", "design av", "designet av", "nettside av", "nettsider av",
+    "webdesign", "web design", "designed by", "developed by", "powered by", "made by", "site by", "website by",
+    "drevet av", "produsert av",
+)
+
+
+def _is_credit_link(node: Any) -> bool:
+    """A link inside a "made by <agency>" credit belongs to the web agency, not to the company."""
+    own = node.get_text(" ", strip=True).casefold()
+    if any(word in own for word in _CREDIT_WORDS):
+        return True
+    parent = node.parent
+    if parent is None or not hasattr(parent, "select"):
+        return False
+    # Only a short credit line that holds this one link (not a footer listing the company's own links).
+    if len(parent.select("a[href]")) != 1:
+        return False
+    text = parent.get_text(" ", strip=True).casefold()
+    return len(text) <= 150 and any(word in text for word in _CREDIT_WORDS)
+
+
 def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
     found: dict[tuple[str, str], dict[str, str]] = {}
     for page in pages:
         if not page.ok:
             continue
         soup = BeautifulSoup(page.html, "lxml")
-        candidates = [str(node.get("href") or "") for node in soup.select("a[href]")]
+        candidates = [str(node.get("href") or "") for node in soup.select("a[href]") if not _is_credit_link(node)]
         candidates.extend(str(node.get("src") or "") for node in soup.select("iframe[src]"))
         for raw in candidates:
             url = urllib.parse.urljoin(page.final_url, raw)

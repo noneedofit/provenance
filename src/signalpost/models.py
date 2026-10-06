@@ -44,6 +44,8 @@ SourceClass = Literal[
     "open_knowledge_base",     # Wikidata (CC0)
     "company_owned",           # the verified company website and feeds it publishes
     "company_owned_platform",  # company-owned profile on a third-party platform (URL/feeds only)
+    "official_inspection",     # public authority inspection result (Mattilsynet smilefjes)
+    "open_places_dataset",     # open places dataset record (Overture Maps / OpenStreetMap)
     "derived",                 # computed by the agent from other evidence (e.g. summary)
 ]
 

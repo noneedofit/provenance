@@ -5,6 +5,8 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
+import re
+
 import threading
 
 import json
@@ -71,6 +73,24 @@ def _previous_site_domain(ctx: Any) -> str | None:
     return None
 
 
+_GROUP_SITE_MAX_ORGS = 9
+_GENERIC_TOKENS = {"holding", "invest", "eiendom", "norge", "norway", "group", "gruppen", "bygg", "service", "drift", "as", "asa"}
+
+
+def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
+    """Registry-declared site that belongs to the company's own group: few organisations share the domain
+    (not a property manager or franchise platform), and the domain carries a distinctive word of our name."""
+    if cand.source != "registry_website" or verdict.relationship not in ("parent", "brand", "subsidiary"):
+        return False
+    count = _website_org_count(ctx, cand.domain)
+    if count is not None and count > _GROUP_SITE_MAX_ORGS:
+        return False
+    name = str(_registry_facts(ctx).get("name") or "")
+    tokens = {t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if len(t) >= 3 and t not in _GENERIC_TOKENS}
+    label = (cand.domain or "").rsplit(".", 1)[0].replace("-", "")
+    return any(t in label for t in tokens)
+
+
 def _debug_log(org: str, attempts: list[dict]) -> None:
     """Diagnostics only: with SIGNALPOST_WEB_DEBUG=<file>, append every candidate verdict as one JSON line.
     Never part of the output contract."""
@@ -125,6 +145,16 @@ def _public_url(cand: Any, homepage: PageFetch) -> str:
 
 def _source_class_for(page: PageFetch) -> str:
     return "company_owned"
+
+
+_SIGNAL_RANK = {
+    kind: i for i, kind in enumerate((
+        "org_number_on_source", "jsonld_org_number", "wikidata", "osm_orgnr", "nav_employer_homepage",
+        "registry_declared", "registry_email", "legal_name_match", "domain_name_match", "email_domain_match",
+        "registry_email_domain", "open_places_contact_named", "registry_phone", "registered_address",
+        "role_name", "open_places_contact",
+    ))
+}
 
 
 def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
@@ -307,6 +337,8 @@ class WebConnector:
 
         if exact_pages is not None and exact_candidate is not None and exact_verdict is not None:
             self._publish_exact(ctx, result, exact_candidate, exact_verdict, exact_pages)
+        elif best_related is not None and _is_group_site(ctx, best_related[0], best_related[1]):
+            self._publish_group_site(ctx, result, *best_related)
         elif best_related is not None:
             self._publish_related(ctx, result, *best_related)
         elif _previous_site_unreachable(ctx, attempts):
@@ -336,7 +368,15 @@ class WebConnector:
 
         # Evidence for the decisive/corroborating signals that proved identity.
         site_evidence: list[Evidence] = []
-        for sig in verdict.signals[:5]:
+        # Strongest proof first, one record per kind, in a fixed order: the quoted text must not depend on
+        # which page or signal happened to be found first in this run.
+        seen_kinds: set[str] = set()
+        ranked = []
+        for sig in sorted(verdict.signals, key=lambda x: (_SIGNAL_RANK.get(x.kind, 99), x.page_url or "", x.span or "")):
+            if sig.kind not in seen_kinds:
+                seen_kinds.add(sig.kind)
+                ranked.append(sig)
+        for sig in ranked[:5]:
             page = next((p for p in pages if p.final_url == sig.page_url), homepage)
             site_evidence.append(_make_evidence(page, sig.span, f"web_{sig.kind}_v1"))
         if not site_evidence:
@@ -422,6 +462,31 @@ class WebConnector:
         result.shared["ats_links"] = extraction.ats_links
         result.shared["brand_name"] = extraction.brand_name
         result.shared["news_urls"] = [extraction.news_url] if extraction.news_url else []
+
+    def _publish_group_site(
+        self, ctx: CompanyContext, result: ConnectorResult, cand: Candidate, verdict: verify_mod.Verdict, pages: list[PageFetch],
+    ) -> None:
+        """The registry lists this site for the company, and it is the company's group/parent site (shared by a
+        few group companies, or showing another group company's org number). Published as the company's
+        website, labelled with the relationship -- never as an exact own-site, so no profiles or description
+        are taken from it."""
+        org = ctx.org
+        homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
+        note = f"registry-declared website is the company's group site ({verdict.relationship}): {verdict.note}"
+        ev = _make_evidence(homepage, f"registry hjemmeside {cand.url}", "web_group_site_v1")
+        result.evidence.append(ev)
+        result.claims.append(Claim(
+            claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
+            family="website", field="official_website", value=_public_url(cand, homepage), availability="available",
+            confidence=0.8, identity_basis="registry_declared", relationship=verdict.relationship,
+            evidence_ids=[ev.evidence_id], note=note,
+        ))
+        result.families["website"] = FamilyState(
+            family="website", availability="available", reason=note, sources_checked=[cand.domain], claim_count=1,
+        )
+        result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="website is a group site; its profiles belong to the group")
+        result.families["description"] = FamilyState(family="description", availability="not_available", reason="website is a group site; its text describes the group")
+        result.shared["web_related_site"] = {"url": homepage.final_url, "domain": cand.domain, "relationship": verdict.relationship}
 
     def _publish_related(
         self, ctx: CompanyContext, result: ConnectorResult, cand: Candidate, verdict: verify_mod.Verdict, pages: list[PageFetch],

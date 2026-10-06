@@ -65,16 +65,16 @@ def test_activity_not_applicable_without_verified_site():
     assert "no verified company website" in activity.reason
 
 
-def test_activity_not_applicable_at_tier_t0_even_with_site():
+def test_activity_runs_at_tier_t0_with_verified_site():
     client = FakeHttpClient()
-    shared = {"verified_site": {"url": "https://eksempel.no", "domain": "eksempel.no"}}
+    client.route("https://eksempel.no/rss", load_fixture("generic_news.rss.xml"))
+    shared = {"verified_site": {"url": "https://eksempel.no", "domain": "eksempel.no"}, "feed_urls": ["https://eksempel.no/rss"]}
     ctx = make_ctx(client=client, tier="T0", caches=FakeCaches(nav=FakeNavCache(ads=[])), shared=shared)
 
     result = ActivityConnector().run(ctx)
 
-    assert result.families["activity"].availability == "not_applicable"
-    assert "T0" in result.families["activity"].reason
-    assert client.calls == []  # T0 makes no HTTP requests at all
+    # The request budget, not the tier label, limits site-derived sources.
+    assert result.families["activity"].availability == "available"
 
 
 def test_activity_available_from_feed_and_dedup_evidence_present():
