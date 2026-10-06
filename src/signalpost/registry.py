@@ -32,7 +32,7 @@ from .models import (
 
 BRREG_ENTITY = "https://data.brreg.no/enhetsregisteret/api/enheter/{org}"
 BRREG_ROLES = BRREG_ENTITY + "/roller"
-BRREG_SUBUNITS = "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet={org}&size=100"
+BRREG_SUBUNITS = "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet={org}&size=1000"
 BRREG_ACCOUNTS = "https://data.brreg.no/regnskapsregisteret/regnskap/{org}"
 # The filed-years endpoint is documented at roughly 30 requests/minute; space calls across all threads.
 _HISTORY_MIN_INTERVAL_S = 1.0
@@ -692,7 +692,8 @@ class RegistryConnector:
 
         # -------- locations (subunits) --------
         subunit_facts: list[dict[str, Any]] = []
-        run_subunits = client is not None and (tier != "T0")
+        # Every tier: one request, and a T0 company's subunits are both facts and website/contact leads.
+        run_subunits = client is not None
         if run_subunits and "locations" not in families:
             resp = client.get(BRREG_SUBUNITS.format(org=org), org=org, purpose="registry_subunits", accept="application/json", respect_robots=False)
             if resp.error == "budget_exhausted":

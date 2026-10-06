@@ -17,12 +17,11 @@ Families: `identity`, `financials`, `financial_history`, `leadership`, `location
 - **Live calls**, all `purpose="registry_*"`, `respect_robots=False` (official keyless API):
   - `GET enheter/{org}` — identity.
   - `GET enheter/{org}/roller` — leadership.
-  - `GET underenheter?overordnetEnhet={org}&size=100` — locations (subunits); skipped at tier T0 (business
-    address only).
+  - `GET underenheter?overordnetEnhet={org}&size=1000` — locations (subunits), at every tier.
   - `GET regnskapsregisteret/regnskap/{org}` — latest financials.
   - `GET regnskap/aarsregnskap/kopi/{org}/aar` — filed years (rate-limited to 1/s; skipped in
     registry-only mode). A T0 company whose bulk row already states its latest filed year uses that instead.
-- **Budget**: every company's registry calls are reserved up front (4 requests at T0, 5 at T1–T3, never more than
+- **Budget**: every company's registry calls are reserved up front (5 requests, never more than
   half the run cap) via `Budget.reserve`, so optional sources (web, jobs) can never starve official data; the
   reserve is released back to the shared pool as soon as the connector finishes for that company.
 - **Fallback**: a 404/410 on any live endpoint records `not_available` with the HTTP status as reason,
@@ -64,6 +63,8 @@ contract; this section covers budgets and fallback order.
 - **Crawl** (`web/crawl.py`): homepage first, then up to N secondary pages by tier (T0: 0, or 1 when the homepage
   already names the company; T1: 2, T2: 4, T3: 6), picked by priority terms (contact, about, privacy, terms, impressum, careers, news) from
   homepage links, falling back to `sitemap.xml` only if no priority links were found on the homepage.
+  A candidate that matches only on the company name gets up to two more pages (privacy, terms, impressum,
+  then contact/about; `fetch_confirmation_pages`) before its verdict is final.
   Parked/for-sale placeholders and JS-only shells are detected and recorded, never rendered.
 - **Fallback order**: the connector tries candidates until the first `exact` verdict, or — if none verify
   exactly — publishes the best `related` candidate as an `ambiguous` claim (`confidence=0.4`, never

@@ -51,6 +51,7 @@ DEFAULT_REQUESTS_PER_COMPANY = 26
 REGISTRY_ONLY_SAFETY_S = 300
 REGISTRY_ONLY_S_PER_COMPANY = 4.0
 DEFAULT_WORKERS = 24
+REGISTRY_RESERVE = 5  # entity, roles, subunits, accounts, filing years
 
 # A company whose register calls failed for a passing reason (connection error, timeout, 5xx) is put back
 # in the queue once and processed again after the rest of the batch, when the time left covers the rest of
@@ -204,17 +205,13 @@ def run_batch(
     client = BudgetedHttpClient(budget, snapshots=snapshots)
     conn_list = connectors if connectors is not None else _default_connectors()
 
-    # Reserve every company's official registry calls up front (entity, roles, accounts; subunits and
-    # filing years from T1/T2), so optional sources such as job search can never starve official data.
-    # The reserve never takes more than half the run cap, so a small evaluator-supplied cap cannot leave
-    # a negative budget that refuses every request.
+    # Reserve every company's official registry calls up front (entity, roles, subunits, accounts, filing
+    # years), so optional sources such as job search can never starve official data. The reserve never
+    # takes more than half the run cap, so a small evaluator-supplied cap cannot leave a negative budget
+    # that refuses every request.
     reserve_cap = max(0, max_requests // 2 // max(1, len(org_list)))
     for org in org_list:
-        try:
-            tier = classify(bulk.get(org, {}), caches=caches).tier
-        except Exception:  # a malformed row is handled (and reported) per company below
-            tier = "T2"
-        budget.reserve(org, min({"T0": 4, "T1": 5}.get(tier, 5), reserve_cap))
+        budget.reserve(org, min(REGISTRY_RESERVE, reserve_cap))
 
     # Any connector that defines `.start_prepare(client, state_dir)` gets it called exactly once, here,
     # before per-company processing starts (e.g. NavLiveConnector's shared NAV feed index walk - a

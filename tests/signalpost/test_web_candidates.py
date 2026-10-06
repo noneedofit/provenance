@@ -227,3 +227,29 @@ def test_candidates_deduplicated_by_registered_domain():
 
 def test_registered_domain_strips_www_and_path():
     assert registered_domain("https://www.example.no/some/path") == "example.no"
+
+
+def test_initials_are_joined_into_one_token():
+    # P.E. GAARUD AS trades as pe-gaarud.no; "p-e" on its own is a meaningless guess.
+    from signalpost.web.candidates import _name_guess_slugs
+
+    slugs = _name_guess_slugs("P.E. GAARUD AS")
+    assert "pegaarud" in slugs and "pe-gaarud" in slugs
+    assert "p-e" not in slugs and "p-e-gaarud" not in slugs
+
+
+def test_first_distinctive_word_is_the_last_guess():
+    # CIMPLE TECHNOLOGY AS -> cimple.no. Tried after the fuller guesses, on .no only; never for a short or
+    # generic word, or for the company's own town (LYNGDAL HAGESENTER AS -> lyngdal.no is the municipality).
+    from signalpost.web.candidates import _first_word_guess
+
+    assert _first_word_guess("CIMPLE TECHNOLOGY AS", set()) == "cimple"
+    assert _first_word_guess("NORSK EKSEMPELTEKNIKK AS", set()) is None
+    assert _first_word_guess("ABC EKSEMPELTEKNIKK AS", set()) is None
+    assert _first_word_guess("LYNGDAL HAGESENTER AS", {"lyngdal"}) is None
+    assert _first_word_guess("EKSEMPELFIRMA AS", set()) is None  # one word: already the main guess
+
+    client = FakeHttpClient(dns={"cimple.no", "cimple.com"})
+    ctx = make_ctx("923456783", tier="T0", registry_facts={"name": "CIMPLE TECHNOLOGY AS", "city": "OSLO"}, client=client)
+    domains = [c.domain for c in generate_candidates(ctx)]
+    assert domains[-1] == "cimple.no" and "cimple.com" not in domains

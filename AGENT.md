@@ -44,7 +44,9 @@ un-run family marked `failed` and a reason (`deadline`, `request_budget`, `time_
 - **Cheapest, most decisive sources first.** Website candidates are tried in the order registry
   `hjemmeside` → Wikidata → NAV employer homepage → OpenStreetMap org-number tag → registry email
   domain → subunit websites/emails → open places data (Overture) → name-guessed slugs (DNS-prefiltered;
-  at most 6, or 3 for T0). The first candidate that verifies
+  at most 6, or 3 for T0, the last one being the name's first distinctive word on `.no`). A site that
+  matches only on the company name gets up to two more pages (privacy, terms, contact) read before its
+  verdict is final. The first candidate that verifies
   `exact` wins; the pipeline stops trying further candidates for that company.
 - **No JavaScript rendering.** All crawling is server-rendered HTML only (`web.crawl`, stdlib `urllib` +
   BeautifulSoup/trafilatura); a JS-only shell is detected and recorded (`js_shell`), never rendered with

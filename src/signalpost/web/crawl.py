@@ -237,6 +237,53 @@ def _sitemap_links(ctx: Any, homepage: str, homepage_domain: str, limit: int) ->
     return picked[:limit]
 
 
+# Pages that by law or custom name the business behind a Norwegian site, usually with its org number: privacy
+# statement (the data controller), sales terms (the seller), impressum; then contact and about pages.
+CONFIRM_TERMS = (
+    "personvern", "privacy", "vilkar", "salgsbetingelser", "kjopsbetingelser", "terms", "impressum",
+    "kontakt", "contact", "om-oss", "om_oss", "about-us", "about",
+)
+CONFIRM_PAGE_LIMIT = 2
+
+
+def fetch_confirmation_pages(ctx: Any, result: CrawlResult, limit: int = CONFIRM_PAGE_LIMIT) -> int:
+    """Fetch up to `limit` more pages of an already crawled site that usually name the business behind it
+    (see CONFIRM_TERMS), skipping pages already read. Used when the site matches our name but nothing else on
+    the pages read so far ties it to our registry record. Returns the number of pages added."""
+    homepage = next((p for p in result.pages if p.page_kind == "homepage" and p.ok), None)
+    if homepage is None:
+        return 0
+    seen = {u.rstrip("/") for p in result.pages for u in (p.url, p.final_url) if u}
+    soup = BeautifulSoup(homepage.html, "lxml")
+    picked: dict[str, int] = {}
+    for anchor in soup.select("a[href]"):
+        url = urllib.parse.urljoin(homepage.final_url, str(anchor.get("href") or "").strip())
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in {"http", "https"} or registered_domain(parsed.hostname or "") != result.candidate.domain:
+            continue
+        clean = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", "", "", ""))
+        if clean.rstrip("/") in seen:
+            continue
+        haystack = (parsed.path + " " + anchor.get_text(" ", strip=True)).casefold()
+        rank = next((i for i, term in enumerate(CONFIRM_TERMS) if term in haystack), None)
+        if rank is not None and (clean not in picked or rank < picked[clean]):
+            picked[clean] = rank
+    added = 0
+    for url, rank in sorted(picked.items(), key=lambda item: (item[1], item[0]))[:limit]:
+        if ctx.client.remaining(ctx.org) < 1:
+            break
+        page, used = _fetch_page(ctx, url, f"web_confirm_{CONFIRM_TERMS[rank]}")
+        result.requests_used += used
+        if page is None:
+            continue
+        page.page_kind = CONFIRM_TERMS[rank]
+        result.pages.append(page)
+        if page.ok:
+            page.links = _extract_links(page.final_url, BeautifulSoup(page.html, "lxml"), result.candidate.domain)
+            added += 1
+    return added
+
+
 # A hosting firewall's bot challenge (CAPTCHA or "checking your browser" page) instead of the site. It is
 # never solved or bypassed; the site counts as not reachable this run (`bot_challenge`).
 BOT_CHALLENGE_MARKERS = (

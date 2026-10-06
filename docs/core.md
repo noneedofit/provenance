@@ -81,10 +81,11 @@ once); `get(snapshot_ref)` returns the decompressed body or `None`.
   rows in the real file; this only holds the rows you ask for.
 - `RegistryConnector` (`name = "registry"`, families `identity, financials, financial_history, leadership,
   locations, group`). Per company: always fetches `enheter/{org}` and `enheter/{org}/roller`
-  (`respect_robots=False` — these are official APIs); fetches `underenheter?overordnetEnhet={org}` for
-  tier T1+ (T0 uses the business address only, per BUILD_SPEC); fetches
+  (`respect_robots=False` — these are official APIs); fetches `underenheter?overordnetEnhet={org}` at
+  every tier; fetches
   `regnskapsregisteret/regnskap/{org}` (latest financials) at every tier; fetches
-  `regnskap/aarsregnskap/kopi/{org}/aar` (the filed-years list) only for T2/T3. If the live entity fetch
+  `regnskap/aarsregnskap/kopi/{org}/aar` (the filed-years list) for tiers T1-T3 (T0 takes the latest filed
+  year from the bulk row). If the live entity fetch
   fails (network error, non-2xx other than 404/410, or budget exhaustion), identity falls back to the bulk
   row with `source_class="official_registry_bulk"`. 404/410 on any endpoint → `not_available`; a caught
   exception or non-retryable HTTP failure → `failed`; `budget_exhausted` → `failed` reason

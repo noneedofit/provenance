@@ -26,7 +26,9 @@ Every source's requests are made through the single `BudgetedHttpClient`, which 
 redirect-following so each hop is individually SSRF-checked and charged against the request budget; a
 retryable failure (timeout, connection error, 429, 5xx) gets one bounded retry, also charged; an
 official API's 5xx gets one more, later attempt, and a company homepage that fails TLS gets one
-plain-http attempt. See `README.md`'s
+plain-http attempt. Calls to the registry API (`data.brreg.no`) reuse one open connection per worker
+thread (HTTP keep-alive) unless a proxy is configured; a connection the server has already closed is
+replaced once, which is the same request, not a retry. See `README.md`'s
 "Request budgeting" section and `CRAWLERS.md` for the full accounting.
 
 ---

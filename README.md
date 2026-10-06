@@ -115,7 +115,7 @@ per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), o
 Run budget (the official batch is 1,000 companies in one run, and may grow to 1,100; the scored reference
 set is 1,500):
 - `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 26 per input
-  company (2,600 per 100, 39,000 per 1,500). Measured use: about 10 per company.
+  company (2,600 per 100, 39,000 per 1,500). Measured use: 10–13 per company.
 - `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes), counted from the
   start of the command, setup included (setup time is in `run-report.json` as `setup_s`). When the time
   left is short for the companies not yet started, each remaining company gets the official-registry pass
@@ -131,10 +131,11 @@ set is 1,500):
   `SIGNALPOST_NAV_SNAPSHOT=0` walks the full NAV window live instead. `SIGNALPOST_WEB_DEBUG=<file>`
   appends every website candidate verdict to a file for diagnostics (not part of the output).
 
-Measured: 1,500 random companies in one run with the defaults took 25–28 minutes and about 14,500
-requests (peak memory 738 MB), with no deadline or budget hits and all 1,500 completed. A second,
-separate run of the same 1,500 gave identical facts for 1,497; the 3 differences were websites that were
-down in one run or changed their own text between runs.
+Measured: 1,500 companies drawn like the scored population (account filers, 60% with registered staff)
+took 28 minutes and about 19,700 requests (13 per company) in one run with the defaults, with no deadline
+or budget hits and all 1,500 completed. 1,500 random register companies took 25–28 minutes and about
+14,500 requests (peak memory 738 MB); a second, separate run of those gave identical facts for 1,497, the
+3 differences being websites that were down in one run or changed their own text between runs.
 
 Output, written to `--output-dir`:
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.

@@ -409,6 +409,7 @@ def assess(
     *,
     website_org_count: int | None = None,
     require_decisive: bool = False,
+    own_email_domain: str | None = None,
 ) -> Verdict:
     """Assess whether `pages` (from `candidate`) belong to the company identified by `org_number`.
 
@@ -623,7 +624,11 @@ def assess(
     # wherever that domain's current owner happens to point it today (a lapsed/resold domain forwarding
     # to an unrelated party would look identical from here). Same-domain hops (bare apex -> www, a path
     # redirect) are unaffected -- `registered_domain()` normalizes both to the same apex.
-    redirected_off_domain = registered_domain(homepage.final_url or "") != candidate.domain
+    # Forwarding to the domain of the registry's own e-mail address for us (lundbeck.no -> lundbeck.com,
+    # e-mail norway@lundbeck.com) is not that case: the register ties both domains to this organisation.
+    # `own_email_domain` is that domain only when no other organisation uses it (not an accountant's).
+    final_domain = registered_domain(homepage.final_url or "")
+    redirected_off_domain = final_domain != candidate.domain and not (own_email_domain and final_domain == own_email_domain)
 
     # --- registry_declared: only decisive if live, not parked (already checked), no conflict, not shared
     # (>=2 organisations also registered on this domain -- a sibling/parent entity, not just "any old

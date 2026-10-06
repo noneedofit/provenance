@@ -87,16 +87,17 @@ def test_registry_connector_locations_subunits():
     assert bergen and bergen[0].value["organisation_number"] == "916610181"
 
 
-def test_registry_connector_t0_skips_subunits():
+def test_registry_connector_t0_still_reads_subunits():
+    # A company with no registered staff or website signal (tier T0) still has its subunits listed: one request.
     client = _client()
     ctx = _ctx(client, tier="T0")
     result = registry.RegistryConnector().run(ctx)
 
     workplaces = [c for c in result.claims if c.family == "locations" and c.field == "workplace"]
-    assert workplaces == []
+    assert len(workplaces) == 6
     business_address = [c for c in result.claims if c.family == "locations" and c.field == "business_address"]
     assert business_address
-    assert "underenheter" not in " ".join(client.calls)
+    assert "underenheter" in " ".join(client.calls)
 
 
 def test_registry_connector_publishes_shared_registry_facts():

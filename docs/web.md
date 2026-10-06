@@ -132,7 +132,7 @@ domain signal), never an exception.
 ## Tests
 
 `tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_crawl.py`,
-`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 114 tests across `test_web_*.py`, no network (fake
+`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 130 tests across `test_web_*.py`, no network (fake
 `HttpClient` in `tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
 the build plan and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
 `MECCA AS -> thon.no` (parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not

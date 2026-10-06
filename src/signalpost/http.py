@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import gzip
+import http.client
 import json
 import socket
 import ssl
@@ -52,6 +53,15 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _https_context() -> ssl.SSLContext:
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # pragma: no cover - certifi always present in this project's lockfile
+        return ssl.create_default_context()
+
+
 def _build_https_handler() -> urllib.request.HTTPSHandler:
     """Verify against certifi's CA bundle rather than the interpreter's OS-default trust store.
 
@@ -64,16 +74,80 @@ def _build_https_handler() -> urllib.request.HTTPSHandler:
     (freshwater.no and others: genuinely reachable, wrongly marked unreachable). `certifi` is already a
     pinned transitive dependency (via `requests`/`trafilatura`), so this needs no pyproject.toml change.
     """
-    try:
-        import certifi
-
-        context = ssl.create_default_context(cafile=certifi.where())
-    except Exception:  # pragma: no cover - certifi always present in this project's lockfile
-        context = ssl.create_default_context()
-    return urllib.request.HTTPSHandler(context=context)
+    return urllib.request.HTTPSHandler(context=_https_context())
 
 
 _OPENER = urllib.request.build_opener(_NoRedirect(), _build_https_handler())
+
+# Official APIs called several times for every company keep one connection open per worker thread instead of
+# a new TLS handshake per call (about 3x faster per call from a distant network). Not used when a proxy is
+# configured: urllib honours proxy settings, a direct connection would not.
+KEEPALIVE_HOSTS = {"data.brreg.no"}
+_KEEPALIVE = threading.local()
+_KEEPALIVE_CONTEXT = _https_context()
+_STALE_CONNECTION_ERRORS = (http.client.RemoteDisconnected, http.client.CannotSendRequest, BrokenPipeError, ConnectionResetError)
+
+
+def _keepalive_enabled(parts: urllib.parse.SplitResult) -> bool:
+    return parts.scheme == "https" and (parts.hostname or "") in KEEPALIVE_HOSTS and not urllib.request.getproxies()
+
+
+def _keepalive_conn(host: str, port: int | None, timeout: float) -> http.client.HTTPSConnection:
+    pool = getattr(_KEEPALIVE, "conns", None)
+    if pool is None:
+        pool = _KEEPALIVE.conns = {}
+    conn = pool.get((host, port))
+    if conn is None:
+        conn = pool[(host, port)] = http.client.HTTPSConnection(host, port, timeout=timeout, context=_KEEPALIVE_CONTEXT)
+    conn.timeout = timeout
+    if conn.sock is not None:
+        conn.sock.settimeout(timeout)
+    return conn
+
+
+def _keepalive_drop(host: str, port: int | None) -> None:
+    conn = (getattr(_KEEPALIVE, "conns", None) or {}).pop((host, port), None)
+    if conn is not None:
+        conn.close()
+
+
+def _keepalive_http(method: str, url: str, parts: urllib.parse.SplitResult, headers: dict[str, str], body: bytes | None, timeout: float, max_bytes: int):
+    """One HTTP attempt over this thread's open connection to the host. A reused connection that the server had
+    already closed (it fails before any response) is replaced once; the request never reached the server, so
+    that is the same request, not a retry."""
+    host, port = parts.hostname or "", parts.port
+    path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+    while True:
+        conn = _keepalive_conn(host, port, timeout)
+        reused = conn.sock is not None
+        try:
+            conn.request(method, path, body=body, headers=headers)
+            resp = conn.getresponse()
+        except _STALE_CONNECTION_ERRORS:
+            _keepalive_drop(host, port)
+            if reused:
+                continue  # the next connection is new, so this happens at most once
+            return 0, {}, b"", url, "network_error"
+        except (TimeoutError, socket.timeout):
+            _keepalive_drop(host, port)
+            return 0, {}, b"", url, "timeout"
+        except ssl.SSLError:
+            _keepalive_drop(host, port)
+            return 0, {}, b"", url, "ssl_error"
+        except (OSError, http.client.HTTPException) as exc:
+            _keepalive_drop(host, port)
+            return 0, {}, b"", url, "dns" if isinstance(exc, socket.gaierror) else "network_error"
+        try:
+            raw = resp.read(max_bytes + 1)
+        except (TimeoutError, socket.timeout):
+            _keepalive_drop(host, port)
+            return 0, {}, b"", url, "timeout"
+        except (OSError, http.client.HTTPException):
+            _keepalive_drop(host, port)
+            return 0, {}, b"", url, "network_error"
+        if not resp.isclosed() or (resp.getheader("Connection") or "").lower() == "close":
+            _keepalive_drop(host, port)  # body not fully read (over max_bytes) or server closing: never reuse
+        return resp.status, dict(resp.getheaders()), raw, url, None
 
 
 @dataclass
@@ -331,6 +405,9 @@ class BudgetedHttpClient:
             headers["Content-Type"] = "application/json"
         if extra_headers:
             headers.update(extra_headers)
+        parts = urllib.parse.urlsplit(url)
+        if _keepalive_enabled(parts):
+            return _keepalive_http(method, url, parts, headers, body, timeout, max_bytes)
         request = urllib.request.Request(url, data=body, method=method, headers=headers)
         try:
             with _OPENER.open(request, timeout=timeout) as resp:

@@ -22,9 +22,10 @@ Ordered, domain-deduplicated candidates, cheapest/most-decisive sources first:
    e-mail (entity or subunits), or our name core at our postcode, nominates its website (strongest
    matches first, at most 4 places). Never decisive; the match is recorded as a hint for §2.
 8. Up to 6 DNS-prefiltered name-guess slugs (3 for tier T0) — legal name, historic names, subunit trade
-   names; joined and hyphenated, with and without legal-suffix words; `.no` before `.com`. A single
-   generic token (≤3 chars, or a known-generic word like "holding"/"bygg"/"transport") is dropped before it
-   is even tried.
+   names; joined and hyphenated, with and without legal-suffix words; `.no` before `.com`. Initials are
+   joined (P.E. GAARUD AS → `pe-gaarud`). The first distinctive word alone (5+ characters, not generic) is
+   the last guess for a longer name (CIMPLE TECHNOLOGY AS → `cimple.no`). A single generic token (≤3 chars,
+   or a known-generic word like "holding"/"bygg"/"transport") is dropped before it is even tried.
 
 A homepage that fails to connect over `https://` is retried once over `http://` and/or with/without
 `www.` (only for hosts that resolve in DNS).
@@ -71,6 +72,13 @@ Pure function, no network. Given the crawled pages and the org's registry facts,
 - **A parked/for-sale placeholder homepage → `rejected`**, including registrar parking pages ("is
   registered, but the owner currently does not have an active website") and short "lanseres snart" /
   "kommer snart" / "under construction" pages.
+- **A site that matches only on our name** (in the title or as the domain) gets one more look before the
+  verdict stands: up to two unread pages that usually name the business behind a site (privacy statement,
+  sales terms, impressum, then contact/about) are fetched and the same rules are applied again. Our org
+  number there makes it `exact`; nothing new leaves it `ambiguous`.
+- **A registry `hjemmeside` that forwards to the domain of the registry's own e-mail address for us**
+  (`lundbeck.no` → `lundbeck.com/no`, e-mail `norway@lundbeck.com`) is not treated as forwarding to
+  someone else's site: the register ties both domains to this organisation.
 - **A topic/industry mismatch** between the company's NACE division and the site's content (≥2 distinct
   keyword-cluster hits for a *different* industry) blocks a non-decisive, non-registry-declared candidate
   from reaching `exact` via corroboration alone.
@@ -82,14 +90,19 @@ published as `website.official_website` with `relationship="exact"` and used to 
 `description`. A `related` verdict on a site the register (shared by at most 9 organisations, domain
 carrying a distinctive word of our name), Wikidata or OpenStreetMap declares for this org number is
 published as the company's website labelled with its relationship (`parent`/`brand`/`subsidiary`,
-`confidence=0.8`) — the company's group site — but never used for profiles or description. Any other
+`confidence=0.8`) — the company's group site — but never used for description, and used for profiles only
+when the domain is exactly our name (HAIKJEFTEN AS → `haikjeften.no`, which shows a sister company's org
+number): those profiles are published with the same relationship, never as `exact`. When the register
+lists a page on a shared chain/group site for us (HUSFLIDEN HOLMESTRAND SA → `norskflid.no/holmestrand`),
+that page is published the same way if it still loads under that path and every distinctive word of our
+name is on it (no profiles: the links on a chain page are mostly the chain's). Any other
 `related` verdict is published as an `ambiguous` claim (`confidence=0.4`) that downstream connectors
 (jobs/activity) never treat as a verified site. No verdict at all → `not_available`
 with a reason naming how many candidates were tried.
 
 ## Regression-tested traps
 
-`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (114 web-module
+`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (130 web-module
 tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
 `uv run --with pytest pytest -q tests/signalpost`):
 
@@ -105,6 +118,9 @@ tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/
 | **Parked / coming-soon page** | Domeneshop parking pages, "Lanseres snart" | `test_parked_and_coming_soon_pages_are_rejected` |
 | **Property manager's switchboard** | a housing co-op's registry phone is its manager's (`vestbo.no`) | `test_open_places_phone_match_alone_is_not_enough` |
 | **Accountant's domain** | a registry e-mail on an accountant's domain whose page shows the client's (= accountant's) address | `test_registry_email_domain_with_address_only_stays_ambiguous` |
+| **Registered site forwarding to a shared e-mail domain** | A company's registered site forwarding to its accountant's site, where the company's registered e-mail also lives — the forward is trusted only when no other organisation uses that e-mail domain (H. LUNDBECK AS: lundbeck.no → lundbeck.com, own e-mail domain) | `test_a_registry_site_forwarding_to_our_own_email_domain_is_our_site`, `test_a_registry_site_forwarding_to_a_shared_email_domain_is_not_trusted_on_the_register_alone` |
+| **Own-name domain forwarding to the parent** | FRONT SYSTEMS AS: frontsystems.no forwards to the parent's egsoftware.com, whose links are the parent's profiles — found by the 7 Oct 2026 hand-check list | `test_a_name_domain_forwarding_to_the_parents_site_does_not_give_the_parents_profiles` |
+| **Generic path on a shared site** | A property manager's `/index.php` listed as a company's homepage | `test_a_generic_registry_listed_path_on_a_shared_site_is_not_our_page` |
 | **Live, unconflicted but wrong owner** | A registry-declared site whose footer/JSON-LD names a different legal entity (Xledger Labs AS → xledger.com, which only ever names "Xledger"/"Xledger AS") | covered in `verify.py`'s `site_owner_mismatch` path, exercised via the connector test suite |
 
 ## Gold-set validation (independent of unit tests)

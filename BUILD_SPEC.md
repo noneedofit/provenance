@@ -48,8 +48,8 @@ Reuse the starter kit freely by copying functions (its SSRF guard and social-URL
 
 ## Pipeline order per company (pipeline.py)
 1. `registry` connector (W1): bulk row → identity claims; live: `enheter/{org}`, `enheter/{org}/roller`,
-   `underenheter?overordnetEnhet={org}&size=100` (skip if bulk says no subunits is not knowable → always call for
-   T1+; T0 may skip and mark locations from business address only), `regnskapsregisteret/regnskap/{org}`,
+   `underenheter?overordnetEnhet={org}&size=1000` (always called: whether a company has subunits is not
+   knowable from the bulk row), `regnskapsregisteret/regnskap/{org}`,
    `regnskap/aarsregnskap/kopi/{org}/aar` (T2+ only; ~30 req/min limit, use a shared rate limiter).
    Families: identity, financials, financial_history, leadership, locations, group (parent via `overordnetEnhet` /
    `hovedenhet`; group otherwise `not_available`).

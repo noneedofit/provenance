@@ -60,8 +60,26 @@ T0_MAX_NAME_GUESSES = 3
 OPEN_PLACES_MAX_MATCHES = 4
 
 
+def _merge_initials(tokens: list[str]) -> list[str]:
+    """Join a run of single-letter initials into one token: "P.E. GAARUD" -> ["pe", "gaarud"], so the
+    guesses are pegaarud / pe-gaarud (the company's real domain) rather than p-e or p-e-gaarud."""
+    out: list[str] = []
+    run = ""
+    for tok in tokens:
+        if len(tok) == 1 and tok.isalpha():
+            run += tok
+            continue
+        if run:
+            out.append(run)
+            run = ""
+        out.append(tok)
+    if run:
+        out.append(run)
+    return out
+
+
 def _slug_tokens(value: str) -> list[str]:
-    return [tok for tok in re.findall(r"[a-z0-9]+", fold(value)) if tok]
+    return _merge_initials([tok for tok in re.findall(r"[a-z0-9]+", fold(value)) if tok])
 
 
 # Alternate, also-common Norwegian domain transliteration: "å" -> "aa" (the traditional double-vowel
@@ -74,7 +92,7 @@ def _slug_tokens_alt(value: str) -> list[str]:
         str.maketrans({"ø": "oe", "Ø": "OE", "å": "aa", "Å": "AA", "æ": "ae", "Æ": "AE"})
     )
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
-    return [tok for tok in re.findall(r"[a-z0-9]+", text) if tok]
+    return _merge_initials([tok for tok in re.findall(r"[a-z0-9]+", text) if tok])
 
 
 def registered_domain(url_or_host: str) -> str:
@@ -268,6 +286,34 @@ _TRADE_DESCRIPTOR_WORDS = {
 }
 
 
+def _first_word_guess(name: str, places: set[str]) -> str | None:
+    """Last-resort guess for a longer name: its first word alone, when that word is distinctive ("CIMPLE
+    TECHNOLOGY AS" -> cimple.no, "FLEVIG MARITIM AS" -> flevig.no; both sites show the org number). Not the
+    company's own town or municipality (LYNGDAL HAGESENTER AS -> lyngdal.no is the municipality)."""
+    tokens = [t for t in _slug_tokens(name) if t not in SUFFIX_WORDS and t not in _CONJUNCTIONS]
+    if len(tokens) < 2:
+        return None
+    first = tokens[0]
+    if len(first) < 5 or first.isdigit() or first in GENERIC_WORDS or first in places:
+        return None
+    if first in _name_guess_slugs(name):
+        return None  # already guessed as one of the fuller variants
+    return first
+
+
+def own_email_domain(ctx: Any, facts: dict[str, Any]) -> str | None:
+    """The registry e-mail's domain when it is this organisation's own: not a freemail provider and not shared
+    with other organisations (an accountant's or a property manager's domain)."""
+    domain = str(facts.get("email_domain") or "").strip().lower()
+    if not domain or domain in _FREEMAIL_FALLBACK:
+        return None
+    caches = getattr(ctx, "caches", None)
+    is_shared = getattr(getattr(caches, "email_domains", None), "is_shared", None)
+    if is_shared is not None and is_shared(domain):
+        return None
+    return registered_domain(domain) or None
+
+
 def generate_candidates(ctx: Any) -> list[Candidate]:
     """Return ordered, domain-deduplicated candidates. Guesses are DNS-prefiltered when a client is present."""
     facts = registry_facts(ctx)
@@ -425,6 +471,19 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
                 guess_count += 1
                 if guess_count >= guess_cap:
                     break
+
+    # 6b. The legal name's first word alone, on .no only (the measured hits were all .no), within the same cap.
+    bulk = getattr(ctx, "bulk", None) or {}
+    places_of_ours = {
+        t for value in (facts.get("city"), bulk.get("forretningsadresse.kommune"), bulk.get("forretningsadresse.poststed"))
+        for t in _slug_tokens(str(value or ""))
+    }
+    first = _first_word_guess(str(facts.get("name") or ""), places_of_ours)
+    if first and guess_count < guess_cap:
+        domain = f"{first}.no"
+        if client is None or not hasattr(client, "dns_resolves") or client.dns_resolves(domain):
+            candidates.append(Candidate(domain, _homepage_url(domain), "name_guess", f"first word of '{facts.get('name')}'", decisive=False, rank=rank))
+            rank += 1
 
     return _dedupe(candidates)
 

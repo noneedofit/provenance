@@ -415,3 +415,17 @@ def test_cli_main_builds_site(tmp_path):
     build.main(["--envelopes", str(FIXTURES), "--out", str(out)])
     assert (out / "index.html").is_file()
     assert len(list((out / "companies").glob("*.html"))) == 6
+
+
+def test_a_profile_from_the_group_website_is_labelled():
+    from signalpost.viewer.render import _render_website_profiles
+
+    claim = {
+        "claim_id": "c1", "family": "profiles", "field": "profile", "availability": "available",
+        "value": {"platform": "facebook", "url": "https://facebook.com/eksempel"}, "relationship": "brand",
+        "evidence_ids": [], "note": "linked from the group site eksempel.no, whose domain is this organisation's name",
+    }
+    html = _render_website_profiles({"profiles": [claim]}, {})
+    assert "linked from the group website" in html and "facebook.com/eksempel" in html
+    exact = dict(claim, relationship="exact", note=None)
+    assert "linked from the group website" not in _render_website_profiles({"profiles": [exact]}, {})

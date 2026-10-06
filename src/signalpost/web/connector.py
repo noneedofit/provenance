@@ -32,7 +32,7 @@ from . import extract as extract_mod
 from . import verify as verify_mod
 from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
-from .crawl import PageFetch, crawl_candidate
+from .crawl import PageFetch, crawl_candidate, fetch_confirmation_pages
 
 DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
 
@@ -87,9 +87,38 @@ _GENERIC_TOKENS = {
 }
 
 
-def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
+def _declared_branch_page(ctx: Any, cand: Candidate, pages: list[PageFetch] | None) -> bool:
+    """The register lists a page on a shared chain or group site for us, not just the site (HUSFLIDEN
+    HOLMESTRAND SA -> www.norskflid.no/holmestrand): the listed path carries a distinctive word of our name,
+    the page still loads under that path segment, and every distinctive word of our name is on it. It is the
+    company's own page on that site."""
+    if cand.source != "registry_website" or not pages:
+        return False
+    declared = urllib.parse.urlsplit(cand.url).path.strip("/").casefold()
+    if not declared:
+        return False
+    name = str(_registry_facts(ctx).get("name") or "")
+    tokens = {t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if len(t) >= 4 and t not in _GENERIC_TOKENS}
+    path_text = verify_mod._normalize(declared).replace("-", "").replace("_", "")
+    if not tokens or not any(t in path_text for t in tokens):
+        return False
+    page = next((p for p in pages if p.page_kind == "homepage"), pages[0])
+    if not page.ok or registered_domain(page.final_url or "") != cand.domain:
+        return False
+    # The page may have moved within the site (/holmestrand -> /butikker/holmestrand/), not off our path.
+    final_segments = urllib.parse.urlsplit(page.final_url or "").path.strip("/").casefold().split("/")
+    if declared.split("/")[-1] not in final_segments:
+        return False
+    page_tokens = set(re.findall(r"[a-z0-9]+", verify_mod._normalize(page.title + " " + page.text)))
+    return tokens <= page_tokens
+
+
+def _is_group_site(ctx: Any, cand: Candidate, verdict: Any, pages: list[PageFetch] | None = None) -> bool:
     """Registry-declared site that belongs to the company's own group: few organisations share the domain
-    (not a property manager or franchise platform), and the domain carries a distinctive word of our name."""
+    (not a property manager or franchise platform), and the domain carries a distinctive word of our name.
+    Or the register lists our own page on a shared chain/group site (see _declared_branch_page)."""
+    if verdict.relationship in ("parent", "brand", "subsidiary", "franchise") and _declared_branch_page(ctx, cand, pages):
+        return True
     if verdict.relationship not in ("parent", "brand", "subsidiary"):
         return False
     if cand.source not in ("registry_website", "wikidata_website", "osm_orgnr_website"):
@@ -104,6 +133,41 @@ def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
     tokens = [t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if t not in _GENERIC_TOKENS]
     label = (cand.domain or "").rsplit(".", 1)[0].replace("-", "")
     return any((len(t) >= 3 and t in label) or (len(t) == 2 and label.startswith(t)) for t in tokens)
+
+
+def _worth_confirming(verdict: Any) -> bool:
+    """An ambiguous verdict whose only support is our name (in the title or as the domain): one more look at
+    the pages that name the business behind a site can settle it either way."""
+    if verdict.status != "ambiguous" or verdict.conflicts:
+        return False
+    kinds = {s.kind for s in verdict.signals}
+    return bool(kinds & {"legal_name_match", "domain_name_match"})
+
+
+def _domain_is_our_name(ctx: Any, cand: Candidate) -> bool:
+    """The domain label is our full legal name minus legal-form words (HAIKJEFTEN AS -> haikjeften.no), and
+    that name is distinctive (8+ characters, not a generic word) -- the same test as verify's domain_name_match."""
+    name = str(_registry_facts(ctx).get("name") or "")
+    core = verify_mod._legal_name_core(name)
+    slug = "".join(t for t in re.findall(r"[a-z0-9]+", verify_mod._normalize(name)) if t in core)
+    label = (cand.domain or "").rsplit(".", 1)[0].replace("-", "")
+    return bool(slug) and label == slug and len(slug) >= 8 and slug not in verify_mod.GENERIC_NAME_WORDS
+
+
+def _publish_profiles(
+    result: ConnectorResult, org: str, links: list[dict], pages: list[PageFetch], homepage: PageFetch,
+    identity_basis: str, relationship: str, note: str | None = None,
+) -> None:
+    for link in links:
+        source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
+        ev = _make_evidence(source_page, link["url"], "web_social_link_v1")
+        result.evidence.append(ev)
+        result.claims.append(Claim(
+            claim_id=claim_key(org, "profiles", "profile", link["url"]), organisation_number=org,
+            family="profiles", field="profile", value={"platform": link["platform"], "url": link["url"]},
+            value_key=link["url"], availability="available", identity_basis=identity_basis,
+            relationship=relationship, evidence_ids=[ev.evidence_id], note=note,
+        ))
 
 
 def _debug_log(org: str, attempts: list[dict]) -> None:
@@ -151,14 +215,20 @@ def _declared_site_challenged(attempts: list[dict]) -> str | None:
     return None
 
 
-def _redirects_into_other_site(cand: Any, pages: list[PageFetch]) -> bool:
+def _redirects_into_other_site(cand: Any, pages: list[PageFetch], email_domain: str | None = None) -> bool:
     """The candidate redirects to a subpage of a different domain (albatross-as.no ->
     toma.no/tjenester/camps): that is someone else's site, usually a parent's, so only a decisive
-    signal such as our org number may make it our official site."""
+    signal such as our org number may make it our official site. A registry hjemmeside that forwards to
+    the domain of the registry's own e-mail address for us (lundbeck.no -> lundbeck.com/no, e-mail
+    norway@lundbeck.com; `email_domain` is passed only when no other organisation uses it) stays on a
+    domain the register ties to us, so it does not count."""
     if not pages:
         return False
     final = pages[0].final_url or ""
-    if registered_domain(final) == registered_domain(cand.url):
+    final_domain = registered_domain(final)
+    if final_domain == registered_domain(cand.url):
+        return False
+    if getattr(cand, "source", None) == "registry_website" and email_domain and final_domain == registered_domain(email_domain):
         return False
     return urllib.parse.urlsplit(final).path.strip("/") != ""
 
@@ -391,6 +461,7 @@ class WebConnector:
             if cand.source in DECISIVE_SOURCES:
                 decisive_source_unconfirmed = True
 
+        own_email = candidates_mod.own_email_domain(ctx, facts)
         for cand in ordered:
             require_decisive = (
                 has_decisive_source and decisive_source_unconfirmed
@@ -417,11 +488,14 @@ class WebConnector:
                 continue
 
             website_org_count = _website_org_count(ctx, cand.domain) if cand.source == "registry_website" else None
-            verdict = verify_mod.assess(
-                org, crawl_result.pages, facts, cand,
-                website_org_count=website_org_count,
-                require_decisive=require_decisive or _redirects_into_other_site(cand, crawl_result.pages),
-            )
+            strict = require_decisive or _redirects_into_other_site(cand, crawl_result.pages, own_email)
+            verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count,
+                                        require_decisive=strict, own_email_domain=own_email)
+            if _worth_confirming(verdict) and fetch_confirmation_pages(ctx, crawl_result):
+                # The site carries our name but nothing else read so far ties it to our record: read its
+                # privacy/terms/contact pages (where the org number usually is) and assess again, same rules.
+                verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count,
+                                            require_decisive=strict, own_email_domain=own_email)
             attempts.append({
                 "domain": cand.domain, "source": cand.source, "status": verdict.status,
                 "identity_basis": verdict.identity_basis, "relationship": verdict.relationship,
@@ -444,7 +518,7 @@ class WebConnector:
 
         if exact_pages is not None and exact_candidate is not None and exact_verdict is not None:
             self._publish_exact(ctx, result, exact_candidate, exact_verdict, exact_pages)
-        elif best_related is not None and _is_group_site(ctx, best_related[0], best_related[1]):
+        elif best_related is not None and _is_group_site(ctx, *best_related):
             self._publish_group_site(ctx, result, *best_related)
         elif best_related is not None:
             self._publish_related(ctx, result, *best_related)
@@ -537,16 +611,7 @@ class WebConnector:
 
         # profiles
         if extraction.social_links:
-            for link in extraction.social_links:
-                source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
-                ev = _make_evidence(source_page, link["url"], "web_social_link_v1")
-                result.evidence.append(ev)
-                result.claims.append(Claim(
-                    claim_id=claim_key(org, "profiles", "profile", link["url"]), organisation_number=org,
-                    family="profiles", field="profile", value={"platform": link["platform"], "url": link["url"]},
-                    value_key=link["url"], availability="available", identity_basis="linked_from_verified_site",
-                    relationship="exact", evidence_ids=[ev.evidence_id],
-                ))
+            _publish_profiles(result, org, extraction.social_links, pages, homepage, "linked_from_verified_site", "exact")
             result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=len(extraction.social_links), sources_checked=[cand.domain])
         else:
             result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
@@ -590,7 +655,9 @@ class WebConnector:
         org = ctx.org
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
         declared_by = "registry hjemmeside" if cand.source == "registry_website" else cand.label
-        note = f"website declared for this organisation number ({declared_by}) is the company's group site ({verdict.relationship}): {verdict.note}"
+        branch = _declared_branch_page(ctx, cand, pages)
+        where = "its own page on a shared chain/group site" if branch else "the company's group site"
+        note = f"website declared for this organisation number ({declared_by}) is {where} ({verdict.relationship}): {verdict.note}"
         ev = _make_evidence(homepage, f"{declared_by}: {cand.url}", "web_group_site_v1")
         result.evidence.append(ev)
         result.claims.append(Claim(
@@ -605,6 +672,21 @@ class WebConnector:
             family="website", availability="available", reason=note, sources_checked=[cand.domain], claim_count=1,
         )
         result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="website is a group site; its profiles belong to the group")
+        stays_on_domain = registered_domain(homepage.final_url or "") == cand.domain
+        if not branch and stays_on_domain and _domain_is_our_name(ctx, cand):
+            # The group site's domain is exactly our own name (HAIKJEFTEN AS -> haikjeften.no, which shows a
+            # sister company's org number) and the page is on that domain, not forwarded to the parent's
+            # (frontsystems.no -> egsoftware.com): the profiles it links are the brand we trade under.
+            # Published with the group relationship, never as exact.
+            links = extract_mod.extract_all(pages).social_links
+            if links:
+                basis = {"wikidata_website": "wikidata_org_number", "osm_orgnr_website": "open_map_org_number"}.get(cand.source, "registry_declared")
+                _publish_profiles(result, org, links, pages, homepage, basis, verdict.relationship,
+                                  note=f"linked from the group site {cand.domain}, whose domain is this organisation's name")
+                result.families["profiles"] = FamilyState(
+                    family="profiles", availability="available", claim_count=len(links), sources_checked=[cand.domain],
+                    reason="linked from the group site that carries this organisation's name",
+                )
         result.families["description"] = FamilyState(family="description", availability="not_available", reason="website is a group site; its text describes the group")
         result.shared["web_related_site"] = {"url": homepage.final_url, "domain": cand.domain, "relationship": verdict.relationship}
 

@@ -715,7 +715,8 @@ def _render_website_profiles(by_family: dict, ev_by_id: dict) -> str:
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
         v = c["value"] if isinstance(c["value"], dict) else {"url": c["value"]}
         platform = _PLATFORM_LABELS.get(str(v.get("platform") or "").lower(), str(v.get("platform") or "Profile").title())
-        prof_rows.append(fact_row(c["claim_id"], platform, _linked(v.get("url"), v.get("url")), src))
+        tag = "" if c.get("relationship") in (None, "exact") else ' <span class="website-relationship">linked from the group website</span>'
+        prof_rows.append(fact_row(c["claim_id"], platform, _linked(v.get("url"), v.get("url")) + tag, src, c.get("note")))
     prof_html = "".join(prof_rows) or '<p class="muted">No linked profiles found.</p>'
 
     return f'<div class="section"><h3>Website</h3>{site_html}<h3>Description</h3>{desc_html}<h3>Profiles</h3>{prof_html}</div>'

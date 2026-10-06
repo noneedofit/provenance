@@ -213,3 +213,121 @@ def test_a_refused_homepage_is_not_retried(server):
     client = BudgetedHttpClient(Budget(hard_cap=100))
     resp = client.get(f"http://127.0.0.1:{port}/refused-once", org="orgI", purpose="web_homepage", respect_robots=False)
     assert resp.status == 403 and resp.requests_used == 1
+
+
+class _FakeResp:
+    def __init__(self, body: bytes, status: int = 200, closed: bool = True):
+        self.body, self.status, self.closed = body, status, closed
+
+    def read(self, n: int) -> bytes:
+        return self.body[:n]
+
+    def isclosed(self) -> bool:
+        return self.closed
+
+    def getheader(self, name, default=None):
+        return default
+
+    def getheaders(self):
+        return [("Content-Type", "application/json")]
+
+
+class _FakeConn:
+    def __init__(self, outcomes, reused: bool = False):
+        self.outcomes, self.requests = outcomes, 0
+        self.closed = False
+        self.sock = object() if reused else None  # an open socket: the connection served an earlier call
+
+    def request(self, method, path, body=None, headers=None):
+        self.requests += 1
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        self.resp = outcome
+
+    def getresponse(self):
+        return self.resp
+
+    def close(self):
+        self.closed = True
+
+
+def _keepalive(monkeypatch, conns):
+    import urllib.parse
+
+    from signalpost import http as http_mod
+
+    handed = []
+
+    def fake_conn(host, port, timeout):
+        if not handed or handed[-1].closed:
+            handed.append(conns.pop(0))
+        return handed[-1]
+
+    monkeypatch.setattr(http_mod, "_keepalive_conn", fake_conn)
+    monkeypatch.setattr(http_mod, "_keepalive_drop", lambda host, port: handed[-1].close())
+    url = "https://data.brreg.no/enhetsregisteret/api/enheter/923456783"
+    return http_mod._keepalive_http("GET", url, urllib.parse.urlsplit(url), {}, None, 5.0, 1000), handed
+
+
+def test_keepalive_replaces_a_connection_the_server_already_closed(monkeypatch):
+    import http.client
+
+    stale = _FakeConn([http.client.RemoteDisconnected("closed")], reused=True)
+    fresh = _FakeConn([_FakeResp(b'{"ok": 1}')])
+    (status, _, raw, _, error), handed = _keepalive(monkeypatch, [stale, fresh])
+    assert (status, raw, error) == (200, b'{"ok": 1}', None)
+    assert stale.closed and not fresh.closed  # the good connection stays open for the next call
+
+
+def test_keepalive_reports_a_network_error_after_one_replacement(monkeypatch):
+    import http.client
+
+    conns = [_FakeConn([http.client.RemoteDisconnected("closed")], reused=True), _FakeConn([ConnectionResetError()])]
+    (status, _, _, _, error), _ = _keepalive(monkeypatch, conns)
+    assert (status, error) == (0, "network_error")
+
+
+def test_keepalive_does_not_resend_on_a_new_connection(monkeypatch):
+    import http.client
+
+    new = _FakeConn([http.client.RemoteDisconnected("closed")])
+    spare = _FakeConn([_FakeResp(b"{}")])
+    (status, _, _, _, error), handed = _keepalive(monkeypatch, [new, spare])
+    assert (status, error) == (0, "network_error") and handed == [new]
+
+
+def test_keepalive_failure_while_reading_the_body_is_not_resent(monkeypatch):
+    class _BrokenResp(_FakeResp):
+        def read(self, n):
+            raise ConnectionResetError()
+
+    conn = _FakeConn([_BrokenResp(b"")], reused=True)
+    spare = _FakeConn([_FakeResp(b"{}")])
+    (status, _, _, _, error), handed = _keepalive(monkeypatch, [conn, spare])
+    assert (status, error) == (0, "network_error") and handed == [conn]
+
+
+def test_keepalive_never_reuses_a_connection_with_unread_body(monkeypatch):
+    conn = _FakeConn([_FakeResp(b"x" * 2000, closed=False)])
+    (status, _, raw, _, _), _ = _keepalive(monkeypatch, [conn])
+    assert status == 200 and len(raw) == 1001 and conn.closed
+
+
+def test_keepalive_timeout_is_a_timeout(monkeypatch):
+    conn = _FakeConn([TimeoutError()])
+    (_, _, _, _, error), _ = _keepalive(monkeypatch, [conn])
+    assert error == "timeout" and conn.closed
+
+
+def test_keepalive_only_for_listed_official_hosts_without_a_proxy(monkeypatch):
+    import urllib.parse
+
+    from signalpost import http as http_mod
+
+    monkeypatch.setattr(http_mod.urllib.request, "getproxies", lambda: {})
+    assert http_mod._keepalive_enabled(urllib.parse.urlsplit("https://data.brreg.no/x"))
+    assert not http_mod._keepalive_enabled(urllib.parse.urlsplit("https://example.no/"))
+    assert not http_mod._keepalive_enabled(urllib.parse.urlsplit("http://data.brreg.no/x"))
+    monkeypatch.setattr(http_mod.urllib.request, "getproxies", lambda: {"https": "http://proxy:3128"})
+    assert not http_mod._keepalive_enabled(urllib.parse.urlsplit("https://data.brreg.no/x"))

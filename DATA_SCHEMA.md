@@ -134,7 +134,9 @@ refresh_and_changes           -> ()  # satisfied by run/changes directly
 Claim values worth knowing (others are self-describing):
 
 - `website/official_website`: the site URL (string). `relationship` is `exact` for the company's own
-  verified site, or `parent`/`brand`/`subsidiary` for its group's site declared for this org number.
+  verified site, or `parent`/`brand`/`subsidiary`/`franchise` for its group's site (or its own page on a
+  chain site) declared for this org number. `profiles/profile` carries the same non-exact relationship
+  when it was linked from such a group site whose domain is the company's name.
 - `financial_history/filed_years`: list of years with filed accounts; for shell-tier companies
   `financial_history/latest_filed_year` (an int, from the register bulk file) instead.
 - `reviews/inspection_rating`: `{rater, scheme, place, place_org_number, grade_code (0-3, or null when

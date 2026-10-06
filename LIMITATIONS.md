@@ -47,9 +47,11 @@ phone/e-mail). Parked, "coming soon" and registrar placeholder pages are never a
 real websites stay `not_available` or `ambiguous` when the page shows nothing that ties it to the
 register. A registry-declared site shared by a few group companies (or tied to the org number by
 Wikidata/OSM but showing a subsidiary's number) is published as the company's website labelled with the
-relationship (`parent`/`brand`), never as an exact own-site; profiles and descriptions are not taken from
-it. Domains shared by ten or more organisations (property managers, franchise platforms) are not
-published. Sites that block automated visitors (HTTP 403 "request blocked") are not worked around.
+relationship (`parent`/`brand`), never as an exact own-site; descriptions are not taken from it, and
+profiles only when its domain is exactly the company's name (published with the same relationship).
+Domains shared by ten or more organisations (property managers, franchise platforms) are not published,
+except for a page on such a domain that the register lists for the company itself and that names it
+(a chain member's own page). Sites that block automated visitors (HTTP 403 "request blocked") are not worked around.
 
 ## Sites behind a bot challenge are not read
 
