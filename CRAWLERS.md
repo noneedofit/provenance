@@ -90,8 +90,11 @@ Families: `jobs`, `activity`, `reviews`.
    exact-verified site. Currently returns nothing in practice: YouTube's own `robots.txt` disallows
    `/feeds/videos.xml` for a generic user agent, and this connector respects robots.txt on every request
    (see `LIMITATIONS.md` / `SOURCES.md`).
-5. **`reviews`** — always `not_available`, reason "no permitted keyless ratings/reviews source
-   (Google/Trustpilot/Glassdoor require licensed API access)". No connector attempts this family.
+5. **`reviews`** — Mattilsynet's food-hygiene inspection result (smilefjes) for the company's food-service
+   locations: the site's place index is read once per run, candidates are matched on postcode and name,
+   and a place is published only when its page shows the company's or a subunit's org number
+   (`activity/smilefjes.py`). Every other company: `not_available` (consumer review platforms need licensed
+   API access).
 
 **Budget**: every HTTP-using stage (ATS, feeds, YouTube) is gated on a verified site present, tier
 `!= "T0"`, and `ctx.client.remaining(org) >= 1`. YouTube resolves at most 2 linked channels and reads at
@@ -99,10 +102,10 @@ most 5 videos each; feeds/news collect at most 10 dated items total.
 
 ## Global request budget (`src/signalpost/http.py`)
 
-`Budget` (thread-safe) enforces a single hard cap (`--max-requests`, default 19 per input company) across the whole
-batch. Every redirect hop and every retry (timeout, 429, or 5xx — one bounded retry) counts as a request.
+`Budget` (thread-safe) enforces a single hard cap (`--max-requests`, default 26 per input company) across the whole
+batch. Every redirect hop and every retry (timeout, 429, or 5xx — one bounded retry, plus one later attempt for an official API's 5xx) counts as a request.
 `BudgetedHttpClient` resolves DNS and blocks non-public addresses before every connection
-(`assert_public_url`, reused from the starter kit), disables automatic redirect-following so each hop can
+(`assert_public_url` in `signalpost/urls.py`, adapted from the starter kit), disables automatic redirect-following so each hop can
 be counted and SSRF-checked individually, and honours `robots.txt` per host (cached, itself charged as
 one request) for every call made with `respect_robots=True` — the default for company sites and third-
 party platforms; official/keyless registry and NAV-feedentry calls pass `respect_robots=False`.

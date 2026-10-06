@@ -14,7 +14,7 @@ import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
-from norway_company_agent.website import normalize_social_url  # reuse starter-kit normalization
+from ..urls import normalize_social_url
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 

@@ -106,6 +106,16 @@ Gold set (131 companies), main after the 25 Sep recall and NAV-feed merges:
 | Jobs `failed` | 0 (was 93 / 131 with per-company search) |
 | Requests / runtime | ~1,800 / ~9 min (131 companies) |
 
+Revision-1 measurements (6 Oct 2026):
+
+| Check | Result |
+|---|---|
+| 1,500 random companies in one run (defaults) | 26 min, 14,504 requests, peak memory 660 MB, no deadline or budget hits; 1,495 completed, 5 partial (register HTTP 500s, reported `failed`) |
+| 300 random companies, before → after | website 13.0% → 18.0% (0 lost), profiles 7.3% → 10.0%, activity 3.7% → 6.3%, reviews 0 → 2.3% |
+| Wrong-company check of every newly accepted website (independent hand-check) | round 1: 6 wrong of 28 — all from counting the name in domain and title twice; rule fixed (name signals count once, parked pages rejected). Round 2: 0 wrong among published sites |
+| Determinism, two simultaneous fresh runs of the 100 smoke-test companies | 0 fact differences, 0 evidence-quote differences |
+| Clean clone of the submitted commit | see `smoke-test/README.md` (audit 0 problems, rerun 0 changes) |
+
 Official batch shape (1,000 companies in ONE run, final code, 28 Sep 2026): every envelope valid; about
 25 minutes and 9,000 requests with the default budget (19 per company, 40-minute deadline), no deadline or
 budget hits. Available per family: identity 1000, leadership 1000, locations 999, financials 997,
@@ -123,8 +133,8 @@ reported 0 changes on runs 2 and 3 despite ~22 website connection errors per run
 retried once, and a previously verified source that cannot be reached is carried forward, not removed).
 
 Clean-clone test: `uv sync` plus the evaluator command with no data or caches downloads the bulk file,
-builds the shared-domain and Wikidata tables, and completes (20 companies: valid, 277 requests, ~10 min
-wall including the one-time setup and 60-day NAV feed window).
+builds the shared-domain, Wikidata and open-places tables, and completes; see `smoke-test/README.md` for
+the current 100-company clean-clone run.
 
 Refresh on real data: batch 1 of the 24 Sep profiles rerun on 27 Sep against its stored state reported
 sensible typed changes (new filings, a moved business address, a newly verified website and profile, a
@@ -153,8 +163,8 @@ python -m eval.report --baseline eval-report-baseline.json --challenger eval-rep
 - **`description` and `activity`** have no independent gold yet — only a coverage-only, unverified proxy,
   flagged on every report via `unverified_families_coverage_only` so it is never silently trusted as
   precision-checked.
-- **`reviews`** has no gold and no coverage proxy — expected to stay empty, since no keyless review
-  source exists (see `LIMITATIONS.md`).
+- **`reviews`** has no gold and no coverage proxy; it carries Mattilsynet food-hygiene inspection results
+  for food-service companies only (about 2% of a random batch; see `LIMITATIONS.md`).
 - `pooled_recall_proxy` approximates the organiser's "pooled verified collection" with our own gold as
   the denominator; the real pooled collection additionally includes what *other* entrants verified,
   invisible to this harness. Treat it as a lower-bound-ish local estimate, not the organiser's true

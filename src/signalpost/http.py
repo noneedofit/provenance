@@ -23,30 +23,7 @@ from typing import Any
 
 from .context import Response
 from .snapshots import SnapshotStore
-
-try:  # reuse the starter kit's SSRF guard rather than re-implement it
-    from norway_company_agent.website import assert_public_url
-except Exception:  # pragma: no cover - fallback if the starter kit package is ever removed
-    import ipaddress
-
-    def assert_public_url(url: str) -> None:  # type: ignore[no-redef]
-        parsed = urllib.parse.urlparse(url)
-        host = (parsed.hostname or "").lower().rstrip(".")
-        if parsed.scheme not in {"http", "https"} or not host:
-            raise ValueError("Only public HTTP(S) URLs are allowed")
-        if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
-            raise ValueError("Local hosts are blocked")
-        try:
-            addresses = {
-                item[4][0]
-                for item in socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
-            }
-        except socket.gaierror as exc:
-            raise ValueError("Hostname did not resolve") from exc
-        for address in addresses:
-            ip = ipaddress.ip_address(address)
-            if not ip.is_global:
-                raise ValueError("Private, loopback, link-local, multicast, and reserved addresses are blocked")
+from .urls import assert_public_url
 
 
 def _retry_after_seconds(headers: dict | None, default: float = 5.0, cap: float = 20.0) -> float:

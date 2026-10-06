@@ -93,7 +93,7 @@ independent corroborating signals and zero conflicts.
 4. **`extract.extract_all(pages)`** — from the *exact*-verified pages only: description (JSON-LD
    `description` > meta/og:description > first substantive paragraph via trafilatura, capped at 400
    chars, with the source span kept), brand name (JSON-LD `name` > `og:site_name` > `<title>`), social
-   profiles (reusing `norway_company_agent.website.normalize_social_url` — share/intent links excluded),
+   profiles (`signalpost.urls.normalize_social_url` — share/intent links excluded),
    contact email/phone, JSON-LD address/foundingDate/numberOfEmployees/sameAs, RSS/Atom feed links, ATS
    links (teamtailor, webcruiter, jobylon, reachmee, hrmanager, recman, easycruit, workday,
    smartrecruiters, lever, greenhouse, jobbnorge, finn.no job links), and the news page URL.
@@ -130,7 +130,7 @@ domain signal), never an exception.
 `tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_crawl.py`,
 `test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 72 tests, no network (fake
 `HttpClient` in `tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
-`docs/PLAN.md` §3 and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
+the build plan and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
 `MECCA AS -> thon.no` (parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not
 `exact`), a shared housing-manager domain (`obos.no`-style, `website_org_count >= 3` forces `related`
 even without a conflicting org number), `GAASA AS -> gaasa.no` (hijacked registry domain, casino-affiliate

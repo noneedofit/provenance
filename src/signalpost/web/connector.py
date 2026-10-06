@@ -25,7 +25,7 @@ from . import verify as verify_mod
 from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, crawl_candidate
-from norway_company_agent.website import normalize_social_url
+from ..urls import normalize_social_url
 
 DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
 

@@ -17,7 +17,7 @@ keeping, before it ever touches the organiser's hidden pooled collection. It has
    coverage, precision/recall vs gold, a pooled-recall proxy, refresh checks (given a previous
    run's envelopes) and budget checks (given `run-report.json`), and rolls them into a proxy
    total out of 100 using the organiser's category weights. `report.py` compares two `score()`
-   outputs and applies the PROMOTE / HOLD / REJECT rule from `docs/PLAN.md` §6.
+   outputs and applies a PROMOTE / HOLD / REJECT rule (promote only with no precision regression).
 
 ## Quickstart
 

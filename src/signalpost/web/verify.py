@@ -49,7 +49,7 @@ def is_valid_orgnr(digits: str) -> bool:
     """Mod-11 check digit validation for a 9-digit Norwegian organisation number."""
     if len(digits) != 9 or not digits.isdigit():
         return False
-    total = sum(int(d) * w for d, w in zip(digits, _MOD11_WEIGHTS))
+    total = sum(int(d) * w for d, w in zip(digits[:8], _MOD11_WEIGHTS, strict=True))  # 9th digit is the check digit
     remainder = total % 11
     check = 0 if remainder == 0 else 11 - remainder
     if check == 10:

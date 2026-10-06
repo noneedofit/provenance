@@ -1,6 +1,10 @@
 # Signalpost agent — build spec (orchestrator-owned)
 
-Read `docs/PLAN.md` for the why (research, source catalogue, probe results in `tests/fixtures/website-probe-150.json`). This file is the what.
+> **Historical document.** This is the specification the agent was first built from (September 2026).
+> Budgets, tiers and sources have changed since; the current behaviour is documented in `README.md`,
+> `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md` and `LIMITATIONS.md`.
+
+This file was the what; the research notes behind it are summarised in `SOURCES.md` and `LIMITATIONS.md`.
 Contract files owned by the orchestrator (do NOT change without asking): `src/signalpost/models.py`,
 `src/signalpost/context.py`, this file.
 
@@ -40,8 +44,8 @@ eval/                            W7 eval   splits, gold, proxy scorer
 tests/signalpost/                each workstream adds tests for its own modules
 ```
 Never edit files owned by another workstream. If you need an interface change, write it in your final report.
-Reuse the starter kit (`src/norway_company_agent/`) freely by importing or copying functions (e.g.
-`website.assert_public_url`, `normalize_social_url`, `official.normalize_*`), but new code lives in `src/signalpost/`.
+Reuse the starter kit freely by copying functions (its SSRF guard and social-URL normaliser now live in
+`src/signalpost/urls.py`); all code lives in `src/signalpost/`.
 
 ## Pipeline order per company (pipeline.py)
 1. `registry` connector (W1): bulk row → identity claims; live: `enheter/{org}`, `enheter/{org}/roller`,

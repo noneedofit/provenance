@@ -21,7 +21,8 @@ own families and publishing facts other connectors can read from `ctx.shared`:
    `shared["feed_urls"]`, `shared["ats_links"]`.
 4. **`activity`** (`activity.connector.ActivityConnector`) — families `jobs`, `activity`, `reviews`. Reads
    NAV ads (live or cached), an ATS feed/careers page on the verified site, site RSS/Atom/news, and
-   YouTube channel RSS for channels linked from the verified site. `reviews` is always `not_available`.
+   YouTube channel RSS for channels linked from the verified site, and Mattilsynet food-hygiene inspection
+   results for `reviews` (published only when the inspection page shows our or a subunit's org number).
 
 After all connectors run: `synthesis.build_summary` turns the envelope's claims into deterministic
 English sentences (`SYNTHESIS`), `refresh.apply_refresh` merges the result with the previous stored
@@ -34,8 +35,8 @@ un-run family marked `failed` and a reason (`deadline`, `request_budget`, `crash
 
 - **Tiered budget, not uniform effort.** `planner.classify` (`src/signalpost/planner.py`) scores each
   company from bulk-registry signals alone (employee count, NACE code, legal form, presence of a
-  registered site/domain, bankrupt/liquidating flags) into tiers T0 (shell, ~5 requests) through T3
-  (50+ staff, ~45 requests) before any network call is made, so budget is spent where a footprint is
+  registered site/domain, bankrupt/liquidating flags) into tiers T0 (shell, ~14 requests) through T3
+  (50+ staff, ~55 requests) before any network call is made, so budget is spent where a footprint is
   actually likely to exist.
 - **Cheapest, most decisive sources first.** Website candidates are tried in the order registry
   `hjemmeside` → Wikidata → NAV employer homepage → registry email domain → subunit websites/emails →

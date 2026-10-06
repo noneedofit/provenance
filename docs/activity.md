@@ -116,8 +116,8 @@
   `youtube.com/feeds/videos.xml?channel_id=UC…` for the 5 latest videos. Only channels linked from an
   exact-verified site are used (`identity_basis="linked_from_verified_site"`); no scraping of video
   pages, no LinkedIn/Facebook/Instagram/X/TikTok (those stay W3's URL-only profiles).
-- **`connector.py`** - orchestrates the above into `ConnectorResult`. `reviews` is always
-  `not_available` (no permitted keyless source). `jobs` is `available` when ≥1 active posting exists
+- **`connector.py`** - orchestrates the above into `ConnectorResult`. `reviews` comes from
+  `smilefjes.py` (Mattilsynet food-hygiene inspections, org-number confirmed on the inspection page). `jobs` is `available` when ≥1 active posting exists
   (NAV live and/or cache, and/or ATS). Otherwise: on the live path, `nav_jobs._collect_live` decides
   directly - `not_available` reason "checked NAV arbeidsplassen: no active postings for this org number"
   when searched and nothing verified, `not_applicable` reason "not searched: no registered staff or web

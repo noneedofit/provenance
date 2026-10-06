@@ -26,7 +26,7 @@ GENERIC_WORDS = {
     "norge", "norway", "holding", "gruppen", "group", "invest", "investering", "eiendom",
     "eiendommer", "drift", "handel", "service", "tjenester", "consulting", "konsulent",
     "bygg", "shop", "butikk", "hus", "senter", "norsk", "nordic", "as", "asa",
-    "transport", "logistikk", "logistics", "elektro", "rens", "vaktmester", "bygg", "montasje",
+    "transport", "logistikk", "logistics", "elektro", "rens", "vaktmester", "montasje",
 }
 
 # Legal-form tokens: never part of a real domain, always stripped.

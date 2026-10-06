@@ -7,20 +7,8 @@ dependencies = [
   "extruct>=0.18,<1",
   "lxml>=6,<7",
   "pydantic>=2.12,<3",
-  "pypdf>=6,<7",
   "tldextract>=5.3,<6",
   "trafilatura>=2.0,<3",
-]
-
-[project.optional-dependencies]
-crawler = [
-  "scrapy>=2.13,<3",
-  "scrapy-playwright>=0.0.44,<1",
-]
-sentiment = [
-  "accelerate>=1.10,<2",
-  "torch>=2.5,<3",
-  "transformers>=4.51,<5",
 ]
 
 [project.scripts]
@@ -31,7 +19,7 @@ requires = ["hatchling>=1.25,<2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/signalpost", "src/norway_company_agent"]
+packages = ["src/signalpost"]
 
 [tool.uv]
 package = true

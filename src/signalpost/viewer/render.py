@@ -270,7 +270,7 @@ def evidence_drawer(claim: dict, ev_by_id: dict, drawer_id: str) -> str:
     if not ev_ids:
         return '<span class="muted small">no evidence recorded</span>'
     parts = []
-    for i, eid in enumerate(ev_ids):
+    for eid in ev_ids:
         e = ev_by_id.get(eid)
         if not e:
             continue

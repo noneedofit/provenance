@@ -13,7 +13,7 @@ anywhere, refreshed automatically if it expires mid-run.
 ## SSRF guard
 
 Every outbound request, to every source below, passes through `assert_public_url` before connecting
-(`src/signalpost/http.py`, reused from the starter kit's `norway_company_agent.website`): resolves DNS
+(`src/signalpost/http.py`, guard in `src/signalpost/urls.py`, adapted from the starter kit): resolves DNS
 and rejects the request if scheme isn't `http`/`https`, the host is `localhost`/`*.local`, or any
 resolved address is not a global public IP (private, loopback, link-local, multicast, reserved). This
 runs on every hop of a redirect chain, not just the initial URL, so a redirect cannot be used to reach an
@@ -167,15 +167,16 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 **LinkedIn, Meta (Facebook/Instagram), Glassdoor, Indeed, and Google** are **never** fetched or scraped
 by this agent. Where a link to one of these appears on a verified company's own website (e.g. a
 "Follow us on LinkedIn" link in the footer), `web/extract.py`'s social-link extraction records that
-**URL only** (reusing the starter kit's `norway_company_agent.website.normalize_social_url`) as a
+**URL only** (`signalpost.urls.normalize_social_url`, adapted from the starter kit) as a
 `profiles/profile` claim (`source_class="company_owned_platform"`, `identity_basis=
 "linked_from_verified_site"`) — the link itself, never the platform's content. No page on any of these
 domains is ever requested. `web/blocklist.py`'s `MARKETPLACE_BLOCKLIST` additionally ensures none of
 these domains can ever be *generated* as a website candidate in the first place (a registry/subunit email
 address on `facebook.com` or `linkedin.com`, for instance, is never turned into a candidate).
 
-`reviews` (Google, Trustpilot, Glassdoor, etc.) is always `not_available` — see `LIMITATIONS.md` — no
-licensed provider is used, consistent with the $0 / no-secrets constraint.
+Consumer review platforms (Google, Trustpilot, Glassdoor, etc.) are not used — they need licensed API
+access, and the agent runs with $0 and no secrets. `reviews` carries only Mattilsynet's public
+food-hygiene inspection results (see above).
 
 ---
 

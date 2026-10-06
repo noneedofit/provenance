@@ -11,7 +11,8 @@ inspection ratings (Mattilsynet) where they exist — every `available` claim ca
 exact supporting text or JSON path. Re-running against the same state directory detects real changes,
 keeps prior evidence, and never invents a false change.
 
-Built on the Builderr Signalpost starter kit.
+Built on the Builderr Signalpost starter kit (its SSRF guard and social-URL normaliser live on in
+`src/signalpost/urls.py`; the kit's prototype scripts are not part of this agent).
 
 ## What it actually does
 
@@ -63,7 +64,8 @@ request). No API key is required — the registry API is keyless and public.
 it is empty, builds the two identity-critical parts itself before the batch starts: the shared-domain
 table from the bulk file (0 requests, a few seconds) and the Wikidata table (1 SPARQL request, with a
 bundled CC0 snapshot as fallback). A clean clone therefore needs only `uv sync` and the run command below;
-the first run also downloads the bulk file and a 60-day NAV job-feed window (~115 requests, reused from
+the first run also downloads the bulk file, indexes the bundled open-places and NAV snapshots, and reads
+the NAV job feed published since the NAV snapshot (a few requests per day of snapshot age, reused from
 `--state-dir` by later runs). Setup requests are reported separately in `run-report.json`
 (`setup_requests`, `total_requests_including_setup`).
 

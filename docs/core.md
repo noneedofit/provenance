@@ -39,17 +39,18 @@ Stdlib-only (`urllib`), implements `context.HttpClient`. Key behaviors:
 - **Manual redirects**: a custom `HTTPRedirectHandler` that never auto-follows, so every hop is
   individually SSRF-checked, robots-checked and budget-charged. `Response.requests_used` sums every hop
   and retry for that one `.get()` call; `Response.redirect_chain` lists every URL visited.
-- **SSRF guard**: reuses `norway_company_agent.website.assert_public_url` (blocks non-http(s), loopback,
+- **SSRF guard**: uses `signalpost.urls.assert_public_url` (adapted from the starter kit) (blocks non-http(s), loopback,
   private, link-local, multicast) with a local fallback if that module is ever removed.
 - **Robots.txt**: cached per `(scheme, host)`. The robots.txt fetch itself is charged to the calling org
   as one request (matches BUILD_SPEC). Pass `respect_robots=False` for official/keyless APIs
   (`data.brreg.no`, NAV feeds, Wikidata, YouTube feeds) — this is the caller's responsibility, `http.py`
   does not hardcode a host allowlist. An unreachable robots.txt defaults to allow (same policy as the
   starter kit).
-- **Retries**: one retry per hop on `429` / `5xx` / timeout; the retry is charged like any other request.
-- **Concurrency**: a `threading.Semaphore` per host, default 2, `data.brreg.no` gets 6
+- **Retries**: one retry per hop on `429` / `5xx` / timeout, charged like any other request; official APIs
+  (fetched without robots) pause 2 s before a `5xx` retry and get one more attempt after 4 s.
+- **Concurrency**: a `threading.Semaphore` per host, default 2, `data.brreg.no` gets 10, `pam-stilling-feed.nav.no` 8
   (`HOST_CONCURRENCY_OVERRIDES`).
-- **Budget**: `Budget` is a thread-safe global counter with a hard cap (`--max-requests`, default 1900) and
+- **Budget**: `Budget` is a thread-safe global counter with a hard cap (`--max-requests`, default 26 per input company) and
   soft per-org allowances (`allocate`/`charge`/`remaining`) that borrow from the shared pool — an org can
   spend past its own allocation as long as the global hard cap isn't hit. When the hard cap is hit,
   `.get()`/`.post_json()` return a `Response` with `error="budget_exhausted"` instead of raising.
@@ -120,7 +121,7 @@ it shares an accountant's email domain). T0 shell ~5 req, T1 small ~15, T2 staff
 run_batch(
     orgs: list[str], *, output_dir: str, state_dir: str, run_id: str,
     bulk_path: str | None = None, caches_dir: str | None = None,
-    max_requests: int = 1900, deadline_s: int = 2400, workers: int = 12,
+    max_requests: int = 2600, deadline_s: int = 2400, workers: int = 24,
     connectors: list[Connector] | None = None,
     bulk_rows: dict[str, dict] | None = None,  # test hook: inject rows instead of a bulk CSV
 ) -> dict  # the run-report.json contents
@@ -147,7 +148,7 @@ After connectors run: `signalpost.synthesis.build_summary(envelope)` and
 now`). Any family not reported by a connector is filled with `FamilyState(availability="failed", reason=...)`
 where reason is `"deadline"` (global deadline passed), `"request_budget"` (`client.remaining(org) <= 0`), or
 `"not_run"`. `sections` is built from `models.SECTIONS`. Concurrency is a `ThreadPoolExecutor` sized by
-`--workers` (default 12); the global deadline (`--deadline-seconds`, default 2400s = 40 min) is checked
+`--workers` (default 24); the global deadline (`--deadline-seconds`, default 2400s = 40 min) is checked
 before each company starts and before each connector call — once past it, remaining companies still get an
 envelope, just with `failed`/`deadline` families, never a dropped input.
 
