@@ -9,6 +9,8 @@ Public API used by other workstreams:
 """
 from __future__ import annotations
 
+import hashlib
+
 import threading
 import time
 
@@ -23,6 +25,7 @@ from .models import (
     ConnectorResult,
     Evidence,
     FamilyState,
+    canonical,
     claim_key,
     evidence_id,
 )
@@ -219,12 +222,17 @@ class _ClaimBuilder:
 # --------------------------------------------------------------------------------------------------
 
 
+def bulk_row_sha256(row: dict[str, Any]) -> str:
+    """Content hash of the exact bulk-file row a value was read from (canonical JSON of the row)."""
+    return hashlib.sha256(canonical(row).encode("utf-8")).hexdigest()
+
+
 def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, snapshot_sha256: str | None) -> None:
     """Fallback identity claims from the bulk row (used when the live entity fetch fails)."""
     org = builder.org
     eid = builder.add_evidence(
         source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.now,
-        extraction_method="brreg_bulk_row_v1", span=f"row organisasjonsnummer={org}", content_sha256=snapshot_sha256,
+        extraction_method="brreg_bulk_row_v1", span=f"row organisasjonsnummer={org}", content_sha256=snapshot_sha256 or bulk_row_sha256(row),
     )
     legal_form = (row.get("organisasjonsform.kode") or "").strip() or None
     if row.get("navn"):
@@ -752,6 +760,7 @@ class RegistryConnector:
             eid = builder.add_evidence(
                 source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.now,
                 extraction_method="brreg_bulk_row_v1", span="$.sisteInnsendteAarsregnskap",
+                content_sha256=bulk_row_sha256(bulk_row),
             )
             builder.add_claim(family="financial_history", field="latest_filed_year", value=year, evidence_ids=[eid])
             builder.note_checked("financial_history", BULK_DOWNLOAD_URL)
