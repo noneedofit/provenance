@@ -254,3 +254,91 @@ def test_crashed_connector_does_not_report_its_facts_as_changed_to_nothing(tmp_p
     assert second["families"]["description"]["availability"] == "failed"
     carried = [c for c in second["claims"] if c["field"] == "registry_activity"]
     assert carried and carried[0]["value"] == "Drift av restaurant"
+
+
+class _AllCheckedConnector:
+    """Checks every family; `failed` names one that could not be read. Always logs a non-fatal probe error."""
+
+    name = "all"
+    families = FAMILIES
+
+    def __init__(self, failed: str | None = None):
+        self.failed = failed
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        families = {f: FamilyState(family=f, availability="failed" if f == self.failed else "not_available", reason="x") for f in FAMILIES}
+        return ConnectorResult(families=families, errors=[{"stage": "feed", "url": "https://example.test/feed/", "error": "http_4xx"}])
+
+
+def test_a_probe_error_alone_does_not_make_the_run_partial(tmp_path: Path):
+    org = "121212121"
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[_AllCheckedConnector()], workers=1)
+    env = _envelopes(tmp_path / "o" / "envelopes.jsonl")[0]
+    assert env["run"]["terminal_status"] == "completed"
+    assert env["errors"]  # still reported
+
+
+def test_an_unchecked_family_makes_the_run_partial(tmp_path: Path):
+    org = "131313131"
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[_AllCheckedConnector(failed="financials")], workers=1)
+    env = _envelopes(tmp_path / "o" / "envelopes.jsonl")[0]
+    assert env["run"]["terminal_status"] == "partial"
+
+
+class _FlakyRegistry:
+    """A register connector whose leadership call fails with a connection error the first `fail_times` runs."""
+
+    name = "registry"
+    families = ("identity", "leadership")
+
+    def __init__(self, fail_times: int):
+        self.fail_times = fail_times
+        self.calls = 0
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        self.calls += 1
+        result = _StubConnector().run(ctx)
+        if self.calls <= self.fail_times:
+            result.families["leadership"] = FamilyState(family="leadership", availability="failed", reason="http network_error")
+        else:
+            result.families["leadership"] = FamilyState(family="leadership", availability="not_available", reason="checked: none found")
+        return result
+
+
+class _CountingConnector:
+    name = "web"
+    families = ("website",)
+
+    def __init__(self):
+        self.calls = 0
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        self.calls += 1
+        return ConnectorResult(families={"website": FamilyState(family="website", availability="not_available", reason="x")})
+
+
+def test_a_passing_register_failure_is_retried_after_the_batch(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(pipeline, "REGISTRY_RETRY_PAUSE_S", 0)
+    org = "141414141"
+    registry, web = _FlakyRegistry(fail_times=1), _CountingConnector()
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[registry, web], workers=1)
+    envs = _envelopes(tmp_path / "o" / "envelopes.jsonl")
+    assert len(envs) == 1
+    assert registry.calls == 2 and web.calls == 1  # the first attempt stopped before any other connector
+    assert envs[0]["families"]["leadership"]["availability"] == "not_available"
+    assert not envs[0]["changes"]  # the abandoned first attempt left no stored profile behind
+
+
+def test_a_register_failure_that_persists_is_reported_failed_after_one_retry(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(pipeline, "REGISTRY_RETRY_PAUSE_S", 0)
+    org = "151515151"
+    registry = _FlakyRegistry(fail_times=5)
+    pipeline.run_batch([org], output_dir=str(tmp_path / "o"), state_dir=str(tmp_path / "s"), run_id="r",
+                       bulk_rows={org: {}}, connectors=[registry, _CountingConnector()], workers=1)
+    envs = _envelopes(tmp_path / "o" / "envelopes.jsonl")
+    assert len(envs) == 1 and registry.calls == 2
+    assert envs[0]["families"]["leadership"]["availability"] == "failed"
+    assert envs[0]["run"]["terminal_status"] == "partial"

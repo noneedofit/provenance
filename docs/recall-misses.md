@@ -1,5 +1,9 @@
 # Website recall: gold-131 miss analysis
 
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
+
 Baseline run (commit `ee5ce65`, before this recall pass): website precision 1.0, company recall
 51.65% (42/91 gold `exact`/`related` companies matched), 1,767 requests.
 

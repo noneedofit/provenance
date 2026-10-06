@@ -100,6 +100,8 @@ class Evidence(BaseModel):
     extractor_version: str = "1"
     span: str | None              # exact supporting text / JSON path / selector, <=500 chars
     access_policy: str | None     # e.g. "NLOD-2.0", "CC0", "robots-allowed"
+    id: str | None                # mirrors evidence_id (output-contract field)
+    claim_span: str | None        # the exact supporting text as the source writes it, inline
 ```
 
 `SourceClass`: `official_registry` (live `data.brreg.no` API), `official_registry_bulk` (bulk CSV
@@ -171,8 +173,7 @@ class Summary(BaseModel):
     method: str = "template_v1"
 ```
 
-See `SYNTHESIS.md`... (see `docs/synthesis.md` and the "Synthesis" section this file's sibling docs
-reference) for how sentences are built.
+See `docs/synthesis.md` for how sentences are built.
 
 ## Run info and operations
 
@@ -183,6 +184,9 @@ class RunInfo(BaseModel):
     started_at: str
     completed_at: str | None
     terminal_status: Literal["completed","partial","failed"] = "completed"
+        # completed: every family was checked; partial: at least one family is failed/blocked, or the
+        # deadline, request budget or registry-only pass applied; failed: the company itself crashed.
+        # Non-fatal probe errors (a guessed feed path answering 404) are listed in `errors` only.
     agent_version: str = "0.1.0"
     tier: str | None            # the planner's budget tier for this company
 

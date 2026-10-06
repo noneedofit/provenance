@@ -427,7 +427,7 @@ def assess(
         return Verdict("rejected", None, None, note="no page could be fetched")
 
     homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
-    if homepage.ok and is_parked_page(homepage.html, homepage.text):
+    if homepage.ok and is_parked_page(homepage.html, homepage.text, homepage.final_url):
         return Verdict("rejected", None, None, note="homepage is a parked/for-sale placeholder")
 
     signals: list[Signal] = []

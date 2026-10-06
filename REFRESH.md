@@ -1,7 +1,8 @@
 # Refresh: scheduling, snapshots, diffs
 
 Implemented in `src/signalpost/refresh.py` (`apply_refresh`, `diff_envelopes`). Refresh is not a
-separate command — it is the automatic last step of `pipeline.run_batch` before `validate`, triggered
+separate command — it runs automatically in `pipeline.run_batch` for each company after the connectors and
+before evidence completion, synthesis and writing, triggered
 whenever a run points `--state-dir` at a directory that already has a stored profile for a company.
 
 ## Scheduling
@@ -17,6 +18,7 @@ per the competition's daily-batch scoring) is an operational decision outside th
 <state-dir>/
   profiles/{organisation_number}.json   # last envelope + full claim history, per company
   snapshots/                            # gzip, content-addressed raw response bodies
+  nav_feed_index.sqlite                 # NAV active-ads index, advanced by each run's feed walk
 ```
 
 ### `profiles/{org}.json`

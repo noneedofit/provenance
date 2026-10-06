@@ -1,4 +1,8 @@
-# W4: jobs & public activity (`src/signalpost/activity/`)
+# Jobs, activity and reviews (`src/signalpost/activity/`)
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 `ActivityConnector` (`name="activity"`, `families=("jobs", "activity", "reviews")`) fills the
 `hiring_and_activity` section. It runs after the `web` connector (W3) so `ctx.shared` may already carry

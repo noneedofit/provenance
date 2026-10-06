@@ -49,17 +49,22 @@ PARKED_MARKERS = (
     # Registrar parking pages (Domeneshop and similar), seen on name-guessed .no domains
     "does not have an active website here", "currently does not have an active website",
 )
-# "Coming soon" wording only marks a placeholder when it is (nearly) all the page says: real sites also
-# write "nye produkter kommer snart".
-PLACEHOLDER_MARKERS = (
+# "Coming soon" wording only marks a placeholder when it is (nearly) all the page says and the page has
+# almost no navigation: real sites also write "nye produkter kommer snart", or label a shop category so.
+COMING_SOON_MARKERS = (
     "lanseres snart", "kommer snart", "her kommer:", "under construction", "under oppbygging",
     "coming soon", "nettsiden er under arbeid", "siden er under utvikling", "site under construction",
-    # Hosting-provider and web-server default pages: the domain is registered but holds no site.
+)
+# Hosting-provider and web-server default pages: the domain is registered but holds no site.
+DEFAULT_PAGE_MARKERS = (
     "this one is taken, but you can find another available domain", "hosted by one.com",
     "index of /", "proudly served by litespeed web server", "welcome to nginx!", "apache2 ubuntu default page",
     "apache2 debian default page", "test page for the apache http server", "default web site page",
 )
+PLACEHOLDER_MARKERS = COMING_SOON_MARKERS + DEFAULT_PAGE_MARKERS
 PLACEHOLDER_MAX_TEXT = 900
+# A page linking to this many distinct pages of its own site has real navigation, so is not a placeholder.
+PLACEHOLDER_MAX_INTERNAL_LINKS = 3
 
 
 @dataclass
@@ -101,7 +106,7 @@ def _normalize_text(html: str) -> str:
         return soup.get_text(" ", strip=True)
 
 
-def is_parked_page(html: str, text: str) -> bool:
+def is_parked_page(html: str, text: str, url: str = "") -> bool:
     """A parked/for-sale page, or a page that is (nearly) only a placeholder or a hosting/server default
     page. Placeholder wording is checked on the page's own text as well as the extracted text: text
     extraction keeps only the "main" paragraph and can drop the "under construction" line."""
@@ -109,9 +114,31 @@ def is_parked_page(html: str, text: str) -> bool:
     if any(marker in haystack for marker in PARKED_MARKERS):
         return True
     visible = [fold(text or "")]
+    navigable = False
     if html and len(html) < 200_000:
-        visible.append(fold(BeautifulSoup(html, "lxml").get_text(" ", strip=True)))
-    return any(len(v) <= PLACEHOLDER_MAX_TEXT and any(marker in v for marker in PLACEHOLDER_MARKERS) for v in visible)
+        soup = BeautifulSoup(html, "lxml")
+        visible.append(fold(soup.get_text(" ", strip=True)))
+        navigable = _internal_page_count(soup, url) > PLACEHOLDER_MAX_INTERNAL_LINKS
+    short = [v for v in visible if len(v) <= PLACEHOLDER_MAX_TEXT]
+    if any(marker in v for v in short for marker in DEFAULT_PAGE_MARKERS):
+        return True
+    return not navigable and any(marker in v for v in short for marker in COMING_SOON_MARKERS)
+
+
+def _internal_page_count(soup: BeautifulSoup, url: str) -> int:
+    """Distinct pages of the page's own site that it links to, the front page not counted."""
+    site = registered_domain(url) if url else ""
+    paths = set()
+    for anchor in soup.select("a[href]"):
+        parts = urllib.parse.urlsplit(str(anchor.get("href") or "").strip())
+        if parts.scheme not in ("", "http", "https"):
+            continue
+        if parts.netloc and (not site or registered_domain(parts.netloc) != site):
+            continue
+        path = parts.path.rstrip("/").lower()
+        if path:
+            paths.add(path)
+    return len(paths)
 
 
 _DEAD_PATH_RE = re.compile(r"/(missing|not[-_]?found|404|error|suspended|expired|deactivated)(?:[/.?#]|$)", re.I)
@@ -309,7 +336,7 @@ def crawl_candidate(
     homepage.page_kind = "homepage"
     result.pages.append(homepage)
 
-    if is_parked_page(homepage.html, homepage.text) or _is_dead_redirect(candidate.url, homepage.final_url):
+    if is_parked_page(homepage.html, homepage.text, homepage.final_url) or _is_dead_redirect(candidate.url, homepage.final_url):
         result.parked = True
         return result
 

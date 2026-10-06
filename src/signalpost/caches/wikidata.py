@@ -18,7 +18,7 @@ from typing import Any
 from . import store
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
-USER_AGENT = "SignalpostAgent/0.1 (Builderr Signalpost keyless research agent; contact: https://github.com/noneedofit/provenance)"
+USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"  # same as http.USER_AGENT
 
 # property -> (result var, profile-URL template or None for a raw URL value)
 _PROPS: dict[str, tuple[str, str | None]] = {

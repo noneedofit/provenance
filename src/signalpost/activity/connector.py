@@ -5,7 +5,8 @@ Order per company:
 2. ATS feed/page on the verified site (only if a site was verified `exact` and budget/tier allow HTTP).
 3. Site RSS/Atom + dated news pages (same gate as ATS).
 4. YouTube channel RSS for channels linked from the verified site (same gate).
-5. reviews: always `not_available` - no permitted keyless review source exists.
+5. reviews: Mattilsynet's official food-hygiene inspection result, published only when the inspection
+   page shows this org number or a subunit's; otherwise `not_available`.
 
 Honesty rules (BUILD_SPEC "never turn absence into zero"):
 - jobs is `available` when >=1 active posting was found (NAV and/or ATS).

@@ -1,6 +1,6 @@
 """Shared data contract for the Signalpost agent.
 
-Every module reads and writes these types. Change them only through the orchestrator.
+Every module reads and writes these types; they define the output contract.
 """
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class ReportingPeriod(BaseModel):
 
 
 class Evidence(BaseModel):
-    evidence_id: str                      # "e_" + sha256(source_url|content_sha256|span)[:20]
+    evidence_id: str                      # models.evidence_id: "e_" + sha256(source_url|span)[:20]
     source_url: str
     final_url: str | None = None
     redirect_chain: list[str] = Field(default_factory=list)

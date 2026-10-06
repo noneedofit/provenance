@@ -1,4 +1,8 @@
-# W6 — static viewer
+# Static viewer
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 `src/signalpost/viewer/` turns `out/envelopes.jsonl` (one `models.Envelope` per line) into a fully static,
 self-contained website: no CDN, no external fonts/scripts, no server-side code at view time. It works from
@@ -50,7 +54,8 @@ fetch).
 - **Company page** (`companies/{org}.html`): header with legal name, brand (if any), org number linking to
   the live Brønnøysund API record and a brreg.no search, status/legal form/municipality/NACE; a deterministic
   summary with footnote links into the sections below; the seven required sections (legal identity & brand,
-  annual accounts with an inline-SVG revenue trend sparkline, leadership & workplaces, website & profiles,
+  annual accounts (an inline-SVG revenue sparkline is drawn only when per-year revenue claims exist, which the
+  registry connector does not currently publish), leadership & workplaces, website & profiles,
   hiring & activity, evidence & availability as a full family-state table, refresh & changes as a
   previous→current timeline with evidence on both sides); an "Ask this profile" box; JSON/print export.
   Every fact has a `<details class="source-toggle">` "source" control (keyboard accessible, works without

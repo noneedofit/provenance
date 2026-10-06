@@ -1,12 +1,11 @@
-# Signalpost agent — build spec (orchestrator-owned)
+# Signalpost agent — original build spec
 
 > **Historical document.** This is the specification the agent was first built from (September 2026).
 > Budgets, tiers and sources have changed since; the current behaviour is documented in `README.md`,
 > `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md` and `LIMITATIONS.md`.
 
 This file was the what; the research notes behind it are summarised in `SOURCES.md` and `LIMITATIONS.md`.
-Contract files owned by the orchestrator (do NOT change without asking): `src/signalpost/models.py`,
-`src/signalpost/context.py`, this file.
+The output contract lives in `src/signalpost/models.py` and `src/signalpost/context.py`.
 
 ## Goal
 One command: `uv run python -m signalpost run --organisations <jsonl|txt> --output-dir <dir> --state-dir <dir> --run-id <id>`

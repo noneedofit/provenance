@@ -762,6 +762,14 @@ class RegistryConnector:
                     families["financials"] = FamilyState(family="financials", availability="failed", reason="parse_error")
             elif resp.status in (404, 410):
                 families["financials"] = FamilyState(family="financials", availability="not_available", reason=f"registry financials {resp.status}")
+            elif (layout := _unsupported_accounts_layout(resp)) is not None:
+                # The accounts API answers HTTP 500 for every request about a filing in a layout it does not
+                # serve (non-profit "IDEELL" accounts). That is a permanent answer, not an outage.
+                families["financials"] = FamilyState(
+                    family="financials", availability="not_available",
+                    reason=f"register accounts API does not serve this filing layout ({layout})",
+                    sources_checked=[BRREG_ACCOUNTS.format(org=org)],
+                )
             else:
                 families["financials"] = FamilyState(family="financials", availability="failed", reason=f"http {resp.status or resp.error}")
         elif "financials" not in families:
@@ -824,6 +832,8 @@ class RegistryConnector:
         elif families.get("financials") is not None and families["financials"].availability == "failed":
             # The parent-company flag comes from the accounts; unread accounts mean "not checked".
             families["group"] = FamilyState(family="group", availability="failed", reason="annual accounts unavailable this run", sources_checked=group_sources)
+        elif families.get("financials") is not None and "filing layout" in (families["financials"].reason or ""):
+            families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship in registry data; the accounts (parent-company flag) are not served by the register API", sources_checked=group_sources)
         else:
             families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship or parent-company flag in registry data", sources_checked=group_sources)
 
@@ -831,6 +841,18 @@ class RegistryConnector:
         shared = {"registry_facts": registry_facts(ctx, builder=builder, entity_body=entity_body, bulk_row=bulk_row, subunit_facts=subunit_facts)}
 
         return ConnectorResult(claims=builder.claims, evidence=list(builder.evidence.values()), families=families, errors=errors, shared=shared)
+
+
+def _unsupported_accounts_layout(response: Any) -> str | None:
+    """The layout code when the accounts API refused a filing as an unsupported layout, else None.
+    Its message reads "Regnskapet inneholder en oppstillingsplan som ikke er stottet (IDEELL)"."""
+    if response.status != 500 or not response.body:
+        return None
+    text = response.body.decode("utf-8", "replace")
+    if "oppstillingsplan" not in text or "ikke er st" not in text:
+        return None
+    match = re.search(r"\(([A-Z_]{2,20})\)", text)
+    return match.group(1) if match else "unsupported"
 
 
 def _json(response: Any) -> Any:

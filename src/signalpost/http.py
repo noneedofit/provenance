@@ -419,6 +419,10 @@ class BudgetedHttpClient:
                     time.sleep(_retry_after_seconds(headers))
                 elif status >= 500 and not respect_robots and method == "GET":
                     time.sleep(2.0)  # an official API's 5xx is usually momentary
+                elif purpose == "web_homepage" and status in (429, 503):
+                    # A company site saying "busy, try later": wait a moment before the one retry, since
+                    # losing the homepage loses the website.
+                    time.sleep(_retry_after_seconds(headers, default=3.0, cap=8.0))
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
                 if status >= 500 and not respect_robots and method == "GET" and self.budget.charge(org, 1, purpose=purpose):

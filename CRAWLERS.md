@@ -20,10 +20,10 @@ Families: `identity`, `financials`, `financial_history`, `leadership`, `location
   - `GET underenheter?overordnetEnhet={org}&size=100` — locations (subunits); skipped at tier T0 (business
     address only).
   - `GET regnskapsregisteret/regnskap/{org}` — latest financials.
-  - `GET regnskap/aarsregnskap/kopi/{org}/aar` — filed years, every company (rate-limited to 1/s; skipped
-    in registry-only mode).
-- **Budget**: every company's registry calls are reserved up front (3 requests at T0, 4 at T1, 5 at
-  T2/T3) via `Budget.reserve`, so optional sources (web, jobs) can never starve official data; the
+  - `GET regnskap/aarsregnskap/kopi/{org}/aar` — filed years (rate-limited to 1/s; skipped in
+    registry-only mode). A T0 company whose bulk row already states its latest filed year uses that instead.
+- **Budget**: every company's registry calls are reserved up front (4 requests at T0, 5 at T1–T3, never more than
+  half the run cap) via `Budget.reserve`, so optional sources (web, jobs) can never starve official data; the
   reserve is released back to the shared pool as soon as the connector finishes for that company.
 - **Fallback**: a 404/410 on any live endpoint records `not_available` with the HTTP status as reason,
   never a crash; identity falls back to the bulk row if the live entity call fails entirely.
@@ -34,16 +34,17 @@ Families: none (publishes only to `ctx.shared`). Runs before `web` so a NAV-conf
 can seed website candidates.
 
 - **Feed index (once per run)**: `GET pam-stilling-feed.nav.no/api/v1/feed` with `If-Modified-Since` set
-  60 days back, following `next_url` to the live tip (~115 pages on a fresh state, capped at 200 pages /
-  12 minutes). Keeps the latest state of every ACTIVE ad in `--state-dir/nav_feed_index.sqlite`; later
-  runs with the same state-dir read only the new pages (about 1 per day). Bearer token = last line of
+  60 days back, following `next_url` to the live tip (capped at 800 pages / 12 minutes). A fresh state-dir is seeded
+  from the bundled active-ads snapshot and walks only the pages published since it, in parallel slices.
+  Keeps the latest state of every ACTIVE ad in `--state-dir/nav_feed_index.sqlite`; later runs with the
+  same state-dir read only the new pages (about 1 per day). Bearer token = last line of
   `GET pam-stilling-feed.nav.no/api/publicToken`.
 - **Per company**: match ACTIVE ads by normalised employer name (legal name, trade names, subunit names;
   exact then token-overlap), then `GET /api/v1/feedentry/{uuid}` to confirm the ad's organisation number.
-- **Capped search fallback**: `arbeidsplassen.nav.no/stillinger/api/search` rate-limits an IP after ~30
-  searches, so at most 15 staffed companies (≥5 employees, no feed match, largest first, rotated across
-  runs via the state-dir) are searched per run, ≥4 s apart, stopping after two consecutive 429s. A company
-  not searched keeps its feed-based result, never `failed`.
+- **Search fallback (off by default)**: `arbeidsplassen.nav.no/stillinger/api/search` rate-limits an IP
+  after ~30 searches and its results vary between runs, so it is used only when
+  `SIGNALPOST_NAV_SEARCH_MAX=<n>` is set (at most n staffed companies with no feed match, ≥4 s apart,
+  stopping after two consecutive 429s). A company not searched keeps its feed-based result, never `failed`.
 - **Fallback**: an ad is only published if `ad_content.employer.orgnr` matches this org number or one of
   its subunits; a name match with a different confirmed org number is recorded in evidence but discarded.
 
@@ -54,13 +55,14 @@ contract; this section covers budgets and fallback order.
 
 - **Candidate order** (`web/candidates.py`, decisive sources first): registry `hjemmeside` → Wikidata
   website (`caches.wikidata`) → NAV-confirmed employer homepage (cache and/or this run's `nav`
-  connector) → registry email domain (unless shared/freemail) → subunit websites/email domains → up to 4
-  DNS-prefiltered name-guess slugs (skipped entirely at tier T0). Domains on `web/blocklist.py`'s
+  connector) → OpenStreetMap org-number tag → registry email domain (unless shared/freemail) → subunit
+  websites/email domains → open places data (Overture) → up to 6 DNS-prefiltered name-guess slugs (3 at
+  tier T0). Domains on `web/blocklist.py`'s
   `MARKETPLACE_BLOCKLIST` (directories, booking platforms, social platforms, generic site builders) are
   dropped before any HTTP request; franchise-chain domains (`FRANCHISE_CHAIN_DOMAINS`) remain candidates
   but are gated hard in `verify.assess`.
-- **Crawl** (`web/crawl.py`): homepage first, then up to N secondary pages by tier (T0: 0, T1: 2, T2: 4,
-  T3: 6), picked by priority terms (contact, about, privacy, terms, impressum, careers, news) from
+- **Crawl** (`web/crawl.py`): homepage first, then up to N secondary pages by tier (T0: 0, or 1 when the homepage
+  already names the company; T1: 2, T2: 4, T3: 6), picked by priority terms (contact, about, privacy, terms, impressum, careers, news) from
   homepage links, falling back to `sitemap.xml` only if no priority links were found on the homepage.
   Parked/for-sale placeholders and JS-only shells are detected and recorded, never rendered.
 - **Fallback order**: the connector tries candidates until the first `exact` verdict, or — if none verify
@@ -103,20 +105,22 @@ most 5 videos each; feeds/news collect at most 10 dated items total.
 ## Global request budget (`src/signalpost/http.py`)
 
 `Budget` (thread-safe) enforces a single hard cap (`--max-requests`, default 26 per input company) across the whole
-batch. Every redirect hop and every retry (timeout, 429, or 5xx — one bounded retry, plus one later attempt for an official API's 5xx) counts as a request.
+batch. Every redirect hop and every retry (timeout, connection error, 429 or 5xx — one bounded retry, plus one later attempt for an official API's 5xx; a company homepage that fails TLS gets one plain-http attempt) counts as a request.
 `BudgetedHttpClient` resolves DNS and blocks non-public addresses before every connection
 (`assert_public_url` in `signalpost/urls.py`, adapted from the starter kit), disables automatic redirect-following so each hop can
 be counted and SSRF-checked individually, and honours `robots.txt` per host (cached, itself charged as
 one request) for every call made with `respect_robots=True` — the default for company sites and third-
-party platforms; official/keyless registry and NAV-feedentry calls pass `respect_robots=False`.
+party platforms, NAV and Mattilsynet; only the Brønnøysund registry APIs pass `respect_robots=False`.
 
 ## Fallback summary
 
 | Situation | Behaviour |
 |---|---|
 | Registry live call 404/410 | `not_available`, reason states the HTTP status; identity falls back to the bulk CSV row. |
+| Registry call fails transiently (connection error, timeout, 5xx) | The company is put back in the queue once and processed again after the rest of the batch (counted in `run-report.json` as `registry_retried_companies`); if it fails again, the family is `failed` and refresh carries earlier facts forward. |
+| Accounts API refuses a filing layout it does not serve (non-profit `IDEELL`, HTTP 500 with that message) | `financials` is `not_available` with that reason; this is a permanent answer, not an outage. |
 | No candidate website verifies `exact` | Best `related` candidate published `ambiguous`, or `not_available` with a "checked N candidates" reason. |
 | Request budget exhausted mid-company | Remaining un-run families marked `failed` reason `request_budget`; already-collected claims are kept. |
 | Wall-clock deadline hit mid-batch | Remaining un-run families for that company marked `failed` reason `deadline`; the company still gets exactly one envelope. |
 | A connector raises | Caught per company; other connectors still run; the crash is recorded in `envelope.errors`, never drops the company. |
-| No `--caches` supplied | Every cache-consuming lookup (Wikidata, shared-domain detection, NAV cache path, alias names) degrades to `None`/skip, not a crash. |
+| No `--caches` supplied | The `run` command builds or reuses `./cache` (shared-domain table, Wikidata, open places). A missing or unreadable cache part degrades that lookup to `None`/skip, not a crash. |

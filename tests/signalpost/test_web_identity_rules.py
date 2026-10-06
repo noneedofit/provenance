@@ -63,6 +63,19 @@ def test_parked_and_coming_soon_pages_are_rejected():
     assert is_parked_page(index, "")
 
 
+def test_coming_soon_labels_on_a_site_with_navigation_are_not_a_placeholder():
+    from signalpost.web.verify import is_parked_page
+    nav = "".join(f'<a href="https://tinka.no/{p}/">{p}</a>' for p in ("om-oss", "kontakt", "apningstider", "leverandorer"))
+    shop = (f"<html><body><nav>{nav}</nav><h2>Barn og unge</h2><p>Kommer snart</p><h2>Dame</h2><p>Kommer snart</p>"
+            "<p>Vi fører kvalitetsklær fra kjente merkevarer.</p></body></html>")
+    assert not is_parked_page(shop, "Vi fører kvalitetsklær fra kjente merkevarer.", "https://tinka.no/")
+    # A real placeholder links only to its front page, mail and social profiles.
+    placeholder = ('<html><body><h1>Tinka AS</h1><p>Nettsiden kommer snart.</p><a href="/">Hjem</a>'
+                   '<a href="mailto:post@tinka.no">e-post</a><a href="https://www.facebook.com/tinka">Facebook</a>'
+                   '<a href="https://www.instagram.com/tinka">Instagram</a><a href="https://tinka.no/">Tinka</a></body></html>')
+    assert is_parked_page(placeholder, "Nettsiden kommer snart.", "https://tinka.no/")
+
+
 def test_generic_single_word_domain_is_not_a_name_match():
     p = page("Vi bygger hus.", title="Bygg", url="https://bygg.no/")
     v = assess(ORG, [p], facts("BYGG AS", street=None, postcode=None), cand("bygg.no"))

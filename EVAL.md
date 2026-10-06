@@ -45,8 +45,8 @@ independent check, not a rubber stamp.
 Current label distribution (`eval/data/gold_web.jsonl`, 131 rows, `website.status`):
 
 ```
-exact:        74
-none_found:   31
+exact:        76
+none_found:   29
 related:      16
 uncertain:    10
 ```
@@ -95,7 +95,7 @@ Produces `eval-report.json` plus a companion `eval-report.md` readable table. `s
 
 ### Latest scored run
 
-Gold set (131 companies), main after the 25 Sep recall and NAV-feed merges:
+Gold set (131 companies), code of 25 Sep 2026 (historical; before revision 1):
 
 | Metric | Value |
 |---|---|
@@ -113,11 +113,11 @@ Revision-1 measurements (6 Oct 2026):
 | 1,500 random companies in one run (defaults) | 26 min, 14,504 requests, peak memory 660 MB, no deadline or budget hits; 1,495 completed, 5 partial (register HTTP 500s, reported `failed`) |
 | 300 random companies, before → after | website 13.0% → 18.0% (0 lost), profiles 7.3% → 10.0%, activity 3.7% → 6.3%, reviews 0 → 2.3% |
 | Wrong-company check of every newly accepted website (independent hand-check) | round 1: 6 wrong of 28 — all from counting the name in domain and title twice; rule fixed (name signals count once, parked pages rejected). Round 2: 1 wrong of 17 (a housing manager's site listed on the company's Wikidata item, published as a group site); group sites now need a word of the company's name in the domain, and a re-run no longer publishes it |
-| Determinism, two simultaneous fresh runs of the 100 smoke-test companies | 0 fact differences, 0 evidence-quote differences |
+| Determinism, two fresh runs of the 100 smoke-test companies from a clean clone | 0 fact differences, 0 evidence differences (ids, sources, quotes) |
 | Clean clone of the submitted commit | see `smoke-test/README.md` (audit 0 problems, rerun 0 changes) |
 
 Official batch shape (1,000 companies in ONE run, final code, 28 Sep 2026): every envelope valid; about
-25 minutes and 9,000 requests with the default budget (19 per company, 40-minute deadline), no deadline or
+25 minutes and 9,000 requests with the budget of that version (19 per company, 40-minute deadline), no deadline or
 budget hits. Available per family: identity 1000, leadership 1000, locations 999, financials 997,
 financial_history 996, description 984, website 214, group 147, profiles 141, activity 74, jobs 7. An
 automated audit of every envelope (evidence source/time/hash on every claim, no dangling or duplicate

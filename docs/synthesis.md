@@ -1,4 +1,8 @@
-# Summary synthesis (W5)
+# Summary synthesis
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 `signalpost.synthesis.build_summary(envelope: Envelope) -> Summary` produces deterministic English
 sentences from an envelope's claims only — no network calls, no LLM, same input always gives the same
@@ -18,13 +22,13 @@ given).
 2. **Legal form / founded / location** — `identity.legal_form`, `identity.founded_date`,
    `identity.municipality`.
 3. **Size** — `identity.employees`, `financials.revenue` + `financials.operating_result` (with reporting
-   period), plus a revenue trend sentence (percent change) when a `financial_history.revenue` claim for an
-   earlier period exists.
+   period). (A revenue-trend sentence exists for `financial_history.revenue` claims, but the registry
+   connector publishes only filed years, so it does not fire on real data.)
 4. **Leadership** — CEO and chair, found via `leadership.role` claims whose role code is in
    `CEO_ROLE_CODES` (`DAGL`, `CEO`) / `CHAIR_ROLE_CODES` (`LEDE`, `CHAIR`) — `DAGL`/`LEDE` are the actual
    Brønnøysund `/roller` role codes for daglig leder / styreleder.
 5. **Footprint** — verified `website.official_website`, count of `profiles.profile` claims, count of
-   `locations.location` claims.
+   `locations.workplace` claims.
 6. **Hiring / activity** — count of `jobs.job_posting` claims (with the most recent title if present), and
    the most recent `activity.activity_item` by `effective_date`.
 7. **What changed** — one sentence per `envelope.changes` entry: "Since the previous check (run

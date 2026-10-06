@@ -48,8 +48,8 @@ uv sync
 
 ### Data prerequisites
 
-The pipeline needs the Brønnøysund bulk registry CSV (gzip-compressed despite the `.csv` name). Download
-it once:
+The pipeline needs the Brønnøysund bulk registry CSV (gzip-compressed despite the `.csv` name). The run
+downloads it itself; to fetch it by hand:
 
 ```bash
 mkdir -p data
@@ -57,13 +57,15 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 ```
 
 `signalpost run` looks for `./data/brreg-enheter.csv.gz` or `./data/brreg-enheter.csv` by default (or
-pass `--bulk <path>` explicitly); if neither is found it downloads the file itself (counted as one
-request). No API key is required — the registry API is keyless and public.
+pass `--bulk <path>` explicitly). If neither is found, or the copy is more than 20 hours old (the register
+publishes it nightly), it downloads the file itself, up to 3 attempts, each counted as a setup request; a
+failed download falls back to the older copy. No API key is required — the registry API is keyless and public.
 
 **Caches are built automatically.** When `--caches` is omitted, `signalpost run` uses `./cache` and, if
 it is empty, builds the two identity-critical parts itself before the batch starts: the shared-domain
-table from the bulk file (0 requests, a few seconds) and the Wikidata table (1 SPARQL request, with a
-bundled CC0 snapshot as fallback). A clean clone therefore needs only `uv sync` and the run command below;
+table from the bulk file (0 requests, a few seconds) and the Wikidata table (copied from the bundled CC0
+snapshot, 0 requests, so two runs read the same Wikidata facts; `SIGNALPOST_WIKIDATA_LIVE=1` queries the
+live SPARQL endpoint instead). A clean clone therefore needs only `uv sync` and the run command below;
 the first run also downloads the bulk file, indexes the bundled open-places and NAV snapshots, and reads
 the NAV job feed published since the NAV snapshot (a few requests per day of snapshot age, reused from
 `--state-dir` by later runs). Setup requests are reported separately in `run-report.json`
@@ -84,8 +86,8 @@ uv run python -m signalpost prepare \
 slow, resumable walk of a full event-log feed (measured ~3.7s/page; see `docs/caches.md`) — it can be
 capped with `--nav-max-seconds <N>` and re-invoked later to continue from its saved cursor, or skipped
 entirely with `--skip-nav` for a first run. `--skip-email-domains` / `--skip-aliases` / `--skip-wikidata`
-skip the other parts individually. Caches are optional end to end: every consumer in the pipeline handles
-`--caches` being omitted.
+skip the other parts individually. The library code handles missing caches; the `run` command always
+builds or reuses `./cache` as described above.
 
 ### The evaluator command
 
@@ -188,8 +190,8 @@ itself.
 | Language model | none — every claim and summary sentence is built deterministically from fetched evidence; no LLM is called anywhere in the pipeline | n/a |
 | Brønnøysund Enhetsregisteret (bulk + live) | company identity, roles, subunits, group | NLOD 2.0 |
 | Brønnøysund Regnskapsregisteret | annual accounts | NLOD 2.0 |
-| NAV arbeidsplassen search + `pam-stilling-feed` | job postings | NLOD; keyless, public search token |
-| Wikidata (SPARQL) | company websites/social profile cache | CC0 |
+| NAV `pam-stilling-feed` (bundled active-ads snapshot + live catch-up) | job postings | NLOD; keyless public feed token. The arbeidsplassen search fallback is off by default (`SIGNALPOST_NAV_SEARCH_MAX`) |
+| Wikidata (bundled snapshot; live SPARQL opt-in) | company websites/social profile cache | CC0 |
 | Overture Maps Places (bundled snapshot) | website candidates | CDLA-Permissive-2.0 / Apache-2.0 / CC0 |
 | OpenStreetMap `ref:NO:orgnr` (bundled snapshot) | website candidates | ODbL 1.0, © OpenStreetMap contributors |
 | Mattilsynet smilefjes | food-hygiene inspection ratings | public authority data |
@@ -200,16 +202,17 @@ Full source-by-source detail, robots handling and licence basis: see `SOURCES.md
 
 ## Request budgeting
 
-Every outbound HTTP request — including every redirect hop and every retry — is charged against a single
+Every request made during the batch — including every redirect hop and every retry — is charged against a single
 global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 26 per input company, overridable
 by the evaluator). Each company gets a soft per-company allowance from `planner.classify` (14/24/
 36/55 requests for tiers T0–T3, based only on bulk-registry signals — staff count, NACE code, legal
 form, presence of a registered site/domain), but may borrow from the shared pool up to the hard cap.
 Every company's official-registry calls are reserved up front so optional sources (website discovery,
-jobs, activity) can never starve them. Robots.txt is honoured per host for every non-official source
-(company sites, YouTube); official/keyless APIs pass `respect_robots=False`. All requests go through an
-SSRF guard (`assert_public_url`) that resolves DNS and rejects private/loopback/link-local/reserved
-addresses before connecting.
+jobs, activity) can never starve them. Robots.txt is honoured per host for every source except the
+Brønnøysund registry APIs (company sites, NAV, Mattilsynet, YouTube all check it). All batch requests go
+through an SSRF guard (`assert_public_url`) that resolves DNS and rejects private/loopback/link-local/reserved
+addresses before connecting. The one-time setup downloads (bulk file, and Wikidata only when run live) go to
+fixed official URLs and are counted separately as `setup_requests` in `run-report.json`.
 
 ## Expected cost per run
 

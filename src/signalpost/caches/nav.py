@@ -51,7 +51,7 @@ from . import store
 TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
 BASE_URL = "https://pam-stilling-feed.nav.no"
 FEED_URL = BASE_URL + "/api/v1/feed"
-USER_AGENT = "SignalpostAgent/0.1 (Builderr Signalpost keyless research agent; contact: https://github.com/noneedofit/provenance)"
+USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"  # same as http.USER_AGENT
 
 MIN_REQUEST_INTERVAL = 1.0 / 5.0  # politeness cap: <=5 req/s
 

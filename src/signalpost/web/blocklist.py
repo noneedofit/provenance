@@ -1,6 +1,6 @@
 """Domains that must never be treated as a company's own website.
 
-Two distinct lists, from the gold-label traps in docs/PLAN.md and coordinator review:
+Two distinct lists, from the gold-label traps (EVAL.md) and review:
 
 - `FRANCHISE_CHAIN_DOMAINS`: national chain / franchisor corporate domains. A local franchisee's page
   living under one of these (e.g. a Joker or 7-Eleven store finder entry) must be published as a

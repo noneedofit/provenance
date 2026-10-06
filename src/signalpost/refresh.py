@@ -5,7 +5,7 @@ organisation and returns an updated Envelope: claims get `first_observed_at` / `
 differences become `Change` events, superseded claims move into profile history (evidence retained), and
 claims from families whose source could not be re-checked this run are carried forward unchanged.
 
-State layout on disk (owned by this module, not part of the orchestrator contract):
+State layout on disk (owned by this module, not part of the output contract):
 
     <state_dir>/profiles/{org}.json
     {
@@ -18,7 +18,7 @@ State layout on disk (owned by this module, not part of the orchestrator contrac
     }
 
 Field names referenced below (family/field strings, role codes) are not yet finalised by the registry/web/
-activity connectors. They are centralised in FIELD_ALIASES / ROLE_CODE_* below so the orchestrator can align
+activity connectors. They are centralised in FIELD_ALIASES / ROLE_CODE_* below so they can be aligned
 them later without touching the diff logic.
 """
 from __future__ import annotations

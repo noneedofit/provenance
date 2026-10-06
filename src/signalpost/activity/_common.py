@@ -1,6 +1,6 @@
 """Small shared helpers for the activity connector (jobs / activity / reviews).
 
-Not part of the orchestrator contract - internal to this package.
+Internal to this package; not part of the output contract.
 """
 from __future__ import annotations
 

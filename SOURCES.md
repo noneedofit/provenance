@@ -12,18 +12,21 @@ anywhere, refreshed automatically if it expires mid-run.
 
 ## SSRF guard
 
-Every outbound request, to every source below, passes through `assert_public_url` before connecting
+Every request made during the batch, to every source below, passes through `assert_public_url` before connecting
 (`src/signalpost/http.py`, guard in `src/signalpost/urls.py`, adapted from the starter kit): resolves DNS
 and rejects the request if scheme isn't `http`/`https`, the host is `localhost`/`*.local`, or any
 resolved address is not a global public IP (private, loopback, link-local, multicast, reserved). This
 runs on every hop of a redirect chain, not just the initial URL, so a redirect cannot be used to reach an
-internal address.
+internal address. The one-time setup downloads (the registry bulk file, and Wikidata only when queried
+live) go to fixed official URLs outside this client and are counted as `setup_requests`.
 
 ## Redirect and retry counting
 
 Every source's requests are made through the single `BudgetedHttpClient`, which disables automatic
 redirect-following so each hop is individually SSRF-checked and charged against the request budget; a
-retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charged. See `README.md`'s
+retryable failure (timeout, connection error, 429, 5xx) gets one bounded retry, also charged; an
+official API's 5xx gets one more, later attempt, and a company homepage that fails TLS gets one
+plain-http attempt. See `README.md`'s
 "Request budgeting" section and `CRAWLERS.md` for the full accounting.
 
 ---
@@ -45,7 +48,8 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 ### Brønnøysund Regnskapsregisteret
 
 - `GET https://data.brreg.no/regnskapsregisteret/regnskap/{org}` (latest filed accounts),
-  `GET .../regnskap/aarsregnskap/kopi/{org}/aar` (list of filed years, every company; 1 request/s).
+  `GET .../regnskap/aarsregnskap/kopi/{org}/aar` (list of filed years; 1 request/s; a T0 company whose
+  bulk row states its latest filed year uses that instead).
 - **Licence**: NLOD 2.0.
 - **Robots**: `respect_robots=False`.
 - **Used for**: `financials`, `financial_history` families, and `group` (the accounts' parent-company
@@ -55,7 +59,7 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
 
 ## NAV (Norwegian Labour and Welfare Administration)
 
-### `arbeidsplassen.nav.no` job search
+### `arbeidsplassen.nav.no` job search (off by default)
 
 - `GET https://arbeidsplassen.nav.no/stillinger/api/search?q=<name>&size=100`.
 - **Licence basis**: NLOD-equivalent public government data (NAV job ads are public postings).
@@ -63,34 +67,36 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
   observed to be disallowed here.
 - **Access**: no key required; subject to CDN/WAF-level rate limiting (see `LIMITATIONS.md`) — not an
   access-control restriction, an anti-burst throttle.
-- **Used for**: candidate NAV job ads (name-matched, then confirmed by org number via the feed entry
-  endpoint below) — `nav_live.py`, tiers T1–T3.
+- **Used for**: nothing in a default run. With `SIGNALPOST_NAV_SEARCH_MAX=<n>` set, up to n staffed
+  companies with no feed match are searched (results confirmed by org number via the feed entry endpoint
+  below). Off by default because its results vary between runs.
 
 ### `pam-stilling-feed.nav.no` public feed
 
 - `GET .../api/v1/feedentry/{uuid}` (Authorization: Bearer `<public token>`),
   `GET .../api/publicToken` (the token itself, refetched once per run and on a 401),
-  `GET .../api/v1/feed` (the full event-log walk used to build the offline `caches/nav.py` index).
+  `GET .../api/v1/feed` (the event-log walk that keeps the run's active-ads index current; a bundled
+  snapshot of active ads seeds a fresh state-dir).
 - **Licence**: NLOD 2.0.
-- **Robots**: `respect_robots=False` for the token/feedentry calls (official public feed, keyless,
+- **Robots**: `respect_robots=True` (robots.txt is checked; the feed is an official public feed, keyless,
   documented as intended for public subscription/indexing use), gated by a `Bearer` token that is itself
   publicly served — this is an access mechanism, not a paywall or restriction.
-- **Used for**: confirming a job ad's organisation number before publishing it as this company's job
-  (`jobs/job_posting` claims); building the offline NAV cache consumed by `nav_jobs.py`'s cache path.
+- **Used for**: finding active ads whose employer org number is this company or one of its subunits, and
+  confirming each on its own feed entry before publishing it as this company's job (`jobs` claims).
 
 ---
 
 ## Wikidata
 
-- `POST https://query.wikidata.org/sparql` — one query joining P2333 (Norwegian org number) with P856
+- `GET https://query.wikidata.org/sparql?query=…` — one query joining P2333 (Norwegian org number) with P856
   (website), P2013 (Facebook), P2003 (Instagram), P2002 (X), P4264 (LinkedIn), P2397 (YouTube channel),
   P1581 (blog).
 - **Licence**: CC0 (public domain dedication) — Wikidata's standard licence for all its data.
 - **Robots**: `respect_robots=False` (a documented, public query API, not a scraped website).
 - **Used for**: building the offline `caches/wikidata.py` cache — decisive website candidates, and social
   profiles published directly (the item carries our org number, so attribution is exact;
-  `identity_basis="wikidata_org_number"`). Built at run start when absent; a bundled CC0 snapshot is the
-  fallback.
+  `identity_basis="wikidata_org_number"`). A run copies the bundled CC0 snapshot (0 requests, identical
+  between runs); `SIGNALPOST_WIKIDATA_LIVE=1` queries the live endpoint instead.
 
 ---
 
@@ -140,7 +146,7 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
   first time a host is seen), and a disallowed path is never fetched.
 - **User-Agent**: `SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)`
   (`src/signalpost/http.py:USER_AGENT`) — identifies the agent and points back to this repository, sent
-  on every request to every source, not just company sites.
+  on every request to every source (setup downloads included), not just company sites.
 - **Used for**: `website`, `profiles`, `description` families (only from a candidate that passed the
   `exact` verification gate); `jobs` (ATS feed/careers page on the verified site); `activity` (RSS/Atom,
   dated news pages already linked from the verified site).
@@ -157,8 +163,9 @@ retryable failure (timeout, 429, 5xx) gets exactly one bounded retry, also charg
   carves out an exception for itself. In practice this means the request is almost always blocked and no
   video claims are published. See `LIMITATIONS.md`.
 - **Used for**: `activity/activity_item` claims (`platform: "YouTube"`), only for channels already linked
-  from an exact-verified company site — no scraping of video pages, channel search, or any other YouTube
-  surface.
+  from an exact-verified company site. A linked channel given by handle rather than id needs one fetch of
+  that channel page (robots-checked) to read its channel id; no video pages, channel search, or any other
+  YouTube surface.
 
 ---
 
@@ -186,9 +193,9 @@ food-hygiene inspection results (see above).
 |---|---|---|---|---|
 | Brreg Enhetsregisteret | `data.brreg.no/enhetsregisteret/api/...` | NLOD 2.0 | `respect_robots=False` (official API) | identity, leadership, locations, group |
 | Brreg Regnskapsregisteret | `data.brreg.no/regnskapsregisteret/...` | NLOD 2.0 | `respect_robots=False` | financials, financial_history |
-| NAV arbeidsplassen search | `arbeidsplassen.nav.no/stillinger/api/search` | NLOD-equivalent public data | allowed, keyless | jobs candidate search |
-| NAV pam-stilling-feed | `pam-stilling-feed.nav.no/api/...` | NLOD 2.0 | `respect_robots=False` (official feed) | jobs confirmation, offline NAV cache |
-| Wikidata SPARQL | `query.wikidata.org/sparql` | CC0 | `respect_robots=False` (query API) | website/profile candidate cache |
+| NAV pam-stilling-feed | `pam-stilling-feed.nav.no/api/...` | NLOD 2.0 | `respect_robots=True` (official feed) | jobs (active-ads index + feed-entry confirmation) |
+| NAV arbeidsplassen search (off by default) | `arbeidsplassen.nav.no/stillinger/api/search` | NLOD-equivalent public data | `respect_robots=True`, keyless | opt-in jobs fallback |
+| Wikidata (bundled snapshot; SPARQL opt-in) | `query.wikidata.org/sparql` | CC0 | n/a by default; query API when live | website/profile candidate cache |
 | Company websites | verified candidate domain | site's own terms | `respect_robots=True` | website, profiles, description, jobs (ATS), activity (feeds/news) |
 | Overture Maps Places (snapshot) | bundled `places_no.jsonl.gz` (release 2026-09-23.1) | CDLA-Permissive-2.0 / Apache-2.0 / CC0 | n/a (no run-time requests) | website candidates |
 | OpenStreetMap `ref:NO:orgnr` (snapshot) | bundled `osm_orgnr_no.jsonl.gz` | ODbL 1.0, © OpenStreetMap contributors | n/a (no run-time requests) | website candidates (org-number keyed) |

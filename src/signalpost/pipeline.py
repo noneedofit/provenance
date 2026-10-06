@@ -28,6 +28,7 @@ from .http import Budget, BudgetedHttpClient
 from .models import (
     FAMILIES,
     SECTIONS,
+    ConnectorResult,
     Envelope,
     FamilyState,
     Operations,
@@ -50,6 +51,28 @@ DEFAULT_REQUESTS_PER_COMPANY = 26
 REGISTRY_ONLY_SAFETY_S = 300
 REGISTRY_ONLY_S_PER_COMPANY = 4.0
 DEFAULT_WORKERS = 24
+
+# A company whose register calls failed for a passing reason (connection error, timeout, 5xx) is put back
+# in the queue once and processed again after the rest of the batch, when the time left covers the rest of
+# the batch with this much margin to spare (see `can_defer`); otherwise its failed families stand.
+REGISTRY_RETRY_MIN_S = 180
+REGISTRY_RETRY_PAUSE_S = 20
+_TRANSIENT_ERRORS = ("network_error", "timeout", "ssl_error", "dns", "http_5xx")
+
+
+def _registry_failed_transiently(result: ConnectorResult) -> bool:
+    """True when the register connector lost data to a passing network or server error (not a 404, not
+    the request budget, not a permanent answer such as an unsupported accounts layout)."""
+    for err in result.errors:
+        if not str(err.get("stage", "")).startswith("registry_"):
+            continue
+        status = err.get("status") or 0
+        if err.get("error") in _TRANSIENT_ERRORS or status >= 500 or status == 429:
+            return True
+    return any(
+        state.availability == "failed" and (state.reason or "").startswith("http ")
+        for state in result.families.values()
+    )
 
 
 def _default_connectors() -> list[Any]:
@@ -123,7 +146,7 @@ def _legal_name(claims: list) -> str | None:
 class _CompanyOutcome:
     __slots__ = ("index", "org", "envelope", "deadline_hit", "budget_exhausted")
 
-    def __init__(self, index: int, org: str, envelope: Envelope, deadline_hit: bool, budget_exhausted: bool):
+    def __init__(self, index: int, org: str, envelope: Envelope | None, deadline_hit: bool, budget_exhausted: bool):
         self.index = index
         self.org = org
         self.envelope = envelope
@@ -224,16 +247,25 @@ def run_batch(
     started_lock = threading.Lock()
     worker_count = max(1, workers)
 
-    def registry_only_now() -> bool:
+    def registry_only_now(first_attempt: bool = True) -> bool:
         with started_lock:
-            started[0] += 1
+            if first_attempt:
+                started[0] += 1
             not_started = len(org_list) - started[0]
         time_left = deadline_at - time.monotonic()
         return time_left < REGISTRY_ONLY_SAFETY_S + REGISTRY_ONLY_S_PER_COMPANY * (not_started + 1) / worker_count
 
-    def process(index: int, org: str) -> _CompanyOutcome:
+    def can_defer() -> bool:
+        """Whether a company can be run again after the batch without pushing the batch into the
+        registry-only pass: the projected time for the companies not yet started, plus a margin, is left."""
+        with started_lock:
+            not_started = len(org_list) - started[0]
+        time_left = deadline_at - time.monotonic()
+        return time_left > REGISTRY_ONLY_SAFETY_S + REGISTRY_RETRY_MIN_S + REGISTRY_ONLY_S_PER_COMPANY * not_started / worker_count
+
+    def process(index: int, org: str, retry: bool = False) -> _CompanyOutcome:
         now = utc_now()
-        registry_only = registry_only_now()
+        registry_only = registry_only_now(first_attempt=not retry)
         deadline_hit = time.monotonic() > deadline_at
         budget_exhausted = False
         errors: list[dict[str, Any]] = []
@@ -246,7 +278,8 @@ def run_batch(
         try:
             row = bulk.get(org, {})
             tier_result = classify(row, caches=caches)
-            budget.allocate(org, tier_result.allowance)
+            # A retried company gets its allowance back, net of the register calls the first attempt spent.
+            budget.allocate(org, budget.org_used(org) if retry else tier_result.allowance)
             ctx = CompanyContext(
                 org=org, run_id=run_id, now=now, tier=tier_result.tier, bulk=row, caches=caches,
                 client=client, snapshots=snapshots, shared={"registry_only": registry_only, "bulk_retrieved_at": bulk_retrieved_at}, previous=_load_previous(state_path, org),
@@ -269,6 +302,12 @@ def run_batch(
                     finally:
                         if getattr(connector, "name", "") == "registry":
                             budget.release(org)
+                    if (
+                        not retry and not registry_only and getattr(connector, "name", "") == "registry"
+                        and _registry_failed_transiently(result) and can_defer()
+                    ):
+                        # Nothing has been stored for this company yet; run it again after the batch.
+                        return _CompanyOutcome(index, org, None, False, False)
                     for claim in result.claims:
                         claims_by_id[claim.claim_id] = claim
                     for ev in result.evidence:
@@ -321,7 +360,12 @@ def run_batch(
                 legal_name=_legal_name(list(claims_by_id.values())),
                 run=RunInfo(
                     run_id=run_id, started_at=started_at, completed_at=None,
-                    terminal_status="partial" if (deadline_hit or budget_exhausted or registry_only or errors) else "completed",
+                    # Partial means some family was not fully checked. A non-fatal probe error (a guessed
+                    # feed path answering 404) is still listed in `errors` but does not make the run partial.
+                    terminal_status="partial" if (
+                        deadline_hit or budget_exhausted or registry_only
+                        or any(state.availability in ("failed", "blocked") for state in families.values())
+                    ) else "completed",
                     tier=tier_result.tier,
                 ),
                 families=families,
@@ -384,15 +428,29 @@ def run_batch(
             )
             return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
 
+    deferred: list[tuple[int, str]] = []
+    registry_retried = 0
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = {pool.submit(process, i, org): i for i, org in enumerate(org_list)}
-        for future in as_completed(futures):
-            outcome = future.result()
-            results[outcome.index] = outcome
-            with done_lock:
-                done_count += 1
-                if progress_cb:
-                    progress_cb(done_count, len(org_list))
+        def collect(futures) -> None:
+            nonlocal done_count
+            for future in as_completed(futures):
+                outcome = future.result()
+                if outcome.envelope is None:
+                    deferred.append((outcome.index, outcome.org))
+                    continue
+                results[outcome.index] = outcome
+                with done_lock:
+                    done_count += 1
+                    if progress_cb:
+                        progress_cb(done_count, len(org_list))
+
+        collect([pool.submit(process, i, org) for i, org in enumerate(org_list)])
+        if deferred:
+            # Give a register outage a moment to pass, then run each deferred company once more.
+            time.sleep(max(0.0, min(REGISTRY_RETRY_PAUSE_S, deadline_at - time.monotonic() - REGISTRY_ONLY_SAFETY_S - REGISTRY_RETRY_MIN_S)))
+            retry_list, deferred = sorted(deferred), []
+            registry_retried = len(retry_list)
+            collect([pool.submit(process, i, org, True) for i, org in retry_list])
 
     for t in prepare_threads:
         t.join(timeout=max(1.0, deadline_at - time.monotonic()))
@@ -424,6 +482,7 @@ def run_batch(
         runtime_s=time.monotonic() - t_start, deadline_hits=deadline_hits,
         budget_exhausted_count=budget_exhausted_count, validation=validation, cache_versions=getattr(caches, "meta", None) if caches else None,
     )
+    run_report["registry_retried_companies"] = registry_retried
     _atomic_write(output_path / "run-report.json", json.dumps(run_report, ensure_ascii=False, indent=2))
 
     return run_report

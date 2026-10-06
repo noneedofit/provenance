@@ -57,7 +57,7 @@ def build_aliases(args: argparse.Namespace) -> None:
         underenheter_path = tmp_dir / "underenheter.csv.gz"
         print(f"[aliases] downloading {UNDERENHETER_URL} -> {underenheter_path} ...", file=sys.stderr)
         _download(UNDERENHETER_URL, underenheter_path,
-                   user_agent="SignalpostAgent/0.1 (contact: https://github.com/noneedofit/provenance)")
+                   user_agent="SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)")
 
     print(f"[aliases] building from {underenheter_path} ...", file=sys.stderr)
     t0 = time.monotonic()

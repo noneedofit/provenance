@@ -1,4 +1,8 @@
-# Refresh / change detection (W5)
+# Refresh / change detection
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 `signalpost.refresh.apply_refresh(envelope, state_dir, *, now=None) -> Envelope` merges a freshly built
 `Envelope` for one organisation with the previously stored profile for that organisation and returns an

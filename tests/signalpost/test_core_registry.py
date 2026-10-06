@@ -226,3 +226,30 @@ def test_group_is_failed_not_empty_when_accounts_cannot_be_read():
     result = registry.RegistryConnector().run(_ctx(client))
     assert result.families["financials"].availability == "failed"
     assert result.families["group"].availability == "failed"
+
+
+def test_accounts_in_a_layout_the_api_does_not_serve_are_not_available_not_failed():
+    # Non-profit ("IDEELL") filings: the accounts API answers HTTP 500 with this message on every request.
+    client = FakeHttpClient()
+    for module in ("entity", "roles", "subunits", "years"):
+        data = _load(module)
+        client.add_json(data["url"], data["status"], data["body"])
+    client.add_json(registry.BRREG_ACCOUNTS.format(org=ORG), 500, {
+        "status": "500", "error": "Internal Server Error",
+        "message": "Regnskapet inneholder en oppstillingsplan som ikke er stottet (IDEELL)",
+    })
+    result = registry.RegistryConnector().run(_ctx(client))
+    assert result.families["financials"].availability == "not_available"
+    assert "IDEELL" in result.families["financials"].reason
+    assert result.families["group"].availability == "not_available"
+
+
+def test_other_accounts_server_errors_stay_failed():
+    client = FakeHttpClient()
+    for module in ("entity", "roles", "subunits", "years"):
+        data = _load(module)
+        client.add_json(data["url"], data["status"], data["body"])
+    client.add_json(registry.BRREG_ACCOUNTS.format(org=ORG), 500, {"status": "500", "message": "Internal Server Error"})
+    result = registry.RegistryConnector().run(_ctx(client))
+    assert result.families["financials"].availability == "failed"
+    assert result.families["group"].availability == "failed"

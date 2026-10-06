@@ -64,6 +64,15 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(b'{"ok": true}')
+        elif self.path in ("/busy-once", "/refused-once"):
+            if _Handler.hit_counts[self.path] == 1:
+                self.send_response(503 if self.path == "/busy-once" else 403)
+                self.end_headers()
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(b"<html><body>ok</body></html>")
         elif self.path == "/robots.txt":
             self.send_response(200)
             self.end_headers()
@@ -187,3 +196,20 @@ def test_retry_after_seconds_is_bounded():
     assert _retry_after_seconds({"retry-after": "600"}) == 20.0
     assert _retry_after_seconds({}) == 5.0
     assert _retry_after_seconds({"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"}) == 5.0
+
+
+def test_a_busy_homepage_gets_one_delayed_retry(server, monkeypatch):
+    sleeps: list[float] = []
+    monkeypatch.setattr(sp_http.time, "sleep", lambda s: sleeps.append(s))
+    port = server.server_address[1]
+    client = BudgetedHttpClient(Budget(hard_cap=100))
+    resp = client.get(f"http://127.0.0.1:{port}/busy-once", org="orgH", purpose="web_homepage", respect_robots=False)
+    assert resp.ok and resp.requests_used == 2
+    assert sleeps and 1.0 <= sleeps[0] <= 8.0
+
+
+def test_a_refused_homepage_is_not_retried(server):
+    port = server.server_address[1]
+    client = BudgetedHttpClient(Budget(hard_cap=100))
+    resp = client.get(f"http://127.0.0.1:{port}/refused-once", org="orgI", purpose="web_homepage", respect_robots=False)
+    assert resp.status == 403 and resp.requests_used == 1

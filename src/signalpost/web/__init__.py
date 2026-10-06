@@ -1,4 +1,4 @@
-"""Website discovery, identity verification, crawl and extraction (workstream W3).
+"""Website discovery, identity verification, crawl and extraction.
 
 Public entry point: `signalpost.web.connector.WebConnector`.
 """

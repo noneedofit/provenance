@@ -1,4 +1,8 @@
-# W3 — web: website discovery, identity verification, crawl, extraction
+# Web: website discovery, identity verification, crawl, extraction
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 Owns `src/signalpost/web/` (`candidates.py`, `crawl.py`, `verify.py`, `extract.py`, `connector.py`).
 Publishes the `website`, `profiles`, `description` families via `WebConnector` (`name = "web"`).
@@ -128,7 +132,7 @@ domain signal), never an exception.
 ## Tests
 
 `tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_crawl.py`,
-`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 72 tests, no network (fake
+`test_web_extract.py`, `test_web_connector.py`, `test_web_blocklist.py` — 114 tests across `test_web_*.py`, no network (fake
 `HttpClient` in `tests/signalpost/web_fakes.py`). Regression coverage for the known identity traps from
 the build plan and the orchestrator task: `BUTIKKDRIFT KALIYUGARASAN AS -> 7-eleven.no` (franchise),
 `MECCA AS -> thon.no` (parent/brand), `BESTSELLER AS -> bestseller.com` (group site, correctly not

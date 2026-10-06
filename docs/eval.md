@@ -1,6 +1,10 @@
-# W7 — evaluation harness and independent gold labels
+# Evaluation harness and independent gold labels
 
-Owner: W7. Files: `eval/` (package), `eval/data/` (frozen splits + gold), `tests/signalpost/test_eval*.py`.
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
+
+Files: `eval/` (package), `eval/data/` (frozen splits + gold), `tests/signalpost/test_eval*.py`.
 
 ## Why this exists
 
@@ -57,10 +61,7 @@ when these labels were produced, and even after it exists this collection should
 independent (re-verify from scratch if a correction is ever needed, don't "confirm" against our
 own claims).
 
-Label counts, traps found, and any known gaps: **[UPDATED AFTER MERGE — see the table below and
-the final W7 report]**.
-
-<!-- GOLD_SUMMARY_PLACEHOLDER -->
+Label counts: see `EVAL.md` (131 companies: exact 76, none_found 29, related 16, uncertain 10).
 
 ## Scorer (`eval/score.py`)
 

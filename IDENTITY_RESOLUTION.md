@@ -13,10 +13,10 @@ Ordered, domain-deduplicated candidates, cheapest/most-decisive sources first:
 2. Wikidata website (`caches.wikidata.lookup(org)`) — already tied to this org number in the cache.
 3. NAV employer homepage from an ad confirmed to this org number (cache and/or this run's live `nav`
    connector) — already tied to this org number.
-4. Registry email domain, unless shared (`caches.email_domains.is_shared`, count ≥ 3 orgs or a hardcoded
-   freemail list) or a known freemail domain.
-5. OpenStreetMap features tagged `ref:NO:orgnr` with our (or a subunit's) org number (bundled snapshot) —
+4. OpenStreetMap features tagged `ref:NO:orgnr` with our (or a subunit's) org number (bundled snapshot) —
    tied to this org number, treated like Wikidata.
+5. Registry email domain, unless shared (`caches.email_domains.is_shared`, count ≥ 3 orgs or a hardcoded
+   freemail list) or a known freemail domain.
 6. Subunit websites / email domains (same shared-domain filter).
 7. Open places dataset (bundled Overture Maps snapshot): a place carrying our registry phone/mobile or
    e-mail (entity or subunits), or our name core at our postcode, nominates its website (strongest
@@ -89,8 +89,8 @@ with a reason naming how many candidates were tried.
 
 ## Regression-tested traps
 
-`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (72 web-module
-tests total, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
+`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (114 web-module
+tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
 `uv run --with pytest pytest -q tests/signalpost`):
 
 | Trap | Example | Test(s) |
@@ -124,5 +124,5 @@ page shows a different, labelled org number likely belonging to a separate admin
 - `verify._infer_relationship`'s specific label (`franchise` vs. `parent` vs. `brand`) is a keyword
   heuristic and can be wrong; only the "never `exact` on conflict" property is load-bearing for
   correctness.
-- Name-guess slug generation is capped at 4 guesses total across all name variants; companies with many
+- Name-guess slug generation is capped at 6 guesses (3 for T0) across all name variants; companies with many
   subunit trade names may have plausible guesses never tried (recall loss only).

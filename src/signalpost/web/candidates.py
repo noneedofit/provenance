@@ -1,6 +1,6 @@
 """Ordered, deduplicated website candidate generation.
 
-Cheapest / most decisive sources first (see docs/PLAN.md §5.2 and BUILD_SPEC.md "Identity rules"):
+Cheapest / most decisive sources first (see IDENTITY_RESOLUTION.md):
 registry hjemmeside -> Wikidata websites -> NAV employer homepage -> registry email domain ->
 subunit websites/emails -> name-guessed slugs. DNS-prefilter guesses before any HTTP request.
 """
@@ -312,7 +312,7 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
     # that connector before publishing. Same decisive source as the cache-based lookup above (verify.py
     # treats "nav_employer_homepage" as one decisive signal regardless of which one produced it) -- this
     # just covers a run where the live connector found something the offline `caches.nav` snapshot
-    # didn't yet have. Falls back gracefully: an older orchestrator, or a run where that connector hasn't
+    # didn't yet have. Falls back gracefully: an older pipeline, or a run where that connector hasn't
     # run yet/found nothing, simply has no `nav_homepages` key.
     shared = getattr(ctx, "shared", None) or {}
     for entry in shared.get("nav_homepages") or []:

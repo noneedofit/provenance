@@ -234,7 +234,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     try:
         from signalpost.caches.prepare import main as prepare_main  # type: ignore
     except ImportError:
-        print("signalpost.caches.prepare is not available (workstream W2 not present in this build)", file=sys.stderr)
+        print("signalpost.caches.prepare is not available (caches package missing from this build)", file=sys.stderr)
         return 2
     return prepare_main(args.rest)
 

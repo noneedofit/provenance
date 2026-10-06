@@ -1,8 +1,8 @@
 """Request-budget tiering: score each company's footprint likelihood from the bulk row alone.
 
-Tiers (BUILD_SPEC.md):
+Tiers (per-company soft allowances in DEFAULT_ALLOWANCES):
 - T0 shell: no staff, holding/property/housing NACE (64.2/68.x/70.1), legal form BRL/ESEK/SAM, no
-  registered site/domain. ~5 requests.
+  registered site/domain. ~14 requests.
 - T1 small: no staff but a registered site/domain, or 1-4 staff. ~24 requests.
 - T2 staffed: 5-49 staff, or a site plus any staff. ~36 requests.
 - T3 large: 50+ staff. ~55 requests.

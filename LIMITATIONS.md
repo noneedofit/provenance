@@ -8,12 +8,12 @@ full detail behind each item.
 `reviews` carries one source: Mattilsynet's food-hygiene inspection result (smilefjes) for food-service
 locations, published only when the inspection page's own "Orgnr." is the company's or one of its
 subunits' (`src/signalpost/activity/smilefjes.py`). That covers restaurants, cafés, caterers and similar,
-about 2% of a random batch. Consumer review platforms (Google, Trustpilot, Glassdoor) need licensed API
+roughly 0–3% of a random batch (2.3% of a 300-company sample). Consumer review platforms (Google, Trustpilot, Glassdoor) need licensed API
 access and are not used; every other company reports `not_available` with that reason.
 
 ## `group` family: parent-company flag, not full ownership
 
-`group` is available for about 15% of companies: those whose filed annual accounts mark them as a parent
+`group` is available for roughly 12–15% of companies: those whose filed annual accounts mark them as a parent
 company (`virksomhet.morselskap`, published as `group_role: parent_company`), plus any company registered
 as a subunit of another entity (`overordnetEnhet`). The registers publish no keyless list of subsidiaries
 or owners (the shareholder register is not an open API), so the names of a parent's subsidiaries and of
@@ -75,25 +75,13 @@ restriction to respect, not a bug to route around; see `SOURCES.md`.
 `financial_history` publishes the list of years the company has filed accounts for
 (`regnskap/aarsregnskap/kopi/{org}/aar`), not the actual figures for each of those years — only the
 **latest** filed year's metrics (revenue, operating result, annual result, total assets, equity, total
-debt) are extracted, from the separate `regnskapsregisteret/regnskap/{org}` endpoint. A full multi-year
-financial trend beyond the single revenue-trend synthesis sentence (which compares the latest two periods
-only, when both are available) would need per-year detail fetches this budget doesn't allocate for.
+debt) are extracted, from the separate `regnskapsregisteret/regnskap/{org}` endpoint. There is no
+multi-year revenue trend: that would need per-year detail fetches this budget doesn't allocate for.
 
 For shell-tier companies (no staff, no website or e-mail domain in the register) the filed-years endpoint,
 which is throttled to about one call a second for the whole run, is not called: `financial_history`
 carries `latest_filed_year` from the same-day register bulk file (`sisteInnsendteAarsregnskap`) instead of
 the full list.
-
-## Rate-limited/slow-to-build caches
-
-The NAV job-feed cache (`caches/nav.py`) is a full-history **event log**, not a snapshot — it can only be
-walked forward, page by page, at a measured ~3.7s/page server-side latency that no client-side throttling
-changes. A full walk to "now" is a multi-hour, multi-session `prepare`-time job (see `docs/caches.md`);
-the cache shipped with this submission covers only pages 1–540 of an unknown-length feed, and of the
-1,373 ads detail-fetched so far, only 1 carries full employer/title data (NAV's API only serves an ad's
-full detail while it is *currently* active — most ads seen ACTIVE in this feed region had already closed
-by the time their detail was fetched). `nav_live.py`'s live search+feedentry path exists specifically to
-work around this staleness for the timed run itself, subject to the rate-limiting caveat above.
 
 ## Other gaps carried from module-level docs
 

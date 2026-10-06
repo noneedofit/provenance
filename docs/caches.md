@@ -1,4 +1,8 @@
-# W2 — Caches
+# Caches
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 `from signalpost.caches import Caches` — four keyless, pre-built lookups that let the timed daily run
 skip expensive discovery work: which email/website domains are shared (not company-owned), a company's

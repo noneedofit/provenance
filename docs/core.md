@@ -1,4 +1,8 @@
-# W1 core: http, snapshots, registry, planner, pipeline, report, validate, cli
+# Core: http, snapshots, registry, planner, pipeline, report, validate, cli
+
+> Development notes, written while this part was built (September 2026). Some details have changed
+> since; `README.md`, `AGENT.md`, `CRAWLERS.md`, `SOURCES.md`, `IDENTITY_RESOLUTION.md`, `DATA_SCHEMA.md`,
+> `REFRESH.md` and `LIMITATIONS.md` describe current behaviour.
 
 ## What this workstream owns
 `src/signalpost/{http,snapshots,registry,planner,pipeline,report,validate,cli,__main__}.py`.
