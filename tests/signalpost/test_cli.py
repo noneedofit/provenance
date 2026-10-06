@@ -78,6 +78,32 @@ def test_failed_bulk_download_never_crashes_the_run(tmp_path, monkeypatch):
     assert not (tmp_path / "data" / "brreg-enheter.csv").exists()
 
 
+def test_a_slow_bulk_download_stops_at_its_time_budget(tmp_path, monkeypatch):
+    from signalpost import cli
+
+    monkeypatch.chdir(tmp_path)
+    clock = [0.0]
+    monkeypatch.setattr(cli.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(cli.time, "sleep", lambda s: clock.__setitem__(0, clock[0] + s))
+
+    class _Trickle:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self, n):
+            clock[0] += 50.0  # one megabyte every 50 seconds
+            return b"x" * 1024
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", lambda *a, **k: _Trickle())
+    path, used = cli._resolve_bulk_path(None, time_budget_s=600)
+    assert path is None
+    assert clock[0] <= 700  # gave up near the budget instead of retrying from zero three times
+    assert not list((tmp_path / "data").glob("*.part"))
+
+
 def test_missing_bulk_uses_bundled_shared_domain_table(tmp_path, monkeypatch):
     from signalpost import cli
     import signalpost.caches.wikidata as wd

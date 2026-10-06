@@ -58,8 +58,9 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 
 `signalpost run` looks for `./data/brreg-enheter.csv.gz` or `./data/brreg-enheter.csv` by default (or
 pass `--bulk <path>` explicitly). If neither is found, or the copy is more than 20 hours old (the register
-publishes it nightly), it downloads the file itself, up to 3 attempts, each counted as a setup request; a
-failed download falls back to the older copy. No API key is required — the registry API is keyless and public.
+publishes it nightly), it downloads the file itself, up to 3 attempts within at most 10 minutes in all (the register serves
+it without resume, and on a slow day at a few hundred KB/s), each counted as a setup request; a failed
+download falls back to the older copy, or to the live registry API alone. No API key is required — the registry API is keyless and public.
 
 **Caches are built automatically.** When `--caches` is omitted, `signalpost run` uses `./cache` and, if
 it is empty, builds the two identity-critical parts itself before the batch starts: the shared-domain
@@ -115,12 +116,14 @@ Run budget (the official batch is 1,000 companies in one run, and may grow to 1,
 set is 1,500):
 - `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 26 per input
   company (2,600 per 100, 39,000 per 1,500). Measured use: about 10 per company.
-- `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes). When the time
+- `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes), counted from the
+  start of the command, setup included (setup time is in `run-report.json` as `setup_s`). When the time
   left is short for the companies not yet started, each remaining company gets the official-registry pass
   only (identity, leadership, locations, financials), with skipped families reported `failed` reason
   `time_budget` — never an empty result.
 - `--workers` (env `SIGNALPOST_WORKERS`) — thread pool size, default 24.
-- Deterministic by default: identical input gives identical factual output. Two timing-dependent
+- Deterministic by default: identical input and identical sources give identical factual output (a live
+  website that is down, changed or behind a bot challenge in one run is the remaining source of difference). Two timing-dependent
   sources are opt-in: `SIGNALPOST_WIKIDATA_LIVE=1` (query Wikidata live instead of the bundled CC0
   snapshot) and `SIGNALPOST_NAV_SEARCH_MAX=<n>` (rate-limited NAV search fallback, off by default).
   The open places and NAV active-ads snapshots are pinned files in `src/signalpost/caches/snapshot/`
@@ -128,8 +131,10 @@ set is 1,500):
   `SIGNALPOST_NAV_SNAPSHOT=0` walks the full NAV window live instead. `SIGNALPOST_WEB_DEBUG=<file>`
   appends every website candidate verdict to a file for diagnostics (not part of the output).
 
-Measured: 1,500 random companies in one run with the defaults took 26 minutes and 14,504 requests
-(peak memory 660 MB), with no deadline or budget hits.
+Measured: 1,500 random companies in one run with the defaults took 25–28 minutes and about 14,500
+requests (peak memory 738 MB), with no deadline or budget hits and all 1,500 completed. A second,
+separate run of the same 1,500 gave identical facts for 1,497; the 3 differences were websites that were
+down in one run or changed their own text between runs.
 
 Output, written to `--output-dir`:
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.
