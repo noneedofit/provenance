@@ -21,9 +21,10 @@ import json
 import re
 import sqlite3
 import threading
-import unicodedata
 from pathlib import Path
 from typing import Any
+
+from ..text import fold
 
 SNAPSHOT_DIR = Path(__file__).parent / "snapshot"
 PLACES_SNAPSHOT = SNAPSHOT_DIR / "places_no.jsonl.gz"
@@ -37,12 +38,7 @@ SNAPSHOT_META = {
 OVERTURE_SOURCE_URL = "https://docs.overturemaps.org/guides/places/"
 DB_NAME = "places.sqlite"
 
-_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
 _LEGAL = {"as", "asa", "ans", "da", "enk", "sa", "nuf", "iks", "sti", "stiftelsen", "ba", "bl", "sam"}
-
-
-def fold(text: str) -> str:
-    return unicodedata.normalize("NFKD", (text or "").translate(_FOLD)).encode("ascii", "ignore").decode().casefold()
 
 
 def name_core(name: str) -> str:

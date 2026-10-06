@@ -9,14 +9,12 @@ Public API used by other workstreams:
 """
 from __future__ import annotations
 
-import hashlib
-
-import threading
-import time
-
 import csv
 import gzip
+import hashlib
 import re
+import threading
+import time
 from typing import Any
 
 from .context import CompanyContext
@@ -163,9 +161,10 @@ def _address_dict(addr: dict[str, Any] | None) -> dict[str, Any] | None:
 class _ClaimBuilder:
     """Accumulates claims + evidence for one company, deduping evidence by id."""
 
-    def __init__(self, org: str, now: str):
+    def __init__(self, org: str, now: str, bulk_retrieved_at: str | None = None):
         self.org = org
         self.now = now
+        self.bulk_retrieved_at = bulk_retrieved_at  # download time of the bulk file, for facts read from it
         self.claims: list[Claim] = []
         self.evidence: dict[str, Evidence] = {}
         self.sources_checked: dict[str, list[str]] = {}
@@ -231,7 +230,7 @@ def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, sn
     """Fallback identity claims from the bulk row (used when the live entity fetch fails)."""
     org = builder.org
     eid = builder.add_evidence(
-        source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.now,
+        source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.bulk_retrieved_at or builder.now,
         extraction_method="brreg_bulk_row_v1", span=f"row organisasjonsnummer={org}", content_sha256=snapshot_sha256 or bulk_row_sha256(row),
     )
     legal_form = (row.get("organisasjonsform.kode") or "").strip() or None
@@ -596,7 +595,7 @@ class RegistryConnector:
     def run(self, ctx: CompanyContext) -> ConnectorResult:
         org = ctx.org
         now = ctx.now
-        builder = _ClaimBuilder(org, now)
+        builder = _ClaimBuilder(org, now, (ctx.shared or {}).get("bulk_retrieved_at"))
         errors: list[dict[str, Any]] = []
         families: dict[str, FamilyState] = {}
         client = ctx.client
@@ -758,7 +757,7 @@ class RegistryConnector:
             # run), so the latest filed year comes from the same-day bulk row instead of a live call.
             year = int(str(bulk_row["sisteInnsendteAarsregnskap"]).strip())
             eid = builder.add_evidence(
-                source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.now,
+                source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.bulk_retrieved_at or builder.now,
                 extraction_method="brreg_bulk_row_v1", span="$.sisteInnsendteAarsregnskap",
                 content_sha256=bulk_row_sha256(bulk_row),
             )

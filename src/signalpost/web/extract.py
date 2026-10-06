@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import re
 import urllib.parse
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
-
-import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 

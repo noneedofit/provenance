@@ -63,7 +63,14 @@ from ..context import CompanyContext
 from ..models import ConnectorResult, utc_now
 from ._common import make_evidence, norm_title
 from .nav_feed import (
-    DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAYS, FEED_URL, NavFeedIndex, load_snapshot, walk_feed,
+    DEFAULT_MAX_PAGES,
+    DEFAULT_MAX_SECONDS,
+    DEFAULT_WINDOW_DAYS,
+    FEED_URL,
+    NavFeedIndex,
+    load_snapshot,
+    snapshot_as_of,
+    walk_feed,
     walk_feed_segmented,
 )
 
@@ -282,9 +289,13 @@ class NavLiveConnector:
                 # taken (the whole window when there is no usable snapshot), in parallel time slices. Ads
                 # closed since the snapshot are removed by that walk, and every match is still confirmed
                 # live (feedentry) before anything is published.
-                as_of = load_snapshot(index) if self._use_snapshot and index.count() == 0 else None
                 now = datetime.now(timezone.utc)
-                if as_of is not None and now - as_of <= timedelta(days=self._window_days):
+                as_of = snapshot_as_of() if self._use_snapshot and index.count() == 0 else None
+                if as_of is not None and now - as_of > timedelta(days=self._window_days):
+                    as_of = None  # older than the window: its closed ads could never be removed; walk live
+                if as_of is not None:
+                    as_of = load_snapshot(index)
+                if as_of is not None:
                     days = max(0.0, (now - as_of).total_seconds() / 86400)
                     stats = walk_feed_segmented(
                         client, get_token, index, since=as_of, segments=max(1, min(6, math.ceil(days / 2))),

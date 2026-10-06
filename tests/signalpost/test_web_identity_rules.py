@@ -125,6 +125,8 @@ def test_owner_line_with_boilerplate_still_names_us():
     from signalpost.web.verify import site_owner_mismatch
     assert site_owner_mismatch("RÆLINGEN EL-INSTALLASJON AS", ["All Rights Reserved Rælingen El Installasjon AS"]) is None
     assert site_owner_mismatch("XLEDGER LABS AS", ["Xledger AS"]) == "Xledger AS"
+    assert site_owner_mismatch("ACME AS", ["Acme Group AS"]) == "Acme Group AS"
+    assert site_owner_mismatch("ACME AS", ["Alle rettigheter forbeholdt Acme AS"]) is None
 
 
 def test_registry_site_shared_by_two_with_our_name_and_email_is_exact():

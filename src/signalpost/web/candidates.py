@@ -7,7 +7,6 @@ subunit websites/emails -> name-guessed slugs. DNS-prefilter guesses before any 
 from __future__ import annotations
 
 import dataclasses
-
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -15,6 +14,7 @@ from typing import Any
 
 import tldextract
 
+from ..text import fold
 from .blocklist import is_marketplace_or_directory
 
 # Words that should not, on their own, drive a name-guess slug (too generic to be a reliable identity guess).
@@ -61,11 +61,7 @@ OPEN_PLACES_MAX_MATCHES = 4
 
 
 def _slug_tokens(value: str) -> list[str]:
-    text = str(value or "").translate(
-        str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
-    )
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
-    return [tok for tok in re.findall(r"[a-z0-9]+", text) if tok]
+    return [tok for tok in re.findall(r"[a-z0-9]+", fold(value)) if tok]
 
 
 # Alternate, also-common Norwegian domain transliteration: "å" -> "aa" (the traditional double-vowel

@@ -18,10 +18,10 @@ Precision over recall: when unsure, this module returns `ambiguous` or `rejected
 from __future__ import annotations
 
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from ..text import fold
 from .blocklist import is_franchise_chain_domain
 from .candidates import Candidate, registered_domain
 from .crawl import PARKED_MARKERS, PLACEHOLDER_MARKERS, PLACEHOLDER_MAX_TEXT, PageFetch
@@ -106,14 +106,8 @@ def find_org_number_in_jsonld(value: Any) -> list[OrgNumberMatch]:
 
 SMALL_SHARED_DOMAIN_MAX = 3
 
-# Norwegian letters fold the same way everywhere (name, title, address, page text): NFKD alone would drop
-# "ø" entirely ("Trøndelag" -> "trndelag") while the legal-name side maps it to "o".
-_NORWEGIAN_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
-
-
 def _normalize(text: str) -> str:
-    folded = (text or "").translate(_NORWEGIAN_FOLD)
-    return unicodedata.normalize("NFKD", folded).encode("ascii", "ignore").decode().casefold()
+    return fold(text)
 
 
 def is_parked_page(html: str, text: str) -> bool:
@@ -382,6 +376,11 @@ def _find_jsonld_legal_names(nodes: Any) -> list[str]:
     return names
 
 
+_OWNER_BOILERPLATE = {
+    "all", "rights", "reserved", "copyright", "alle", "rettigheter", "forbeholdt", "c", "by", "av",
+}
+
+
 def site_owner_mismatch(our_name: str, owner_names: list[str]) -> str | None:
     """Return an owner name if NONE of `owner_names` matches `our_name`'s legal-name core, or None if at
     least one does (or no owner name was found at all -- absence is not a mismatch). A page can name
@@ -396,10 +395,10 @@ def site_owner_mismatch(our_name: str, owner_names: list[str]) -> str | None:
         owner_core = _legal_name_core(owner)
         if not owner_core:
             continue
-        if our_core <= owner_core:
-            # Every word of our name is in the owner text ("All Rights Reserved Rælingen El Installasjon AS"
-            # for RÆLINGEN EL-INSTALLASJON AS). A different entity lacks one of our words ("Xledger AS" for
-            # XLEDGER LABS AS).
+        if our_core <= owner_core and not (owner_core - our_core - _OWNER_BOILERPLATE):
+            # The owner text is our name plus copyright boilerplate ("All Rights Reserved Rælingen El
+            # Installasjon AS" for RÆLINGEN EL-INSTALLASJON AS). A different entity either lacks one of our
+            # words ("Xledger AS" for XLEDGER LABS AS) or adds its own ("Acme Group AS" for ACME AS).
             return None
         named_others.append(owner)
     return named_others[0] if named_others else None
@@ -529,16 +528,6 @@ def assess(
         if legal_core and legal_core.issubset(title_tokens):
             signals.append(Signal("legal_name_match", "exact legal name (minus suffix) found in <title>", homepage.final_url, homepage.title))
 
-        # The registered e-mail's domain being the SAME domain we're assessing is a structural signal
-        # independent of page content (a company almost never uses someone else's domain for its own
-        # e-mail address) -- helps a name-guess candidate that a registry_email_domain candidate would
-        # already carry decisively, but also a candidate reached some other way (e.g. Wikidata, a
-        # subunit website) that happens to share the registered e-mail's domain.
-        # Excludes candidate.source == "registry_email_domain": for that source the candidate's domain
-        # IS the registered e-mail's domain by construction (that's how the candidate was generated), so
-        # the match is tautological, not independent confirmation. For every other source (a name guess,
-        # the registry hjemmeside, Wikidata, a subunit site, ...) landing on the same domain the
-        # registered e-mail uses is a genuine, independent structural signal.
         # An open places dataset lists this site for a place that carries our registry phone or e-mail. Strong
         # only when that place also bears our name core (phone/e-mail alone can be a property manager's or an
         # accountant's switchboard shared by many companies).
@@ -562,6 +551,16 @@ def assess(
         if candidate.source == "registry_email_domain":
             signals.append(Signal("registry_email_domain", "registry e-mail address for this organisation uses this domain", homepage.final_url, candidate.domain))
 
+        # The registered e-mail's domain being the SAME domain we're assessing is a structural signal
+        # independent of page content (a company almost never uses someone else's domain for its own
+        # e-mail address) -- helps a name-guess candidate that a registry_email_domain candidate would
+        # already carry decisively, but also a candidate reached some other way (e.g. Wikidata, a
+        # subunit website) that happens to share the registered e-mail's domain.
+        # Excludes candidate.source == "registry_email_domain": for that source the candidate's domain
+        # IS the registered e-mail's domain by construction (that's how the candidate was generated), so
+        # the match is tautological, not independent confirmation. For every other source (a name guess,
+        # the registry hjemmeside, Wikidata, a subunit site, ...) landing on the same domain the
+        # registered e-mail uses is a genuine, independent structural signal.
         email_domain = (registry_facts.get("email_domain") or "").strip().lower()
         if email_domain and email_domain == candidate.domain and candidate.source != "registry_email_domain":
             signals.append(Signal("email_domain_match", "registered e-mail domain matches this site's domain", homepage.final_url, email_domain))

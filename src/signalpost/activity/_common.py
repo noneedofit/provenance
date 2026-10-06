@@ -5,10 +5,10 @@ Not part of the orchestrator contract - internal to this package.
 from __future__ import annotations
 
 import re
-import unicodedata
 from typing import Any
 
 from ..models import Claim, Evidence, claim_key, evidence_id
+from ..text import fold
 
 
 def make_evidence(
@@ -80,12 +80,9 @@ def make_claim(
 
 
 _LEGAL_SUFFIXES = {"as", "asa", "sa", "da", "ans", "enk", "nuf", "avd"}
-_TRANS = str.maketrans({"ø": "o", "å": "a", "æ": "ae", "Ø": "O", "Å": "A", "Æ": "AE"})
 
 
 def norm_title(value: Any) -> str:
     """Normalize a job title for cross-source dedupe (NAV vs ATS)."""
-    text = str(value or "").translate(_TRANS)
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    tokens = [t for t in re.findall(r"[a-z0-9]+", text.casefold()) if t not in _LEGAL_SUFFIXES]
+    tokens = [t for t in re.findall(r"[a-z0-9]+", fold(str(value or ""))) if t not in _LEGAL_SUFFIXES]
     return " ".join(tokens)

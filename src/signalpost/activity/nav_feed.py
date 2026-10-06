@@ -27,7 +27,6 @@ index is left `partial` (not `complete`) and callers must say so rather than rep
 from __future__ import annotations
 
 import concurrent.futures
-
 import json
 import sqlite3
 import threading
@@ -534,6 +533,17 @@ def walk_feed_segmented(
 
 
 SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "caches" / "snapshot" / "nav_active_ads.jsonl.gz"
+
+
+def snapshot_as_of(path: Path = SNAPSHOT_PATH) -> datetime | None:
+    """The bundled snapshot's `as_of` time, read from its first line only (None when unavailable)."""
+    import gzip
+
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            return _parse_iso(json.loads(fh.readline()).get("as_of"))
+    except (OSError, ValueError, AttributeError):
+        return None
 
 
 def load_snapshot(index: NavFeedIndex, path: Path = SNAPSHOT_PATH) -> datetime | None:

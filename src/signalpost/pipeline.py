@@ -12,12 +12,13 @@ order, even when a company crashes.
 from __future__ import annotations
 
 import json
-import sys
 import os
+import sys
 import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -159,11 +160,15 @@ def run_batch(
     state_path.mkdir(parents=True, exist_ok=True)
 
     org_list = list(orgs)
+    bulk_retrieved_at: str | None = None
     if bulk_rows is not None:
         bulk = {org: bulk_rows.get(org, {}) for org in org_list}
     elif bulk_path:
         try:
             bulk = registry.load_bulk(bulk_path, org_list)
+            # When the bulk file was downloaded is the retrieval time of every fact read from it.
+            mtime = os.path.getmtime(bulk_path)
+            bulk_retrieved_at = datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
         except Exception as exc:  # a corrupt bulk file must not crash the batch; live API covers identity
             print(f"bulk file unreadable ({type(exc).__name__}: {exc}); continuing without it", file=sys.stderr)
             bulk = {}
@@ -243,7 +248,7 @@ def run_batch(
             budget.allocate(org, tier_result.allowance)
             ctx = CompanyContext(
                 org=org, run_id=run_id, now=now, tier=tier_result.tier, bulk=row, caches=caches,
-                client=client, snapshots=snapshots, shared={"registry_only": registry_only}, previous=_load_previous(state_path, org),
+                client=client, snapshots=snapshots, shared={"registry_only": registry_only, "bulk_retrieved_at": bulk_retrieved_at}, previous=_load_previous(state_path, org),
             )
             if not deadline_hit:
                 for connector in conn_list:

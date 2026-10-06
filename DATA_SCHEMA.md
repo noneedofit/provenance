@@ -135,8 +135,8 @@ Claim values worth knowing (others are self-describing):
   verified site, or `parent`/`brand`/`subsidiary` for its group's site declared for this org number.
 - `financial_history/filed_years`: list of years with filed accounts; for shell-tier companies
   `financial_history/latest_filed_year` (an int, from the register bulk file) instead.
-- `reviews/inspection_rating`: `{rater, scheme, place, place_org_number, grade_code (0-3), grade,
-  inspected_on, url}` — Mattilsynet's latest food-hygiene inspection of one food-service location;
+- `reviews/inspection_rating`: `{rater, scheme, place, place_org_number, grade_code (0-3, or null when
+  only the page's smiley is known), grade, inspected_on, url}` (date and smiley as stated on the page) — Mattilsynet's latest food-hygiene inspection of one food-service location;
   `place_org_number` is the company's or a subunit's org number shown on the inspection page.
 - `jobs/job_posting`: one open NAV (or ATS) posting; `jobs/active_postings_count`: `{verified: n}`.
 

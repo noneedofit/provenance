@@ -94,8 +94,7 @@ class ActivityConnector:
         has_verified_site = bool((ctx.shared or {}).get("verified_site"))
         # Every tier may use site-derived sources once a site is verified; the per-company request budget
         # (planner allowance) is the limit, not the tier label.
-        tier_allows_http = True
-        can_use_http = has_verified_site and tier_allows_http and _budget_available(ctx)
+        can_use_http = has_verified_site and _budget_available(ctx)
 
         ats_provider = None
         if can_use_http:
@@ -162,11 +161,6 @@ class ActivityConnector:
             families["activity"] = FamilyState(
                 family="activity", availability="not_applicable",
                 reason="no verified company website to derive activity from", sources_checked=[],
-            )
-        elif not tier_allows_http:
-            families["activity"] = FamilyState(
-                family="activity", availability="not_applicable",
-                reason="tier T0: no HTTP budget for site-derived activity sources", sources_checked=[],
             )
         elif not _budget_available(ctx):
             families["activity"] = FamilyState(

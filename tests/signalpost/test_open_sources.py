@@ -102,3 +102,16 @@ def test_credit_link_is_dropped_but_company_links_are_kept():
     soup = BeautifulSoup(html, "lxml")
     flags = {a["href"]: _is_credit_link(a) for a in soup.select("a")}
     assert flags == {"https://facebook.com/acme": False, "https://facebook.com/byraa": True, "https://instagram.com/acme": False}
+
+
+def test_smilefjes_page_is_authoritative_when_index_is_stale():
+    smilefjes.reset_for_tests()
+    index = {"lookup": [["/spisested/a/x/", "Kafe Fjord", "Gate 1", "", "5054", "Bergen", [["2", "2023-01-01"]]]]}
+    client = _PageClient({smilefjes.BASE_URL + "/spisested/a/x/": _place_page("Kafe Fjord", "884225442")}, index)
+    ctx = SimpleNamespace(org="884225442", client=client, bulk={}, registry={"subunits": []},
+                          shared={"registry_facts": {"name": "KAFE FJORD AS", "postcode": "5054", "aliases": []}})
+    claim = smilefjes.collect(ctx)["claims"][0]
+    # The page shows a newer inspection (04.04.2024, smiling face) than the index (2023, straight mouth).
+    assert claim.value["inspected_on"] == "2024-04-04" and claim.value["grade"] == "smiling face"
+    assert claim.value["grade_code"] is None
+    smilefjes.reset_for_tests()

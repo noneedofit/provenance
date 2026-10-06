@@ -9,9 +9,11 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from . import pipeline, validate as validate_mod
+from . import pipeline
+from . import validate as validate_mod
 
 DEFAULT_BULK_PATHS = ("./data/brreg-enheter.csv.gz", "./data/brreg-enheter.csv")
+BULK_MAX_AGE_HOURS = 20
 BULK_DOWNLOAD_URL = "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
 
 
@@ -73,10 +75,18 @@ def _resolve_bulk_path(explicit: str | None) -> tuple[str | None, int]:
     bulk file (the live registry API covers identity), so a failed download must not crash the batch."""
     if explicit:
         return explicit, 0
+    stale: str | None = None
     for candidate in DEFAULT_BULK_PATHS:
         if Path(candidate).exists():
             if _bulk_file_ok(Path(candidate)):
-                return candidate, 0
+                age_h = (time.time() - Path(candidate).stat().st_mtime) / 3600
+                if age_h <= BULK_MAX_AGE_HOURS:
+                    return candidate, 0
+                # The register publishes the bulk file nightly: a day-old copy is refreshed so facts read
+                # from it (and their retrieval time) stay current. The old copy is kept as a fallback.
+                print(f"bulk file {candidate} is {age_h:.0f} h old; downloading today's copy", file=sys.stderr)
+                stale = candidate
+                break
             print(f"bulk file {candidate} is incomplete or corrupt; downloading a fresh copy", file=sys.stderr)
             Path(candidate).unlink(missing_ok=True)
             Path(candidate + ".ok").unlink(missing_ok=True)
@@ -105,6 +115,9 @@ def _resolve_bulk_path(explicit: str | None) -> tuple[str | None, int]:
         tmp.unlink(missing_ok=True)
         if attempt < BULK_DOWNLOAD_ATTEMPTS:
             time.sleep(5 * attempt)
+    if stale is not None:
+        print(f"bulk download failed; using the older copy {stale}", file=sys.stderr)
+        return stale, requests_used
     print("continuing without the bulk file (live registry API only; bundled shared-domain table)", file=sys.stderr)
     return None, requests_used
 
@@ -131,7 +144,9 @@ def _ensure_caches(explicit: str | None, bulk_path: str | None) -> tuple[str | N
     cache_dir = Path(explicit or DEFAULT_CACHE_DIR)
     requests_used = 0
     try:
-        from signalpost.caches import email_domains as email_domains_mod, store, wikidata as wikidata_mod
+        from signalpost.caches import email_domains as email_domains_mod
+        from signalpost.caches import store
+        from signalpost.caches import wikidata as wikidata_mod
     except Exception as exc:  # caches package missing in a stripped build
         print(f"caches unavailable ({exc}); running without them", file=sys.stderr)
         return explicit, 0

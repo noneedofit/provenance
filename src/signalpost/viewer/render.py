@@ -9,10 +9,27 @@ import json
 from typing import Any
 
 from .helpers import (
-    AVAILABILITY_CLASS, AVAILABILITY_LABELS, FAMILY_LABELS, SECTION_LABELS, COVERAGE_FAMILIES,
-    esc, fmt_date, fmt_money, fmt_value, display_value, label_from_field, org_registry_api_url,
-    org_registry_search_url, coverage_score, employee_band, claims_by_family, evidence_by_id,
-    field_value, first_available, plain_scalar, short_hash,
+    AVAILABILITY_CLASS,
+    AVAILABILITY_LABELS,
+    COVERAGE_FAMILIES,
+    FAMILY_LABELS,
+    SECTION_LABELS,
+    claims_by_family,
+    coverage_score,
+    display_value,
+    employee_band,
+    esc,
+    evidence_by_id,
+    field_value,
+    first_available,
+    fmt_date,
+    fmt_money,
+    fmt_value,
+    label_from_field,
+    org_registry_api_url,
+    org_registry_search_url,
+    plain_scalar,
+    short_hash,
 )
 
 SITE_TITLE = "Signalpost"

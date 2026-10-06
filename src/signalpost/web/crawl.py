@@ -10,13 +10,13 @@ import gzip
 import re
 import unicodedata
 import urllib.parse
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-import warnings
-
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
+from ..text import fold
 from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
 
@@ -229,24 +229,19 @@ def _fetch_page(ctx: Any, url: str, purpose: str) -> tuple[PageFetch | None, int
 
 
 _CONNECT_ERRORS = {"network_error", "ssl_error"}
-_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
 _NAME_STOP = {"as", "asa", "ans", "da", "enk", "sa", "nuf", "iks", "holding", "invest", "eiendom", "norge", "norway", "group", "gruppen"}
-
-
-def _fold(text: str) -> str:
-    return unicodedata.normalize("NFKD", (text or "").translate(_FOLD)).encode("ascii", "ignore").decode().casefold()
 
 
 def _homepage_names_company(ctx: Any, homepage: PageFetch) -> bool:
     name = str((getattr(ctx, "bulk", None) or {}).get("navn") or "")
-    tokens = {t for t in re.findall(r"[a-z0-9]+", _fold(name)) if len(t) >= 4 and t not in _NAME_STOP}
+    tokens = {t for t in re.findall(r"[a-z0-9]+", fold(name)) if len(t) >= 4 and t not in _NAME_STOP}
     if not tokens:
         return False
-    page_tokens = set(re.findall(r"[a-z0-9]+", _fold(homepage.title + " " + homepage.text[:20000])))
+    page_tokens = set(re.findall(r"[a-z0-9]+", fold(homepage.title + " " + homepage.text[:20000])))
     return bool(tokens & page_tokens)
 
 
-def _alternate_homepages(ctx: Any, url: str) -> list[str]:
+def _alternate_homepages(ctx: Any, url: str, *, skip_same_host_http: bool = False) -> list[str]:
     """Other scheme/host spellings of a homepage, in the order browsers effectively try them, limited to
     hosts that resolve in DNS (a local lookup, not an HTTP request)."""
     parts = urllib.parse.urlsplit(url)
@@ -261,6 +256,8 @@ def _alternate_homepages(ctx: Any, url: str) -> list[str]:
     for h in hosts:
         for scheme in ("https", "http"):
             alt = f"{scheme}://{h}{path}"
+            if skip_same_host_http and h == host and scheme == "http":
+                continue
             if alt != url and alt not in out:
                 out.append(alt)
     return out[:2]
@@ -284,7 +281,8 @@ def crawl_candidate(
     if homepage is not None and not homepage.ok and homepage.error in _CONNECT_ERRORS:
         # Many small Norwegian sites answer only on plain http, or only on (or without) "www.". A connection
         # failure on the one URL we tried is not evidence that the site does not exist.
-        for alt in _alternate_homepages(ctx, candidate.url):
+        tried_http = homepage.error == "ssl_error"  # the HTTP client already retried plain http on this host
+        for alt in _alternate_homepages(ctx, candidate.url, skip_same_host_http=tried_http):
             if ctx.client.remaining(ctx.org) < 1:
                 break
             retry, used = _fetch_page(ctx, alt, "web_homepage_fallback")

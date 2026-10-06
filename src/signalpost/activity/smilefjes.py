@@ -15,9 +15,10 @@ import html as html_mod
 import json
 import re
 import threading
-import unicodedata
+import time
 from typing import Any
 
+from ..text import fold
 from ._common import make_claim, make_evidence
 
 BASE_URL = "https://smilefjes.mattilsynet.no"
@@ -29,16 +30,21 @@ GRADE_TEXT = {
     "2": "straight mouth (breaches that require follow-up)",
     "3": "sad mouth (serious breaches)",
 }
+# The page's own wording for the latest result -> the smiley it shows.
+_SMILEY_WORDS = (
+    ("blidt smilefjes", "smiling face"),
+    ("strekmunn", "straight mouth (breaches that require follow-up)"),
+    ("sur munn", "sad mouth (serious breaches)"),
+)
 _STOP = {"as", "asa", "da", "ans", "sa", "enk", "nuf", "avd", "og", "the", "i", "pa", "cafe", "kafe", "restaurant",
          "pizza", "sushi", "bar", "kro", "grill", "bakeri", "kafeteria", "kantine"}
-_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
 
 _lock = threading.Lock()
 _state: dict[str, Any] = {"loaded": False, "by_postcode": {}, "error": None, "evidence": None}
 
 
 def _tokens(name: str) -> set[str]:
-    folded = unicodedata.normalize("NFKD", (name or "").translate(_FOLD)).encode("ascii", "ignore").decode().casefold()
+    folded = fold(name)
     return {t for t in re.findall(r"[a-z0-9]+", folded) if len(t) >= 3 and t not in _STOP}
 
 
@@ -49,6 +55,10 @@ def _load_index(client: Any) -> None:
             return
         _state["loaded"] = True
         resp = client.get(INDEX_URL, org=None, purpose="smilefjes_index", accept="application/json", respect_robots=True)
+        if not resp.ok and resp.error != "robots_disallowed" and resp.status not in (403, 404, 410):
+            # One more try: a single transient failure here would leave reviews unchecked for the whole run.
+            time.sleep(3.0)
+            resp = client.get(INDEX_URL, org=None, purpose="smilefjes_index", accept="application/json", respect_robots=True)
         if not resp.ok:
             _state["error"] = resp.error or f"http_{resp.status}"
             return
@@ -135,16 +145,21 @@ def collect(ctx: Any) -> dict:
             continue  # same name and postcode, different organisation: never published
         latest_title = _LATEST_RE.search(page)
         latest_date = _LATEST_DATE_RE.search(text)
-        history = row[6] if isinstance(row[6], list) else []
-        grade = str(history[0][0]) if history and history[0] else None
-        inspected = str(history[0][1]) if history and len(history[0]) > 1 else None
-        if grade not in GRADE_TEXT or not inspected:
+        if not latest_title or not latest_date:
+            continue  # the page itself must state the latest result: it is the evidence
+        smiley_text = html_mod.unescape(latest_title.group(1))
+        smiley = next((label for word, label in _SMILEY_WORDS if word in smiley_text.casefold()), None)
+        if smiley is None:
             continue
-        quote_parts = [f"{row[1]} Orgnr. {page_org}"]
-        if latest_date:
-            quote_parts.append(f"Siste tilsynsresultat: {latest_date.group(1)}")
-        if latest_title:
-            quote_parts.append(html_mod.unescape(latest_title.group(1)))
+        day, month, year = latest_date.group(1).split(".")
+        inspected = f"{year}-{month}-{day}"
+        # The index's finer grade (0-3) is used only when it describes the same inspection the page shows.
+        history = row[6] if isinstance(row[6], list) else []
+        index_grade = str(history[0][0]) if history and history[0] else None
+        index_date = str(history[0][1]) if history and len(history[0]) > 1 else None
+        grade_code = int(index_grade) if index_grade in GRADE_TEXT and index_date == inspected else None
+        grade = GRADE_TEXT[index_grade] if grade_code is not None else smiley
+        quote_parts = [f"{row[1]} Orgnr. {page_org}", f"Siste tilsynsresultat: {latest_date.group(1)}", smiley_text]
         ev = make_evidence(
             source_url=resp.final_url or url, source_class="official_inspection", retrieved_at=resp.retrieved_at,
             extraction_method="mattilsynet_smilefjes_v1", final_url=resp.final_url, redirect_chain=resp.redirect_chain,
@@ -157,8 +172,8 @@ def collect(ctx: Any) -> dict:
             value={
                 "rater": "Mattilsynet (Norwegian Food Safety Authority)",
                 "scheme": "smilefjes food-hygiene inspection",
-                "place": row[1], "place_org_number": page_org, "grade_code": int(grade),
-                "grade": GRADE_TEXT[grade], "inspected_on": inspected, "url": resp.final_url or url,
+                "place": row[1], "place_org_number": page_org, "grade_code": grade_code,
+                "grade": grade, "inspected_on": inspected, "url": resp.final_url or url,
             },
             value_key=f"smilefjes:{row[0]}", availability="available",
             identity_basis="org_number_on_source", effective_date=inspected, evidence_ids=[ev.evidence_id],

@@ -18,7 +18,13 @@ from pathlib import Path
 
 from signalpost.models import Envelope
 
-from .render import build_row, render_company_page, render_directory_csv, render_index_page, render_compare_page
+from .render import (
+    build_row,
+    render_company_page,
+    render_compare_page,
+    render_directory_csv,
+    render_index_page,
+)
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 

@@ -5,27 +5,31 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
-import re
-
-import threading
-
-import json
-
-import os
-
 import hashlib
+import json
+import os
+import re
+import threading
 import urllib.parse
 from typing import Any
 
 from ..context import CompanyContext
-from ..models import Claim, ConnectorResult, Evidence, FamilyState, claim_key, evidence_id, utc_now
+from ..models import (
+    Claim,
+    ConnectorResult,
+    Evidence,
+    FamilyState,
+    claim_key,
+    evidence_id,
+    utc_now,
+)
+from ..urls import normalize_social_url
 from . import candidates as candidates_mod
 from . import extract as extract_mod
 from . import verify as verify_mod
 from .blocklist import is_marketplace_or_directory
 from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, crawl_candidate
-from ..urls import normalize_social_url
 
 DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
 
