@@ -3,12 +3,13 @@
 Honest gaps in this agent as built, not aspirations for a future version. See each linked doc for the
 full detail behind each item.
 
-## No ratings/reviews source
+## Ratings/reviews: official food-hygiene inspections only
 
-`reviews` is always `not_available`, reason "no permitted keyless ratings/reviews source
-(Google/Trustpilot/Glassdoor require licensed API access)" (`src/signalpost/activity/connector.py`). No
-connector attempts this family at all — there is no keyless, ToS-compliant way to collect review/rating
-data for a Norwegian company today, and the $0 / no-secrets constraint rules out a licensed provider.
+`reviews` carries one source: Mattilsynet's food-hygiene inspection result (smilefjes) for food-service
+locations, published only when the inspection page's own "Orgnr." is the company's or one of its
+subunits' (`src/signalpost/activity/smilefjes.py`). That covers restaurants, cafés, caterers and similar,
+about 2% of a random batch. Consumer review platforms (Google, Trustpilot, Glassdoor) need licensed API
+access and are not used; every other company reports `not_available` with that reason.
 
 ## `group` family: parent-company flag, not full ownership
 
@@ -18,32 +19,37 @@ as a subunit of another entity (`overordnetEnhet`). The registers publish no key
 or owners (the shareholder register is not an open API), so the names of a parent's subsidiaries and of
 a subsidiary's parent are not reported.
 
-## Job postings: NAV feed window and capped search
+## Job postings: NAV feed snapshot plus live catch-up
 
-Jobs come from NAV's public `pam-stilling-feed`: each run walks the feed from about 60 days back
-(`If-Modified-Since` jumps straight to that date), keeps currently ACTIVE ads, matches them to the batch by
-employer name, and publishes a posting only after `/feedentry/{uuid}` confirms our organisation number (or
-one of our subunits). The index and feed position persist in `--state-dir`, so a daily refresh reads only
-the new pages (117 pages on a fresh run, 1 on the next). Two limits remain:
+Jobs come from NAV's public `pam-stilling-feed`. The agent ships a snapshot of the ads that were active when
+it was built (`caches/snapshot/nav_active_ads.jsonl.gz`, with each ad's employer org number and homepage,
+built by `scripts/build_nav_snapshot.py`) and, at run time, walks only the feed published since that
+snapshot (in parallel time slices) so ads opened or closed since are applied. Ads are matched to the batch
+by employer org number (snapshot) and by employer name, and a posting is published only after
+`/feedentry/{uuid}` confirms, live, our organisation number or a subunit's. Limits:
 
-- **Import-sourced ads are invisible to the feed window.** Ads imported from other job boards are never
-  touched after creation, so their only feed event can be months old; even a 200-day walk did not find the
-  three such companies in our gold set.
-- **Search is capped.** `arbeidsplassen.nav.no`'s search endpoint rate-limits an IP after roughly 30
-  searches, so the agent searches at most 15 staffed companies per run (≥5 employees, no feed match, largest
-  first, rotated across runs via `--state-dir`), stopping after two consecutive 429s. Companies not
-  searched keep the feed result (`not_available`), never `failed`.
+- **Active ads last changed before the snapshot window** (about 3% of active ads are older than 60 days)
+  are included only if they were active when the snapshot was built.
+- **Import-sourced ads** (copied from other job boards) are touched only at creation, so an old one may be
+  missing.
+- **Search is off by default** (`SIGNALPOST_NAV_SEARCH_MAX`): NAV's search endpoint rate-limits an IP after
+  roughly 30 searches.
 
 ## Website discovery: recall trade-off for precision
 
 Precision over recall is a deliberate design choice (`IDENTITY_RESOLUTION.md`): `exact` requires either
-one decisive signal or two independent corroborating signals with zero conflicts. This means real
-company websites are sometimes left `not_available` or `ambiguous` rather than published, when the
-evidence found doesn't clear that bar — e.g. a registry-declared site on a domain shared by exactly 2
-organisations with no org-number-bearing page crawled (see the gold-set QA misses documented in
-`docs/web.md`). Company-website company recall against the 131-company gold set:
-53.3% (25 Sep 2026; see EVAL.md). No wrong-company website was published against gold at last measurement
-(`wrong_company_publications: 0`).
+one decisive signal (org number on the site, or an org-number-keyed record: register, Wikidata,
+OpenStreetMap `ref:NO:orgnr`, a NAV ad) or two independent corroborating signals with zero conflicts. The
+company's name in the page title and the company's name as the domain count as one signal, never two: a
+same-named company (in Norway or abroad) shows both, so a guessed domain always needs an independent
+registry fact as well (address, phone, e-mail, a board member, or an open-places match on the registry
+phone/e-mail). Parked, "coming soon" and registrar placeholder pages are never accepted. As a result some
+real websites stay `not_available` or `ambiguous` when the page shows nothing that ties it to the
+register. A registry-declared site shared by a few group companies (or tied to the org number by
+Wikidata/OSM but showing a subsidiary's number) is published as the company's website labelled with the
+relationship (`parent`/`brand`), never as an exact own-site; profiles and descriptions are not taken from
+it. Domains shared by ten or more organisations (property managers, franchise platforms) are not
+published. Sites that block automated visitors (HTTP 403 "request blocked") are not worked around.
 
 ## JS-only sites are not rendered
 
@@ -72,6 +78,11 @@ restriction to respect, not a bug to route around; see `SOURCES.md`.
 debt) are extracted, from the separate `regnskapsregisteret/regnskap/{org}` endpoint. A full multi-year
 financial trend beyond the single revenue-trend synthesis sentence (which compares the latest two periods
 only, when both are available) would need per-year detail fetches this budget doesn't allocate for.
+
+For shell-tier companies (no staff, no website or e-mail domain in the register) the filed-years endpoint,
+which is throttled to about one call a second for the whole run, is not called: `financial_history`
+carries `latest_filed_year` from the same-day register bulk file (`sisteInnsendteAarsregnskap`) instead of
+the full list.
 
 ## Rate-limited/slow-to-build caches
 

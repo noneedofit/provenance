@@ -538,7 +538,12 @@ class NavLiveConnector:
         # name, an "avd." department suffix, or wording NAV's businessName doesn't share verbatim with
         # the legal/alias/subunit name - never a publishing risk on its own, since every candidate
         # (exact or fuzzy) still needs its organisation number confirmed via feedentry below.
-        by_uuid: dict[str, dict] = {m["uuid"]: m for m in index.match(name_norms)}
+        # Ads whose employer org number is already known (snapshot) come first: they catch ads posted under
+        # a trade name or a subunit's number that no name match would find.
+        by_orgnr = {m["uuid"]: m for m in index.match_orgnr(our_orgnrs)}
+        by_uuid: dict[str, dict] = dict(by_orgnr)
+        for m in index.match(name_norms):
+            by_uuid.setdefault(m["uuid"], m)
         for m in index.match_fuzzy(name_norms):
             by_uuid.setdefault(m["uuid"], m)
         feed_matching = len(by_uuid)
@@ -554,7 +559,7 @@ class NavLiveConnector:
             for m in search_hits:
                 by_uuid.setdefault(m["uuid"], m)
 
-        ranked = sorted(by_uuid.values(), key=lambda m: m.get("sist_endret") or "", reverse=True)
+        ranked = sorted(by_uuid.values(), key=lambda m: (m["uuid"] in by_orgnr, m.get("sist_endret") or "", m["uuid"]), reverse=True)
         cap = self._match_cap.get(tier, 5)
         candidates = ranked[:cap]
         total_matching = len(by_uuid)

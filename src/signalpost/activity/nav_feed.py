@@ -93,6 +93,14 @@ class NavFeedIndex:
                 ")"
             )
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_active_ads_norm ON active_ads(business_name_norm)")
+            # Employer org number / homepage, known for ads seeded from the bundled snapshot (read from each
+            # ad's feedentry when the snapshot was built). Added in place for older state dirs.
+            cols = {r[1] for r in self._conn.execute("PRAGMA table_info(active_ads)").fetchall()}
+            if "employer_orgnr" not in cols:
+                self._conn.execute("ALTER TABLE active_ads ADD COLUMN employer_orgnr TEXT")
+            if "employer_homepage" not in cols:
+                self._conn.execute("ALTER TABLE active_ads ADD COLUMN employer_homepage TEXT")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_active_ads_orgnr ON active_ads(employer_orgnr)")
             self._conn.execute("CREATE TABLE IF NOT EXISTS nav_feed_cursor (key TEXT PRIMARY KEY, value TEXT)")
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS nav_search_history (organisation_number TEXT PRIMARY KEY, searched_at TEXT)"
@@ -170,6 +178,24 @@ class NavFeedIndex:
                 "sist_endret=excluded.sist_endret, updated_at=excluded.updated_at",
                 (uuid, title, business_name, norm, municipal, sist_endret, updated_at),
             )
+
+    def set_employer(self, uuid: str, orgnr: str | None, homepage: str | None) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE active_ads SET employer_orgnr = ?, employer_homepage = ? WHERE uuid = ?", (orgnr, homepage, uuid),
+            )
+
+    def match_orgnr(self, orgnrs: set[str]) -> list[dict]:
+        """Ads whose employer org number (known from the snapshot) is one of `orgnrs`."""
+        orgnrs = {o for o in orgnrs if o}
+        if not orgnrs:
+            return []
+        placeholders = ",".join("?" for _ in orgnrs)
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT * FROM active_ads WHERE employer_orgnr IN ({placeholders})", tuple(orgnrs)
+            ).fetchall()
+        return [dict(r) for r in rows]
 
     def remove(self, uuid: str) -> None:
         with self._lock:
@@ -516,9 +542,12 @@ def load_snapshot(index: NavFeedIndex, path: Path = SNAPSHOT_PATH) -> datetime |
             if as_of is None:
                 return None
             for line in fh:
-                uuid, title, business_name, municipal, sist_endret = json.loads(line)
+                row = json.loads(line)
+                uuid, title, business_name, municipal, sist_endret = row[:5]
                 index.upsert_active(uuid=uuid, title=title, business_name=business_name, municipal=municipal,
                                     sist_endret=sist_endret, updated_at=meta["as_of"])
+                if len(row) >= 7 and (row[5] or row[6]):
+                    index.set_employer(uuid, row[5], row[6])
         index.commit()
         return as_of
     except (OSError, ValueError, KeyError, TypeError):
