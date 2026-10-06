@@ -104,6 +104,8 @@ def find_org_number_in_jsonld(value: Any) -> list[OrgNumberMatch]:
 # --- Parked / conflict helpers ---------------------------------------------------------------------------
 
 
+SMALL_SHARED_DOMAIN_MAX = 3
+
 # Norwegian letters fold the same way everywhere (name, title, address, page text): NFKD alone would drop
 # "ø" entirely ("Trøndelag" -> "trndelag") while the legal-name side maps it to "o".
 _NORWEGIAN_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
@@ -394,7 +396,10 @@ def site_owner_mismatch(our_name: str, owner_names: list[str]) -> str | None:
         owner_core = _legal_name_core(owner)
         if not owner_core:
             continue
-        if owner_core == our_core:
+        if our_core <= owner_core:
+            # Every word of our name is in the owner text ("All Rights Reserved Rælingen El Installasjon AS"
+            # for RÆLINGEN EL-INSTALLASJON AS). A different entity lacks one of our words ("Xledger AS" for
+            # XLEDGER LABS AS).
             return None
         named_others.append(owner)
     return named_others[0] if named_others else None
@@ -653,6 +658,19 @@ def assess(
 
     if registry_declared_ok:
         return Verdict("exact", "registry_declared", "exact", signals=signals, conflicts=[], note="registry-declared site, live and unconflicted")
+
+    if (
+        candidate.source == "registry_website" and not registry_declared_ok and shared_domain
+        and website_org_count is not None and website_org_count <= SMALL_SHARED_DOMAIN_MAX
+        and not hijacked and not is_chain_domain and not owner_name_mismatch
+        and "legal_name_match" in distinct_corroborating_raw
+        and distinct_corroborating_raw & {"registry_email", "registry_phone", "registered_address"}
+    ):
+        # The register lists this site for us, it is shared with only a few organisations (a sister
+        # company), and the page itself carries our exact legal name plus our registered e-mail, phone or
+        # address: specific to this organisation, not a generic shared site.
+        return Verdict("exact", "registry_declared", "exact", signals=signals, conflicts=[],
+                       note=f"registry-declared site shared by {website_org_count} organisations, page names this organisation and its registered contact details")
 
     if candidate.source == "registry_website" and not registry_declared_ok and shared_domain:
         return Verdict(

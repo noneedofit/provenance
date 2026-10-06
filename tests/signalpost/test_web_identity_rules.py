@@ -119,3 +119,20 @@ def test_alternate_homepages_try_http_and_www_only_for_resolving_hosts():
     assert _alternate_homepages(ctx, "https://helbu.no/") == ["http://helbu.no/", "https://www.helbu.no/"]
     assert _alternate_homepages(_Ctx(set()), "https://dead.no/") == []
     assert _alternate_homepages(_Ctx({"www.only.no"}), "https://only.no/") == ["https://www.only.no/", "http://www.only.no/"]
+
+
+def test_owner_line_with_boilerplate_still_names_us():
+    from signalpost.web.verify import site_owner_mismatch
+    assert site_owner_mismatch("RÆLINGEN EL-INSTALLASJON AS", ["All Rights Reserved Rælingen El Installasjon AS"]) is None
+    assert site_owner_mismatch("XLEDGER LABS AS", ["Xledger AS"]) == "Xledger AS"
+
+
+def test_registry_site_shared_by_two_with_our_name_and_email_is_exact():
+    text = "Rana Utvikling AS. Kontakt: post@ru.no. Daglig leder Kari Nordmann."
+    f = facts("RANA UTVIKLING AS", email="post@ru.no", email_domain="ru.no", role_holders=["Kari Nordmann"], website="ru.no")
+    p = page(text, title="Rana Utvikling AS", url="https://ru.no/")
+    v = assess(ORG, [p], f, Candidate(domain="ru.no", url="https://ru.no/", source="registry_website", label="t", decisive=True), website_org_count=2)
+    assert v.status == "exact"
+    # The same page shared by many organisations (a property manager) stays a shared site.
+    v_many = assess(ORG, [p], f, Candidate(domain="ru.no", url="https://ru.no/", source="registry_website", label="t", decisive=True), website_org_count=40)
+    assert v_many.status != "exact"
