@@ -670,6 +670,9 @@ def _render_website_profiles(by_family: dict, ev_by_id: dict) -> str:
         if c.get("availability") == "available" and c.get("relationship") in (None, "exact"):
             tag = ' <span class="website-exact-tag">verified exact</span>' if c.get("field") == "official_website" else ""
             value_html = _website_value_html(c) + tag
+        elif c.get("availability") == "available" and c.get("value"):
+            tag = f' <span class="website-relationship">group website, listed in the register ({esc(c.get("relationship") or "group")})</span>'
+            value_html = _website_value_html(c) + tag
         elif c.get("value"):
             tag = f' <span class="website-relationship">related / ambiguous ({esc(c.get("relationship") or "unclear")})</span>'
             value_html = _website_value_html(c) + tag
@@ -726,7 +729,21 @@ def _render_hiring_activity(by_family: dict, ev_by_id: dict) -> str:
         act_rows.append(fact_row(c["claim_id"], "Activity", _linked(v.get("title"), v.get("url")) + date, src))
     act_html = "".join(act_rows) or '<p class="muted">No recent activity found.</p>'
 
-    return f'<div class="section"><h3>Hiring</h3>{job_html}<h3>Activity</h3>{act_html}</div>'
+    rating_rows = []
+    ratings = sorted(
+        [c for c in by_family.get("reviews", []) if c.get("availability") == "available" and c.get("status", "current") == "current"],
+        key=lambda c: str((c.get("value") or {}).get("inspected_on") or ""), reverse=True,
+    )
+    for c in ratings:
+        src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
+        v = c["value"] if isinstance(c["value"], dict) else {}
+        when = v.get("inspected_on")
+        detail = f' <span class="muted small">({esc(str(v.get("grade") or ""))}{", " + esc(str(when)) if when else ""})</span>'
+        rating_rows.append(fact_row(c["claim_id"], "Food hygiene (Mattilsynet)", _linked(v.get("place"), v.get("url")) + detail, src))
+    rating_html = "".join(rating_rows) or '<p class="muted">No public ratings found in permitted sources.</p>'
+
+    return (f'<div class="section"><h3>Hiring</h3>{job_html}<h3>Activity</h3>{act_html}'
+            f'<h3>Ratings</h3>{rating_html}</div>')
 
 
 def _render_family_table(families: dict) -> str:

@@ -80,7 +80,13 @@ _GENERIC_TOKENS = {"holding", "invest", "eiendom", "norge", "norway", "group", "
 def _is_group_site(ctx: Any, cand: Candidate, verdict: Any) -> bool:
     """Registry-declared site that belongs to the company's own group: few organisations share the domain
     (not a property manager or franchise platform), and the domain carries a distinctive word of our name."""
-    if cand.source != "registry_website" or verdict.relationship not in ("parent", "brand", "subsidiary"):
+    if verdict.relationship not in ("parent", "brand", "subsidiary"):
+        return False
+    if cand.source in ("wikidata_website", "osm_orgnr_website"):
+        # The dataset itself ties this site to our exact organisation number (AF Gruppen ASA -> afgruppen.no,
+        # whose pages also show a subsidiary's number): our group's site by an org-number-keyed record.
+        return True
+    if cand.source != "registry_website":
         return False
     count = _website_org_count(ctx, cand.domain)
     if count is not None and count > _GROUP_SITE_MAX_ORGS:
@@ -472,13 +478,16 @@ class WebConnector:
         are taken from it."""
         org = ctx.org
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
-        note = f"registry-declared website is the company's group site ({verdict.relationship}): {verdict.note}"
-        ev = _make_evidence(homepage, f"registry hjemmeside {cand.url}", "web_group_site_v1")
+        declared_by = "registry hjemmeside" if cand.source == "registry_website" else cand.label
+        note = f"website declared for this organisation number ({declared_by}) is the company's group site ({verdict.relationship}): {verdict.note}"
+        ev = _make_evidence(homepage, f"{declared_by}: {cand.url}", "web_group_site_v1")
         result.evidence.append(ev)
         result.claims.append(Claim(
             claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
             family="website", field="official_website", value=_public_url(cand, homepage), availability="available",
-            confidence=0.8, identity_basis="registry_declared", relationship=verdict.relationship,
+            confidence=0.8,
+            identity_basis={"wikidata_website": "wikidata_org_number", "osm_orgnr_website": "open_map_org_number"}.get(cand.source, "registry_declared"),
+            relationship=verdict.relationship,
             evidence_ids=[ev.evidence_id], note=note,
         ))
         result.families["website"] = FamilyState(

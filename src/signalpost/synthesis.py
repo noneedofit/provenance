@@ -345,7 +345,10 @@ def _sentence_footprint(envelope: Envelope) -> SummarySentence | None:
     claim_ids = []
     if website is not None:
         url = website.value.get("url") if isinstance(website.value, dict) else website.value
-        parts.append(f"a verified website ({url})")
+        if website.relationship in (None, "exact"):
+            parts.append(f"a verified website ({url})")
+        else:
+            parts.append(f"its group's website, as listed in the register ({url})")
         claim_ids.append(website.claim_id)
     if profiles:
         parts.append(_count(len(profiles), "linked public profile"))
@@ -355,6 +358,24 @@ def _sentence_footprint(envelope: Envelope) -> SummarySentence | None:
         claim_ids.extend(c.claim_id for c in locations)
     name = envelope.legal_name or "The company"
     return SummarySentence(text=f"{name} has " + _join(parts) + ".", claim_ids=claim_ids)
+
+
+def _sentence_rating(envelope: Envelope) -> SummarySentence | None:
+    ratings = sorted(
+        _current_claims(envelope, "reviews", "inspection_rating"),
+        key=lambda c: (str((c.value or {}).get("inspected_on") or ""), c.claim_id), reverse=True,
+    )
+    if not ratings:
+        return None
+    latest = ratings[0].value or {}
+    more = f" ({_count(len(ratings), 'inspected location')} in total)" if len(ratings) > 1 else ""
+    return SummarySentence(
+        text=(
+            f"Mattilsynet's latest food-hygiene inspection of {latest.get('place')} on {latest.get('inspected_on')} "
+            f"gave a {latest.get('grade')}{more}."
+        ),
+        claim_ids=[c.claim_id for c in ratings],
+    )
 
 
 def _sentence_hiring(envelope: Envelope) -> SummarySentence | None:
@@ -412,8 +433,9 @@ def build_summary(envelope: Envelope) -> Summary:
     leadership = _sentence_leadership(envelope)
     footprint = _sentence_footprint(envelope)
     hiring = _sentence_hiring(envelope)
+    rating = _sentence_rating(envelope)
 
-    for sentence in (what_it_does, legal, size, leadership, footprint, hiring):
+    for sentence in (what_it_does, legal, size, leadership, footprint, hiring, rating):
         if sentence is not None:
             sentences.append(sentence)
 

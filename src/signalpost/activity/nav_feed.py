@@ -45,6 +45,7 @@ FEED_URL = FEED_BASE_URL + "/api/v1/feed"
 DEFAULT_WINDOW_DAYS = 60
 DEFAULT_MAX_PAGES = 800
 DEFAULT_SEGMENTS = 8
+FEED_PAGE_TIMEOUT_S = 60.0
 DEFAULT_MAX_SECONDS = 720.0  # 12 minutes
 
 
@@ -373,6 +374,7 @@ def walk_feed_segmented(
     index: NavFeedIndex,
     *,
     window_days: int = DEFAULT_WINDOW_DAYS,
+    since: datetime | None = None,
     segments: int = DEFAULT_SEGMENTS,
     max_pages: int = DEFAULT_MAX_PAGES,
     max_seconds: float = DEFAULT_MAX_SECONDS,
@@ -391,7 +393,7 @@ def walk_feed_segmented(
         return {"pages": 0, "items_seen": 0, "active_seen": 0, "closed": 0, "reached_end": False,
                 "resumed": False, "elapsed_s": 0.0, "errors": ["no_token"], "segments": segments}
     now = datetime.now(timezone.utc)
-    start = now - timedelta(days=window_days)
+    start = since if since is not None else now - timedelta(days=window_days)
     step = (now - start) / segments
     bounds = [start + step * i for i in range(segments)] + [None]
     lock = threading.Lock()
@@ -408,11 +410,18 @@ def walk_feed_segmented(
         url = FEED_URL
         first = True
         retried = False
+        timed_out_once = False
         while pages < slice_max_pages and (time.monotonic() - t0) < max_seconds:
             headers = {"Authorization": f"Bearer {token_box[0]}"}
             if first:
                 headers["If-Modified-Since"] = _http_date(lo)
-            resp = client.get(url, org=None, purpose=purpose, accept="application/json", respect_robots=True, headers=headers)
+            # Seeking to a point deep in the feed (If-Modified-Since) is slow on NAV's side: allow a long
+            # timeout and one retry before giving up on a slice.
+            resp = client.get(url, org=None, purpose=purpose, accept="application/json", respect_robots=True,
+                              headers=headers, timeout=FEED_PAGE_TIMEOUT_S)
+            if resp.error == "timeout" and not timed_out_once:
+                timed_out_once = True
+                continue
             if resp.status == 401 and not retried:
                 retried = True
                 with lock:
@@ -490,3 +499,27 @@ def walk_feed_segmented(
         "elapsed_s": time.monotonic() - t0, "errors": errors, "segments": segments,
         "complete_segments": sum(1 for r in results if r["complete"]),
     }
+
+
+SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "caches" / "snapshot" / "nav_active_ads.jsonl.gz"
+
+
+def load_snapshot(index: NavFeedIndex, path: Path = SNAPSHOT_PATH) -> datetime | None:
+    """Seed an empty index with the bundled active-ads snapshot (see scripts/build_nav_snapshot.py).
+    Returns the snapshot's `as_of` time (walk the live feed from there), or None when unavailable."""
+    import gzip
+
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as fh:
+            meta = json.loads(fh.readline())
+            as_of = _parse_iso(meta.get("as_of"))
+            if as_of is None:
+                return None
+            for line in fh:
+                uuid, title, business_name, municipal, sist_endret = json.loads(line)
+                index.upsert_active(uuid=uuid, title=title, business_name=business_name, municipal=municipal,
+                                    sist_endret=sist_endret, updated_at=meta["as_of"])
+        index.commit()
+        return as_of
+    except (OSError, ValueError, KeyError, TypeError):
+        return None

@@ -49,17 +49,23 @@ homepages as website candidates, and `activity` (which runs after `web`) turns `
 from __future__ import annotations
 
 import json
+import math
+import os
 import random
 import re
 import threading
 import time
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ..context import CompanyContext
 from ..models import ConnectorResult, utc_now
 from ._common import make_evidence, norm_title
-from .nav_feed import DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAYS, FEED_URL, NavFeedIndex, walk_feed, walk_feed_segmented
+from .nav_feed import (
+    DEFAULT_MAX_PAGES, DEFAULT_MAX_SECONDS, DEFAULT_WINDOW_DAYS, FEED_URL, NavFeedIndex, load_snapshot, walk_feed,
+    walk_feed_segmented,
+)
 
 TOKEN_URL = "https://pam-stilling-feed.nav.no/api/publicToken"
 FEEDENTRY_URL_TMPL = "https://pam-stilling-feed.nav.no/api/v1/feedentry/{uuid}"
@@ -145,6 +151,8 @@ class NavLiveConnector:
         search_min_interval: float = SEARCH_MIN_INTERVAL_S, search_jitter_max: float = SEARCH_JITTER_MAX_S,
     ) -> None:
         self._window_days = window_days
+        # Bundled active-ads snapshot (SIGNALPOST_NAV_SNAPSHOT=0 walks the whole window live instead).
+        self._use_snapshot = os.environ.get("SIGNALPOST_NAV_SNAPSHOT", "1").strip() != "0"
         self._max_feed_pages = max_feed_pages
         self._max_feed_seconds = max_feed_seconds
         self._match_cap = match_cap or DETAIL_CAP
@@ -249,11 +257,24 @@ class NavLiveConnector:
             token_errors: list[dict] = []
             get_token = lambda force=False: self._get_token(client, token_errors, force=force)  # noqa: E731
             if index.get_cursor() is None:
-                # Fresh state: cover the whole window, live tip included, in parallel time slices.
-                stats = walk_feed_segmented(
-                    client, get_token, index, window_days=self._window_days,
-                    max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
-                )
+                # Fresh state: seed from the bundled active-ads snapshot and walk only the feed since it was
+                # taken (the whole window when there is no usable snapshot), in parallel time slices. Ads
+                # closed since the snapshot are removed by that walk, and every match is still confirmed
+                # live (feedentry) before anything is published.
+                as_of = load_snapshot(index) if self._use_snapshot and index.count() == 0 else None
+                now = datetime.now(timezone.utc)
+                if as_of is not None and now - as_of <= timedelta(days=self._window_days):
+                    days = max(0.0, (now - as_of).total_seconds() / 86400)
+                    stats = walk_feed_segmented(
+                        client, get_token, index, since=as_of, segments=max(1, min(6, math.ceil(days / 2))),
+                        max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
+                    )
+                    stats["snapshot_as_of"] = as_of.isoformat()
+                else:
+                    stats = walk_feed_segmented(
+                        client, get_token, index, window_days=self._window_days,
+                        max_pages=self._max_feed_pages, max_seconds=self._max_feed_seconds,
+                    )
             else:
                 # Persistent state: resume from the saved cursor (only the pages since the last run).
                 stats = walk_feed(
