@@ -3,7 +3,8 @@
 Two bundled, pinned snapshots (see `caches/snapshot/`, rebuilt with `scripts/build_places_snapshot.py`):
 
 - `places_no.jsonl.gz` - Overture Maps Places (release recorded in SNAPSHOT_META), Norwegian places that
-  carry a website or social link: `[id, name, postcode, phones, emails, websites, socials]`.
+  carry a website or social link: `[id, name, postcode, phone keys, e-mail keys, websites, socials]`
+  (phones/e-mails only as one-way `contact_key`s).
   CDLA-Permissive-2.0 / Apache-2.0 / CC0 (per Overture's per-source licensing; no attribution required).
 - `osm_orgnr_no.jsonl.gz` - OpenStreetMap features tagged `ref:NO:orgnr`:
   `[orgnr, "type/id", name, website, {platform: url}]`. ODbL 1.0, (c) OpenStreetMap contributors.
@@ -15,6 +16,7 @@ kind of org-number-keyed source as Wikidata. Pinned snapshots keep two runs of t
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import re
 import sqlite3
@@ -27,6 +29,7 @@ SNAPSHOT_DIR = Path(__file__).parent / "snapshot"
 PLACES_SNAPSHOT = SNAPSHOT_DIR / "places_no.jsonl.gz"
 OSM_SNAPSHOT = SNAPSHOT_DIR / "osm_orgnr_no.jsonl.gz"
 SNAPSHOT_META = {
+    "format": "2",  # 2: phones/e-mails stored as one-way contact keys
     "overture_release": "2026-09-23.1",
     "overture_source": "s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/",
     "osm_base": "2026-06-01T08:52:28Z",
@@ -53,6 +56,12 @@ def norm_phone(raw: Any) -> str | None:
     if digits.startswith("47") and len(digits) == 10:
         digits = digits[2:]
     return digits if len(digits) == 8 else None
+
+
+def contact_key(kind: str, value: str) -> str:
+    """One-way key for a phone ("tel", 8 digits) or e-mail ("mail", lower case). The bundled snapshot holds
+    only these keys, so it ships no raw contact data; a registry value is matched by computing its key."""
+    return hashlib.sha256(f"{kind}:{value}".encode("utf-8")).hexdigest()[:20]
 
 
 def build(cache_dir: str | Path) -> dict:
@@ -139,10 +148,10 @@ class Places:
         above one matched on a shared switchboard number alone. Deterministic order (place id)."""
         found: dict[str, set[str]] = {}
         for p in dict.fromkeys(x for x in (norm_phone(p) for p in phones) if x):
-            for (pid,) in self._rows("SELECT id FROM place_phone WHERE phone = ?", (p,)):
+            for (pid,) in self._rows("SELECT id FROM place_phone WHERE phone = ?", (contact_key("tel", p),)):
                 found.setdefault(pid, set()).add("phone")
         for e in dict.fromkeys(x.strip().lower() for x in emails if x and "@" in x):
-            for (pid,) in self._rows("SELECT id FROM place_email WHERE email = ?", (e,)):
+            for (pid,) in self._rows("SELECT id FROM place_email WHERE email = ?", (contact_key("mail", e),)):
                 found.setdefault(pid, set()).add("email")
         core = name_core(name)
         if core and postcode:

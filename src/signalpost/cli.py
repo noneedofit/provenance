@@ -174,7 +174,7 @@ def _ensure_caches(explicit: str | None, bulk_path: str | None) -> tuple[str | N
         from signalpost.caches import places as places_mod
 
         marker = cache_dir / "places.release"
-        wanted = places_mod.SNAPSHOT_META["overture_release"] + "|" + places_mod.SNAPSHOT_META["osm_base"]
+        wanted = "|".join(places_mod.SNAPSHOT_META[k] for k in ("format", "overture_release", "osm_base"))
         if not (cache_dir / places_mod.DB_NAME).exists() or not marker.exists() or marker.read_text().strip() != wanted:
             print(f"indexing the bundled open places snapshots (Overture {places_mod.SNAPSHOT_META['overture_release']}, OSM) (0 requests)", file=sys.stderr)
             info = places_mod.build(cache_dir)

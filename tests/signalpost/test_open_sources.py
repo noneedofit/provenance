@@ -23,9 +23,10 @@ def _write_gz(path, rows):
 def test_places_index_matches_on_phone_email_and_name_postcode(tmp_path, monkeypatch):
     snap = tmp_path / "snap"
     snap.mkdir()
+    key = places.contact_key
     _write_gz(snap / "places.jsonl.gz", [
-        ["p1", "Trøndelag Betong", "7608", ["99264550"], [], ["https://trondelag-betong.no/"], []],
-        ["p2", "Vestbo", "5000", ["55000000"], ["post@vestbo.no"], ["https://vestbo.no/"], ["https://facebook.com/vestbo"]],
+        ["p1", "Trøndelag Betong", "7608", [key("tel", "99264550")], [], ["https://trondelag-betong.no/"], []],
+        ["p2", "Vestbo", "5000", [key("tel", "55000000")], [key("mail", "post@vestbo.no")], ["https://vestbo.no/"], ["https://facebook.com/vestbo"]],
     ])
     _write_gz(snap / "osm.jsonl.gz", [["923456783", "node/1", "Kafe", "https://kafe.no/", {}]])
     monkeypatch.setattr(places, "PLACES_SNAPSHOT", snap / "places.jsonl.gz")
@@ -42,6 +43,9 @@ def test_places_index_matches_on_phone_email_and_name_postcode(tmp_path, monkeyp
     assert [m["id"] for m in by_email] == ["p2"] and by_email[0]["how"] == ["email"]
 
     assert idx.match(name="NOBODY AS", postcode="0001", phones=["11111111"], emails=[]) == []
+    # The snapshot holds no raw contact data.
+    raw = gzip.open(snap / "places.jsonl.gz", "rt").read()
+    assert "99264550" not in raw and "post@vestbo.no" not in raw
     osm = idx.osm_for(["923456783"])
     assert osm[0]["website"] == "https://kafe.no/" and osm[0]["url"] == "https://www.openstreetmap.org/node/1"
 

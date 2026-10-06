@@ -2,7 +2,8 @@
 
 1. Overture Maps Places -> src/signalpost/caches/snapshot/places_no.jsonl.gz
    Norwegian places that carry a website or social link, one JSON list per line:
-   [id, name, postcode, phones (8-digit), e-mails (lower case), websites, socials].
+   [id, name, postcode, phone keys, e-mail keys, websites, socials] - phones and e-mails are stored only as
+   one-way keys (see caches/places.contact_key), never as raw contact data.
    Needs DuckDB (`uv run --with duckdb python scripts/build_places_snapshot.py`); reads the public,
    anonymous S3 release directly (about a minute).
 2. OpenStreetMap features tagged ref:NO:orgnr -> src/signalpost/caches/snapshot/osm_orgnr_no.jsonl.gz
@@ -34,6 +35,12 @@ def _phone(raw: str | None) -> str | None:
     return digits if len(digits) == 8 else None
 
 
+def _is_site_url(url: str) -> bool:
+    """A website, not an e-mail address typed into the website field ("http://name@live.com")."""
+    host = re.sub(r"^[a-z]+://", "", url or "", flags=re.I).split("/", 1)[0]
+    return bool(host) and "@" not in (url or "")
+
+
 def build_overture(release: str) -> int:
     import duckdb  # build-time only
 
@@ -46,12 +53,17 @@ def build_overture(release: str) -> int:
           AND addresses[1].country = 'NO' AND (websites IS NOT NULL OR socials IS NOT NULL)
     """).fetchall()
     out = []
+    from signalpost.caches.places import contact_key
+
     for pid, name, postcode, phones, emails, websites, socials in rows:
-        phs = sorted({p for p in (_phone(x) for x in phones or []) if p})
-        ems = sorted({e.strip().lower() for e in emails or [] if "@" in e})
+        # Phones and e-mails are stored only as one-way keys (no raw contact data in the repository); the
+        # agent derives the same key from the register's phone/e-mail to match.
+        phs = sorted({contact_key("tel", p) for p in (_phone(x) for x in phones or []) if p})
+        ems = sorted({contact_key("mail", e.strip().lower()) for e in emails or [] if "@" in e})
         if not (phs or ems or (name and postcode)):
             continue
-        out.append([pid, name or "", postcode or "", phs, ems, sorted(set(websites or [])), sorted(set(socials or []))])
+        webs = sorted({w for w in websites or [] if _is_site_url(w)})
+        out.append([pid, name or "", postcode or "", phs, ems, webs, sorted(set(socials or []))])
     out.sort(key=lambda r: r[0])
     with gzip.open(SNAP / "places_no.jsonl.gz", "wt", encoding="utf-8", compresslevel=9) as fh:
         for r in out:
