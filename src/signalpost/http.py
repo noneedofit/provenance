@@ -440,8 +440,17 @@ class BudgetedHttpClient:
                     # Official APIs: back off before retrying a rate limit (Retry-After when given,
                     # capped). Rate-limited optional sources (NAV search) have their own breaker.
                     time.sleep(_retry_after_seconds(headers))
+                elif status >= 500 and not respect_robots:
+                    time.sleep(2.0)  # an official API's 5xx is usually momentary
                 with sem:
                     status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
+                if status >= 500 and not respect_robots and self.budget.charge(org, 1, purpose=purpose):
+                    # Official APIs get one more, later attempt: the register's accounts API returned
+                    # short bursts of HTTP 500 in a 1,500-company run.
+                    total_requests_used += 1
+                    time.sleep(4.0)
+                    with sem:
+                        status, headers, raw, final_hop_url, error = self._do_http(method, current_url, accept=accept, timeout=timeout, max_bytes=max_bytes, body=body, extra_headers=extra_headers)
 
             hop_elapsed_ms = int((time.monotonic() - hop_started) * 1000)
 
