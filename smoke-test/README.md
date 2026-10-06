@@ -1,7 +1,7 @@
 # 100-company smoke test
 
 A clean run of the submitted agent, done the way the evaluator runs it: fresh clone of this repository at
-commit `2451bf24d5025f59ebd85492d4bd865baf00f5e6`, `uv sync`, then one command, with no pre-built data or caches.
+commit `5eb9b967d65d846a2bad4ea73f8f16db86ad14e6`, `uv sync`, then one command, with no pre-built data or caches.
 
 ```bash
 uv sync
@@ -14,8 +14,8 @@ uv run python -m signalpost run --organisations organisations.txt --output-dir s
 |---|---|
 | Results | 100 of 100 envelopes, all with a terminal state; validation passed |
 | Evidence | 2764 of 2764 evidence records carry a public source URL, retrieval time and the exact supporting text (`claim_span`) |
-| Requests | 1041 in the batch + 1 one-time setup |
-| Time | 4.3 min for the batch; first-run setup (register bulk download, lookup tables) adds a few minutes |
+| Requests | 1032 in the batch + 1 one-time setup |
+| Time | 4.0 min for the batch; first-run setup (register bulk download, lookup tables) adds a few minutes |
 | Third-party cost | $0 |
 | Available (companies of 100) | identity 100, financials 100, financial history 100, leadership 100, locations 100, description 98, website 18, group 12, profiles 8, activity 2, jobs 1, reviews 0 |
 
