@@ -139,7 +139,7 @@ def build_row(envelope: dict, page_url: str) -> dict:
         website_state = "exact" if chosen.get("relationship") == "exact" and chosen.get("availability") == "available" else "ambiguous"
 
     profiles_count = len([c for c in by_family.get("profiles", []) if c.get("availability") == "available"])
-    jobs = [c for c in by_family.get("jobs", []) if c.get("availability") == "available"]
+    jobs = [c for c in by_family.get("jobs", []) if c.get("availability") == "available" and c.get("field") == "job_posting"]
     activity = [c for c in by_family.get("activity", []) if c.get("availability") == "available"]
     activity_sorted = sorted(activity, key=lambda c: c.get("effective_date") or "", reverse=True)
     latest_activity = activity_sorted[0] if activity_sorted else None
@@ -866,16 +866,19 @@ def build_profile_json(envelope: dict, by_family: dict, ev_by_id: dict, row: dic
             "state": "verified exact" if website_claim.get("relationship") == "exact" and website_claim.get("availability") == "available" else "related / ambiguous",
             "evidence": ev_list(website_claim.get("evidence_ids", [])),
         }
+    # Only actual postings count as open roles (not the active-postings count claim, which can be 0).
     jobs = [
-        {"title": c["value"], "evidence": ev_list(c.get("evidence_ids", []))}
-        for c in by_family.get("jobs", []) if c.get("availability") == "available"
+        {"title": (c["value"] or {}).get("title") if isinstance(c["value"], dict) else c["value"],
+         "evidence": ev_list(c.get("evidence_ids", []))}
+        for c in by_family.get("jobs", []) if c.get("availability") == "available" and c.get("field") == "job_posting"
     ]
     activity = sorted(
         [c for c in by_family.get("activity", []) if c.get("availability") == "available"],
         key=lambda c: c.get("effective_date") or "", reverse=True,
     )
     activity_out = [
-        {"text": c["value"], "date": c.get("effective_date"), "evidence": ev_list(c.get("evidence_ids", []))}
+        {"text": (c["value"] or {}).get("title") if isinstance(c["value"], dict) else c["value"],
+         "date": c.get("effective_date"), "evidence": ev_list(c.get("evidence_ids", []))}
         for c in activity
     ]
     changes_out = []
