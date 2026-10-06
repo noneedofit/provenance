@@ -19,7 +19,7 @@ ORG = "923609016"
 
 def make_evidence(url: str, span: str = "span", retrieved_at: str = "2026-01-01T00:00:00Z") -> Evidence:
     return Evidence(
-        evidence_id=evidence_id(url, None, span),
+        evidence_id=evidence_id(url, span),
         source_url=url,
         source_class="official_registry",
         retrieved_at=retrieved_at,

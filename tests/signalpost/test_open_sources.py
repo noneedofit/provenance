@@ -115,3 +115,15 @@ def test_smilefjes_page_is_authoritative_when_index_is_stale():
     assert claim.value["inspected_on"] == "2024-04-04" and claim.value["grade"] == "smiling face"
     assert claim.value["grade_code"] is None
     smilefjes.reset_for_tests()
+
+
+def test_feed_and_phone_evidence_quote_the_source_as_written():
+    from signalpost.activity.feeds import feed_item_quote, parse_feed
+    from signalpost.web.verify import phones_as_written
+
+    rss = ("<rss><channel><item><title>Nytt verksted</title><link>https://acme.no/a</link>"
+           "<pubDate>Wed, 04 Feb 2026 10:00:00 +0000</pubDate></item></channel></rss>")
+    item = parse_feed(rss)[0]
+    assert item["published"] == "2026-02-04"
+    assert feed_item_quote(item) == "Nytt verksted — Wed, 04 Feb 2026 10:00:00 +0000"
+    assert phones_as_written("Ring oss på 38 26 61 11 i dag") == {"38266111": "38 26 61 11"}

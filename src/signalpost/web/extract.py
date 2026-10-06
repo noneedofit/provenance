@@ -13,11 +13,13 @@ from typing import Any
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
+from ..text import fold
 from ..urls import normalize_social_url
 
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
+from .candidates import registered_domain
 from .crawl import PageFetch
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 ATS_DOMAINS = {
     "teamtailor.com": "teamtailor",
@@ -97,19 +99,22 @@ def _first_org(pages: list[PageFetch]) -> tuple[dict[str, Any] | None, str | Non
 
 def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None, str | None, str | None]:
     """Returns (description, source_url, span, method), preferring JSON-LD, then meta description, then
-    the first substantive paragraph of an about-ish page."""
+    the first substantive paragraph of an about-ish page. Each candidate must read as a description (see
+    `_usable_description`); a rejected one falls through to the next source."""
+    names = _site_names(pages)
     org, org_url = _first_org(pages)
-    if org and isinstance(org.get("description"), str) and org["description"].strip():
-        text = org["description"].strip()[:MAX_DESCRIPTION_CHARS]
-        return text, org_url, text, "jsonld_description_v1"
+    if org and isinstance(org.get("description"), str):
+        text = _trim(org["description"])[:MAX_DESCRIPTION_CHARS]
+        if _usable_description(text, names):
+            return text, org_url, text, "jsonld_description_v1"
 
     for page in pages:
         if not page.ok:
             continue
         soup = BeautifulSoup(page.html, "lxml")
         tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
-        content = str(tag.get("content") or "").strip() if tag else ""
-        if content:
+        content = _trim(str(tag.get("content") or "")) if tag else ""
+        if _usable_description(content[:MAX_DESCRIPTION_CHARS], names):
             return content[:MAX_DESCRIPTION_CHARS], page.final_url, content[:MAX_DESCRIPTION_CHARS], "meta_description_v1"
 
     # "kontor"/"kontoret" ("the office") is a common Norwegian about-us-equivalent page slug (see
@@ -120,10 +125,70 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
         text = (page.text or "").strip()
         # first substantive paragraph: first run of text >= 60 chars
         for para in re.split(r"\n{1,}", text):
-            para = para.strip()
-            if len(para) >= 60 and not _is_boilerplate_paragraph(para):
+            para = _trim(para)
+            if len(para) >= 60 and _usable_description(para, names):
                 return para[:MAX_DESCRIPTION_CHARS], page.final_url, para[:MAX_DESCRIPTION_CHARS], "trafilatura_first_paragraph_v1"
     return None, None, None, None
+
+
+def _trim(text: str) -> str:
+    """Drop separator debris a title template leaves at the ends ("| From the Sognefjord ...")."""
+    return text.strip().strip("|-–—:·• ").strip()
+
+
+def _site_names(pages: list[PageFetch]) -> set[str]:
+    """The site's own name as its titles, og:site_name and JSON-LD name state it (each title part too)."""
+    raw: list[str] = []
+    for page in pages:
+        if not page.ok:
+            continue
+        raw.append(page.title or "")
+        raw.extend(re.split(r"\s[|\-–—:·]\s", page.title or ""))
+        soup = BeautifulSoup(page.html, "lxml")
+        tag = soup.select_one('meta[property="og:site_name"]')
+        if tag:
+            raw.append(str(tag.get("content") or ""))
+    org, _ = _first_org(pages)
+    if org and isinstance(org.get("name"), str):
+        raw.append(org["name"])
+    return {n for n in (_name_key(r) for r in raw) if n}
+
+
+def _name_key(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", fold(text)))
+
+
+_DAY_RE = re.compile(r"\b(man|tir|ons|tor|fre|lor|son|mon|tue|wed|thu|fri|sat|sun)[a-z]*\b")
+_TIME_RE = re.compile(r"\d{1,2}[:.]\d{2}")
+
+
+def _usable_description(text: str, names: set[str]) -> bool:
+    """Reads as a description of the company: at least three words, not just the site's name, not opening
+    hours, not boilerplate, and not the text of an error/empty/default page."""
+    if not text:
+        return False
+    key = _name_key(text)
+    words = len(key.split())
+    # A short text equal to the site's name (or a title part) is a name, not a description; a longer title
+    # part is usually the company's tagline and is kept.
+    if words < 3 or (words <= 4 and key in names):
+        return False
+    if max(len(token) for token in text.split()) > 40:  # encoded data or a run-together URL, not prose
+        return False
+    folded = fold(text)
+    if len(text) < 80 and _TIME_RE.search(folded) and _DAY_RE.search(folded):
+        return False
+    if any(marker in folded for marker in _DEAD_PAGE_MARKERS):
+        return False
+    return not _is_boilerplate_paragraph(text)
+
+
+# Text of a 404 / empty-archive / server or hosting default page, which a live site can still serve.
+_DEAD_PAGE_MARKERS = (
+    "proudly served by", "index of /", "this one is taken", "ingenting ble funnet", "nothing was found",
+    "nothing found", "page not found", "siden finnes ikke", "fant ikke siden", "finner ikke siden",
+    "siden du leter etter", "the page you are looking for",
+)
 
 
 # Cookie-consent banners, generic CMS placeholder text and bare "Welcome to X" greetings routinely
@@ -223,15 +288,60 @@ _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 _PHONE_RE = re.compile(r"(?<!\d)(\+?47[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2}|\d{2}[\s.]?\d{2}[\s.]?\d{2}[\s.]?\d{2})(?!\d)")
 
 
+# Template/demo addresses left in themes and forms ("bruker@domene.no", "user@domain.com"), and addresses
+# that belong to the site builder or its error tracker rather than to the company.
+_PLACEHOLDER_EMAIL_DOMAIN_LABELS = {
+    "domene", "domain", "example", "eksempel", "email", "website", "navnesen", "yourdomain", "dittdomene",
+    "mydomain", "yoursite", "dittfirma", "firmanavn", "companyname",
+}
+_PLACEHOLDER_EMAIL_LOCALS = {"navn", "name", "bruker", "user", "fornavn", "fornavn.etternavn", "ditt.navn", "your.name", "yourname"}
+_PLATFORM_EMAIL_DOMAINS = (
+    "wixpress.com", "wix.com", "sentry.io", "webador.com", "squarespace.com", "jimdo.com", "godaddy.com",
+    "one.com", "domeneshop.no", "wordpress.com", "weebly.com", "shopify.com",
+)
+
+
+def _clean_email(raw: str) -> str | None:
+    email = urllib.parse.unquote(raw).strip().strip(".")
+    if not _EMAIL_RE.fullmatch(email):
+        return None
+    local, domain = email.lower().rsplit("@", 1)
+    if domain.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp")) or domain.startswith("www."):
+        return None
+    if local in _PLACEHOLDER_EMAIL_LOCALS or domain.split(".")[0] in _PLACEHOLDER_EMAIL_DOMAIN_LABELS:
+        return None
+    if "sentry" in domain or any(_on_domain(domain, d) for d in _PLATFORM_EMAIL_DOMAINS):
+        return None
+    return email
+
+
+def _page_emails(page: PageFetch) -> list[str]:
+    """E-mails the page shows a visitor: mailto links (not inside a web-agency credit) and the page's visible
+    text, footer included. Scripts, styles and attributes are not scanned: they hold e-mail-shaped strings
+    (error-tracker keys, image file names, embedded dealer lists) that are no contact of this company."""
+    soup = BeautifulSoup(page.html, "lxml")
+    raw = [str(a.get("href") or "")[7:].split("?")[0] for a in soup.select('a[href^="mailto:" i]') if not _is_credit_link(a)]
+    for node in soup.select("script, style, noscript, template"):
+        node.decompose()
+    for credit in [a for a in soup.select("a[href]") if _is_credit_link(a)]:
+        credit.decompose()
+    raw.extend(_EMAIL_RE.findall(soup.get_text(" ", strip=True)))
+    return [e for e in dict.fromkeys(_clean_email(r) for r in raw) if e]
+
+
+def _on_domain(host: str, domain: str) -> bool:
+    return host == domain or host.endswith("." + domain)
+
+
 def extract_contact(pages: list[PageFetch]) -> tuple[str | None, str | None, str | None, str | None]:
     contact_pages = [p for p in pages if p.ok and p.page_kind in {"kontakt", "contact", "homepage"}]
-    for page in contact_pages or pages:
-        if not page.ok:
-            continue
-        emails = _EMAIL_RE.findall(page.html)
-        real_emails = [e for e in emails if not e.lower().endswith((".png", ".jpg", ".gif", ".svg"))]
-        if real_emails:
-            return real_emails[0], page.final_url, None, None
+    site_domain = next((registered_domain(p.final_url) for p in pages if p.ok and p.page_kind == "homepage"), None)
+    found = [(email, page) for page in (contact_pages or pages) if page.ok for email in _page_emails(page)]
+    # An address on the site's own domain first; otherwise the first one shown (often a free-mail address).
+    own = [(e, p) for e, p in found if site_domain and _on_domain(e.rsplit("@", 1)[1].lower(), site_domain)]
+    if own or found:
+        email, page = (own or found)[0]
+        return email, page.final_url, None, None
     for page in contact_pages or pages:
         if not page.ok:
             continue

@@ -55,6 +55,12 @@ def test_parked_and_coming_soon_pages_are_rejected():
     assert is_parked_page("", parked)
     assert is_parked_page("", "hestekrefter.no Lanseres snart")
     assert not is_parked_page("", "Velkommen til Hestekrefter. " + "Vi selger traktorer og utstyr. " * 40 + "Nye modeller kommer snart.")
+    # Hosting/server default pages: text extraction keeps only one line, the page's own text says the rest.
+    one_com = ("<html><head><title>Hosted By One.com | Webhosting made simple</title></head><body><h1>This website is under "
+               "construction</h1><p>This one is taken, but you can find another available domain easily.</p></body></html>")
+    assert is_parked_page(one_com, "This one is taken, but you can find another available domain easily.")
+    index = "<html><head><title>Index of /</title></head><body><h1>Index of /</h1>Proudly Served by LiteSpeed Web Server</body></html>"
+    assert is_parked_page(index, "")
 
 
 def test_generic_single_word_domain_is_not_a_name_match():

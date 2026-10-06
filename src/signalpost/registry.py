@@ -19,6 +19,7 @@ import time
 from typing import Any
 
 from .context import CompanyContext
+from .evidence_text import json_quote
 from .models import (
     Claim,
     ConnectorResult,
@@ -177,7 +178,7 @@ class _ClaimBuilder:
         snapshot_ref: str | None = None, access_policy: str | None = "NLOD-2.0", quote: str | None = None,
     ) -> str:
         """`quote`: the exact source text the value was read from (becomes the evidence's claim_span)."""
-        eid = evidence_id(source_url, content_sha256, span)
+        eid = evidence_id(source_url, span)
         if eid not in self.evidence:
             self.evidence[eid] = Evidence(
                 evidence_id=eid, source_url=source_url, final_url=final_url, redirect_chain=redirect_chain or [],
@@ -320,14 +321,6 @@ def _registry_activity_text(activity: Any, purpose: Any) -> str | None:
         if len(text) >= 12:
             return text
     return None
-
-
-def json_quote(obj: Any, keys: tuple[str, ...]) -> str | None:
-    """The source JSON's own key/value pairs, verbatim: '"konkurs": false, "underAvvikling": false'."""
-    if not isinstance(obj, dict):
-        return None
-    parts = [f'"{k}": {json.dumps(obj[k], ensure_ascii=False)}' for k in keys if k in obj]
-    return ", ".join(parts) or None
 
 
 def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], response: Any) -> None:

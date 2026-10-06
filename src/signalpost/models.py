@@ -110,8 +110,10 @@ class Evidence(BaseModel):
     claim_span: str | None = None
 
 
-def evidence_id(source_url: str, content_sha256: str | None, span: str | None) -> str:
-    return "e_" + sha256_text(f"{source_url}|{content_sha256 or ''}|{span or ''}")[:20]
+def evidence_id(source_url: str, span: str | None) -> str:
+    """Stable across runs: the same quote from the same source gets the same id even when other bytes of
+    the page changed (the record's own content_sha256 still says exactly what was read)."""
+    return "e_" + sha256_text(f"{source_url}|{span or ''}")[:20]
 
 
 class Claim(BaseModel):

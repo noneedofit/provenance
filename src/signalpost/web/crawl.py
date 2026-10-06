@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import gzip
 import re
-import unicodedata
 import urllib.parse
 import warnings
 from dataclasses import dataclass, field
@@ -55,6 +54,10 @@ PARKED_MARKERS = (
 PLACEHOLDER_MARKERS = (
     "lanseres snart", "kommer snart", "her kommer:", "under construction", "under oppbygging",
     "coming soon", "nettsiden er under arbeid", "siden er under utvikling", "site under construction",
+    # Hosting-provider and web-server default pages: the domain is registered but holds no site.
+    "this one is taken, but you can find another available domain", "hosted by one.com",
+    "index of /", "proudly served by litespeed web server", "welcome to nginx!", "apache2 ubuntu default page",
+    "apache2 debian default page", "test page for the apache http server", "default web site page",
 )
 PLACEHOLDER_MAX_TEXT = 900
 
@@ -98,9 +101,17 @@ def _normalize_text(html: str) -> str:
         return soup.get_text(" ", strip=True)
 
 
-def _is_parked(html: str, text: str) -> bool:
-    haystack = unicodedata.normalize("NFKD", (html[:5000] + " " + text[:2000])).encode("ascii", "ignore").decode().casefold()
-    return any(marker in haystack for marker in PARKED_MARKERS)
+def is_parked_page(html: str, text: str) -> bool:
+    """A parked/for-sale page, or a page that is (nearly) only a placeholder or a hosting/server default
+    page. Placeholder wording is checked on the page's own text as well as the extracted text: text
+    extraction keeps only the "main" paragraph and can drop the "under construction" line."""
+    haystack = fold((html or "")[:5000] + " " + (text or "")[:2000])
+    if any(marker in haystack for marker in PARKED_MARKERS):
+        return True
+    visible = [fold(text or "")]
+    if html and len(html) < 200_000:
+        visible.append(fold(BeautifulSoup(html, "lxml").get_text(" ", strip=True)))
+    return any(len(v) <= PLACEHOLDER_MAX_TEXT and any(marker in v for marker in PLACEHOLDER_MARKERS) for v in visible)
 
 
 _DEAD_PATH_RE = re.compile(r"/(missing|not[-_]?found|404|error|suspended|expired|deactivated)(?:[/.?#]|$)", re.I)
@@ -298,7 +309,7 @@ def crawl_candidate(
     homepage.page_kind = "homepage"
     result.pages.append(homepage)
 
-    if _is_parked(homepage.html, homepage.text) or _is_dead_redirect(candidate.url, homepage.final_url):
+    if is_parked_page(homepage.html, homepage.text) or _is_dead_redirect(candidate.url, homepage.final_url):
         result.parked = True
         return result
 

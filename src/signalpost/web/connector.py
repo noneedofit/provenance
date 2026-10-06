@@ -234,7 +234,7 @@ def _signal_evidence(ctx: Any, sig: Any, cand: Candidate, pages: list[PageFetch]
                 return _source_evidence(
                     source_url=ad["feedentry_url"], source_class="public_job_feed", retrieved_at=ad.get("retrieved_at") or utc_now(),
                     content_sha256=ad.get("content_sha256"), method=method, span="$.ad_content.employer",
-                    quote=f"employer.orgnr: {ad.get('employer_orgnr')}; employer.homepage: {ad.get('employer_homepage')}",
+                    quote=ad.get("employer_quote") or f'"orgnr": "{ad.get("employer_orgnr")}", "homepage": "{ad.get("employer_homepage")}"',
                 )
     if sig.kind.startswith("open_places"):
         return None
@@ -245,7 +245,7 @@ def _signal_evidence(ctx: Any, sig: Any, cand: Candidate, pages: list[PageFetch]
 def _source_evidence(*, source_url: str, source_class: str, retrieved_at: str, content_sha256: str | None,
                      method: str, span: str, quote: str) -> Evidence:
     return Evidence(
-        evidence_id=evidence_id(source_url, content_sha256, span), source_url=source_url, final_url=source_url,
+        evidence_id=evidence_id(source_url, span), source_url=source_url, final_url=source_url,
         redirect_chain=[source_url], http_status=None, source_class=source_class, retrieved_at=retrieved_at,
         content_sha256=content_sha256, extraction_method=method, span=span, claim_span=quote[:500],
     )
@@ -253,7 +253,7 @@ def _source_evidence(*, source_url: str, source_class: str, retrieved_at: str, c
 
 def _make_evidence(page: PageFetch, span: str | None, method: str) -> Evidence:
     return Evidence(
-        evidence_id=evidence_id(page.final_url, page.content_sha256, span),
+        evidence_id=evidence_id(page.final_url, span),
         source_url=page.url,
         final_url=page.final_url,
         redirect_chain=page.redirect_chain,
@@ -303,7 +303,7 @@ def _add_wikidata_profiles(ctx: Any, result: ConnectorResult) -> None:
         existing.add(key)
         source = row.get("source_url") or "https://query.wikidata.org/sparql"
         ev = Evidence(
-            evidence_id=evidence_id(source, row.get("qid") or "", f"{row.get('qid')}:{platform}"),
+            evidence_id=evidence_id(source, f"{row.get('qid')}:{platform}"),
             source_url=f"https://www.wikidata.org/wiki/{row['qid']}" if row.get("qid") else source,
             source_class="open_knowledge_base", retrieved_at=row.get("retrieved_at") or utc_now(),
             content_sha256=hashlib.sha256(f"{row.get('qid')}|{platform}|{url}".encode("utf-8")).hexdigest(),

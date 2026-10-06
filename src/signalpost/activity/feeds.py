@@ -120,8 +120,13 @@ def parse_norwegian_date(text: str) -> str | None:
     return None
 
 
+def feed_item_quote(item: dict) -> str:
+    return " — ".join(str(x).strip() for x in (item.get("title"), item.get("published_raw")) if x)
+
+
 def parse_feed(text: str) -> list[dict]:
-    """Parse an RSS 2.0 or Atom feed into [{title, url, published}], published as ISO date or None."""
+    """Parse an RSS 2.0 or Atom feed into [{title, url, published, published_raw}]: `published` as ISO date
+    or None, `published_raw` the date exactly as the feed writes it (quoted as evidence)."""
     try:
         root = ET.fromstring(text)
     except ET.ParseError:
@@ -133,12 +138,12 @@ def parse_feed(text: str) -> list[dict]:
             title = _child_text(elem, "title")
             link = _child_text(elem, "link")
             pub = _child_text(elem, "pubdate", "pubDate", "date")
-            items.append({"title": title, "url": link, "published": normalize_iso_date(pub)})
+            items.append({"title": title, "url": link, "published": normalize_iso_date(pub), "published_raw": pub})
         elif local == "entry":  # Atom
             title = _child_text(elem, "title")
             link = _atom_link(elem)
             pub = _child_text(elem, "published") or _child_text(elem, "updated")
-            items.append({"title": title, "url": link, "published": normalize_iso_date(pub)})
+            items.append({"title": title, "url": link, "published": normalize_iso_date(pub), "published_raw": pub})
     return items
 
 
@@ -393,7 +398,12 @@ def collect(ctx) -> dict:
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     claims = []
     evidence = []
+    quotes: dict[str, list[str]] = {}
     for item, ev in candidates[:MAX_ACTIVITY_ITEMS]:
+        if item.get("published_raw"):
+            # Quote the feed as written ("Wed, 04 Feb 2026 10:00:00 +0000"), not the normalised ISO date.
+            quotes.setdefault(ev.evidence_id, []).append(feed_item_quote(item))
+            ev.claim_span = " | ".join(quotes[ev.evidence_id])[:500]
         claim = make_claim(
             org=ctx.org, family="activity", field="activity_item",
             value={"title": item["title"], "url": item["url"], "published": item["published"], "source": "company website"},

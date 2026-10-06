@@ -50,7 +50,7 @@ def test_description_falls_back_to_meta_then_paragraph():
 
 
 def test_description_truncated_to_400_chars():
-    long_text = "A" * 1000
+    long_text = "Vi leverer gode tjenester. " * 40
     html = f'<html><head><meta name="description" content="{long_text}"></head><body>x</body></html>'
     desc, *_ = extract_description([page(html)])
     assert len(desc) <= 400
@@ -127,6 +127,43 @@ def test_feed_urls_detected_from_link_rel_alternate():
 
 
 def test_contact_email_and_phone_extraction():
-    html = '<html><body>Kontakt oss: post@example.no eller ring 12 34 56 78.</body></html>'
+    html = '<html><body>Kontakt oss: post@acme.no eller ring 12 34 56 78.</body></html>'
     email, email_url, phone, phone_url = extract_contact([page(html, kind="kontakt")])
-    assert email == "post@example.no"
+    assert email == "post@acme.no"
+
+
+def test_contact_email_skips_placeholders_platform_addresses_and_script_strings():
+    html = (
+        '<html><body><script>var dsn="https://605a7b@sentry-next.wixpress.com/1"; var x="logo_copyright@www.mir.jpg";</script>'
+        '<form><input placeholder="bruker@domene.no"></form><p>Skriv til user@domain.com</p>'
+        '<p>Nettside levert av <a href="mailto:einar@byraa.no">Byrå</a></p>'
+        '<a href="mailto:Post@Holmen.no?subject=Hei">Post@Holmen.no</a></body></html>'
+    )
+    email, url, *_ = extract_contact([page(html, kind="kontakt", url="https://holmen.no/kontakt")])
+    assert email == "Post@Holmen.no"
+
+
+def test_contact_email_prefers_the_sites_own_domain():
+    html = '<html><body><p>Ring Ola: ola.nordmann@gmail.com</p><p>Firma: post@acme.no</p></body></html>'
+    home = page(html, url="https://www.acme.no/")
+    assert extract_contact([home])[0] == "post@acme.no"
+    other = page('<html><body><p>Kontakt: ola.nordmann@gmail.com</p></body></html>', url="https://www.acme.no/")
+    assert extract_contact([other])[0] == "ola.nordmann@gmail.com"
+
+
+def test_description_rejects_name_only_hours_and_dead_page_text():
+    name_only = '<html><head><title>Helgeland BBL</title><meta name="description" content="Helgeland BBL"></head><body>x</body></html>'
+    assert extract_description([page(name_only)])[0] is None
+    one_word = '<html><head><meta name="description" content="sidekart"></head><body>x</body></html>'
+    assert extract_description([page(one_word)])[0] is None
+    hours = '<html><head><meta name="description" content="Man - Fre: kl. 08:00 - kl. 15:00"></head><body>x</body></html>'
+    assert extract_description([page(hours)])[0] is None
+    archive = "<html><body><p>Beklager, ingenting ble funnet i dette arkivet. Du kan pr\u00f8ve \u00e5 s\u00f8ke etter relaterte innlegg.</p></body></html>"
+    assert extract_description([page(archive)])[0] is None
+    piped = ('<html><head><title>Tonjum | From the Sognefjord to the Peruvian blueberries of Trujillo</title>'
+             '<meta name="description" content="| From the Sognefjord to the Peruvian blueberries of Trujillo"></head><body>x</body></html>')
+    assert extract_description([page(piped)])[0] == "From the Sognefjord to the Peruvian blueberries of Trujillo"
+    encoded = '<html><head><meta name="description" content="Om oss LnRiLWJ1dHRvbntjb2xvcjojZjFmMWYxfS50Yi1idXR0b24tLWxlZnR7dGV4"></head><body>x</body></html>'
+    assert extract_description([page(encoded)])[0] is None
+    keywords = '<html><head><meta name="description" content="Tidsystemer - uranlegg - resultattavler"></head><body>x</body></html>'
+    assert extract_description([page(keywords)])[0] == "Tidsystemer - uranlegg - resultattavler"

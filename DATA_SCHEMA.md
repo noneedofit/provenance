@@ -87,7 +87,7 @@ verified `exact`), `corroborated` (≥2 independent corroborating signals, no co
 
 ```python
 class Evidence(BaseModel):
-    evidence_id: str              # "e_" + sha256(source_url|content_sha256|span)[:20]
+    evidence_id: str              # "e_" + sha256(source_url|span)[:20]; stable across runs
     source_url: str
     final_url: str | None
     redirect_chain: list[str]

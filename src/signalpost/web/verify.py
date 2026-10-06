@@ -24,7 +24,7 @@ from typing import Any, Callable, Literal
 from ..text import fold
 from .blocklist import is_franchise_chain_domain
 from .candidates import Candidate, registered_domain
-from .crawl import PARKED_MARKERS, PLACEHOLDER_MARKERS, PLACEHOLDER_MAX_TEXT, PageFetch
+from .crawl import PageFetch, is_parked_page
 
 Status = Literal["exact", "related", "ambiguous", "rejected"]
 Relationship = Literal["parent", "subsidiary", "franchise", "brand", "service_provider"]
@@ -108,14 +108,6 @@ SMALL_SHARED_DOMAIN_MAX = 3
 
 def _normalize(text: str) -> str:
     return fold(text)
-
-
-def is_parked_page(html: str, text: str) -> bool:
-    haystack = _normalize((html or "")[:5000] + " " + (text or "")[:2000])
-    if any(marker in haystack for marker in PARKED_MARKERS):
-        return True
-    visible = _normalize(text or "")
-    return len(visible) <= PLACEHOLDER_MAX_TEXT and any(marker in visible for marker in PLACEHOLDER_MARKERS)
 
 
 
@@ -204,11 +196,16 @@ def _normalize_phone(raw: str) -> str:
 
 
 def find_phones(text: str) -> set[str]:
-    found = set()
+    return set(phones_as_written(text))
+
+
+def phones_as_written(text: str) -> dict[str, str]:
+    """8-digit number -> the first way the page writes it ("38 26 61 11"), so evidence quotes the page."""
+    found: dict[str, str] = {}
     for match in _DIGITS_8_RE.finditer(text or ""):
         digits = _normalize_phone(match.group(1))
         if len(digits) == 8:
-            found.add(digits)
+            found.setdefault(digits, match.group(1).strip())
     return found
 
 
@@ -520,7 +517,8 @@ def assess(
             normalized = _normalize_phone(str(phone))
             if len(normalized) == 8 and normalized in site_phones:
                 where = found_on(lambda t, n=normalized: n in find_phones(t))
-                signals.append(Signal("registry_phone", "registry phone number found on site", where, normalized))
+                written = phones_as_written(next((t for p, t in page_texts if p.final_url == where), joined_text))
+                signals.append(Signal("registry_phone", "registry phone number found on site", where, written.get(normalized, normalized)))
                 break
 
         email = registry_facts.get("email")

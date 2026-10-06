@@ -14,7 +14,7 @@ class _StubConnector:
 
     def run(self, ctx: CompanyContext) -> ConnectorResult:
         org = ctx.org
-        eid = evidence_id("https://example.test/entity", "abc", "$.navn")
+        eid = evidence_id("https://example.test/entity", "$.navn")
         claim = Claim(
             claim_id=claim_key(org, "identity", "legal_name", None), organisation_number=org, family="identity",
             field="legal_name", value=f"Company {org}", availability="available", identity_basis="registry_record",
@@ -89,7 +89,7 @@ class _EmployeesConnector:
 
     def run(self, ctx: CompanyContext) -> ConnectorResult:
         org = ctx.org
-        eid = evidence_id("https://example.test/entity", f"sha{self.count}", "$.antallAnsatte")
+        eid = evidence_id("https://example.test/entity", "$.antallAnsatte")
         claim = Claim(
             claim_id=claim_key(org, "identity", "employees", None), organisation_number=org, family="identity",
             field="employees", value=self.count, availability="available", identity_basis="registry_record",
@@ -143,7 +143,7 @@ class _DescriptionConnector:
     families = ("description",)
 
     def run(self, ctx: CompanyContext) -> ConnectorResult:
-        eid = evidence_id("https://example.test/entity", "abc", "$.aktivitet")
+        eid = evidence_id("https://example.test/entity", "$.aktivitet")
         claim = Claim(
             claim_id=claim_key(ctx.org, "description", "registry_activity", None), organisation_number=ctx.org,
             family="description", field="registry_activity", value="Drift av restaurant", availability="available",
@@ -169,7 +169,7 @@ class _ZeroJobsConnector:
     families = ("jobs",)
 
     def run(self, ctx: CompanyContext) -> ConnectorResult:
-        eid = evidence_id("https://example.test/nav", "abc", "$")
+        eid = evidence_id("https://example.test/nav", "$")
         claim = Claim(
             claim_id=claim_key(ctx.org, "jobs", "active_postings_count", None), organisation_number=ctx.org,
             family="jobs", field="active_postings_count", value={"verified": 0}, availability="available",

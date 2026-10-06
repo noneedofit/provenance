@@ -25,11 +25,14 @@ def make_evidence(
     span: str | None = None,
     access_policy: str | None = None,
     extractor_version: str = "1",
+    quote: str | None = None,
 ) -> Evidence:
+    """`quote`: the exact source text the value was read from (becomes claim_span); when omitted, the
+    output pass quotes the claim's value or the span."""
     if span is not None and len(span) > 500:
         span = span[:497] + "..."
     return Evidence(
-        evidence_id=evidence_id(source_url, content_sha256, span),
+        evidence_id=evidence_id(source_url, span),
         source_url=source_url,
         final_url=final_url or source_url,
         redirect_chain=redirect_chain or [source_url],
@@ -42,6 +45,7 @@ def make_evidence(
         extractor_version=extractor_version,
         span=span,
         access_policy=access_policy,
+        claim_span=quote[:500] if quote else None,
     )
 
 

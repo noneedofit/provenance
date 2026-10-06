@@ -13,7 +13,7 @@ import re
 from bs4 import BeautifulSoup
 
 from ._common import make_claim, make_evidence
-from .feeds import parse_feed
+from .feeds import feed_item_quote, parse_feed
 
 MAX_CHANNELS = 2
 MAX_VIDEOS_PER_CHANNEL = 5
@@ -95,6 +95,7 @@ def collect(ctx) -> dict:
             content_sha256=resp.content_sha256, snapshot_ref=resp.snapshot_ref,
             extraction_method="youtube_rss_v1", span=f"channel_id={channel_id}; videos={len(items)}",
             access_policy="robots-allowed",
+            quote=" | ".join(feed_item_quote(it) for it in items[:MAX_VIDEOS_PER_CHANNEL]) or None,
         )
         for it in items[:MAX_VIDEOS_PER_CHANNEL]:
             claims.append(make_claim(

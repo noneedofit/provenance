@@ -10,6 +10,7 @@ inputs produce byte-identical factual output.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -78,6 +79,14 @@ def value_text(claim: Claim) -> str:
     if v.get("role") == "parent_company":
         return "virksomhet.morselskap: true"
     return "; ".join(f"{k}: {x}" for k, x in v.items() if x not in (None, "", [], {}))
+
+
+def json_quote(obj: Any, keys: tuple[str, ...]) -> str | None:
+    """The source JSON's own key/value pairs, verbatim: '"konkurs": false, "underAvvikling": false'."""
+    if not isinstance(obj, dict):
+        return None
+    parts = [f'"{k}": {json.dumps(obj[k], ensure_ascii=False)}' for k in keys if k in obj]
+    return ", ".join(parts) or None
 
 
 def _located_value(span: str) -> str:

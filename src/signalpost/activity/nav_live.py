@@ -60,6 +60,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ..context import CompanyContext
+from ..evidence_text import json_quote
 from ..models import ConnectorResult, utc_now
 from ._common import make_evidence, norm_title
 from .nav_feed import (
@@ -635,6 +636,7 @@ class NavLiveConnector:
                 extraction_method="nav_live_feedentry_v1",
                 span=f"$.ad_content.employer.orgnr={orgnr or 'null'}",
                 access_policy="NLOD-2.0 (NAV)",
+                quote=", ".join(q for q in (json_quote(ad, ("title",)), json_quote(employer, ("name", "orgnr"))) if q) or None,
             )
             evidence.append(ev)
 
@@ -658,6 +660,7 @@ class NavLiveConnector:
                 "employer_name": employer.get("name"),
                 "employer_orgnr": orgnr,
                 "employer_homepage": homepage,
+                "employer_quote": json_quote(employer, ("orgnr", "homepage")),
                 "published": ad.get("published"),
                 "expires": ad.get("expires"),
                 "application_due": ad.get("applicationDue") or ad.get("applicationdue"),
