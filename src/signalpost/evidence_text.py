@@ -91,6 +91,8 @@ def _supporting_text(claim: Claim, ev: Evidence) -> str:
     method = ev.extraction_method or ""
     if method == "web_wikidata_v1":
         return f"Wikidata item with this organisation number lists official website {value_text(claim)}"
+    if method == "brreg_subunit_parent_v1" and span:
+        return _located_value(span)  # the register shows the workplace's parent organisation
     if method == "web_email_domain_match_v1" and span:
         return f"registry e-mail domain {span} is the site's domain"
     if span and not _LOCATOR.match(span):

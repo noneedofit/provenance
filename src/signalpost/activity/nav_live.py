@@ -209,6 +209,27 @@ class NavLiveConnector:
             respect_robots=True, headers={"Authorization": f"Bearer {token}"},
         )
 
+    def _confirm_subunit(self, client: Any, org: str, sub_orgnr: str, errors: list[dict]) -> Any:
+        """Evidence that `sub_orgnr` is a registered subunit of `org` (Enhetsregisteret, live), or None."""
+        url = f"https://data.brreg.no/enhetsregisteret/api/underenheter/{sub_orgnr}"
+        resp = client.get(url, org=org, purpose="registry_subunit_confirm", accept="application/json", respect_robots=False)
+        if not resp.ok:
+            if resp.status not in (404, 410):
+                errors.append({"stage": "registry_subunit_confirm", "orgnr": sub_orgnr, "error": resp.error or f"http_{resp.status}"})
+            return None
+        try:
+            body = json.loads(resp.text())
+        except Exception:
+            return None
+        if str(body.get("overordnetEnhet") or "") != str(org):
+            return None
+        return make_evidence(
+            source_url=resp.final_url or url, final_url=resp.final_url, redirect_chain=resp.redirect_chain,
+            http_status=resp.status, source_class="official_registry", retrieved_at=resp.retrieved_at,
+            content_sha256=resp.content_sha256, snapshot_ref=resp.snapshot_ref, extraction_method="brreg_subunit_parent_v1",
+            span=f"$.overordnetEnhet={org}", access_policy="NLOD-2.0",
+        )
+
     # -- shared feed index (built once per run) -----------------------------------------------------
 
     def start_prepare(
@@ -606,6 +627,15 @@ class NavLiveConnector:
             )
             evidence.append(ev)
 
+            extra_evidence_ids: list[str] = []
+            if orgnr and orgnr not in our_orgnrs and m.get("employer_parent") == str(ctx.org):
+                # The ad names one of our workplaces (a subunit we did not list this run). Confirm in the
+                # register, live, that this subunit belongs to us before counting the ad as ours.
+                sub_ev = self._confirm_subunit(client, ctx.org, orgnr, errors)
+                if sub_ev is not None:
+                    evidence.append(sub_ev)
+                    extra_evidence_ids.append(sub_ev.evidence_id)
+                    our_orgnrs.add(orgnr)
             if not orgnr or orgnr not in our_orgnrs:
                 continue  # org number not confirmed for this company: never publish as a job claim
 
@@ -627,6 +657,7 @@ class NavLiveConnector:
                 "content_sha256": resp.content_sha256,
                 "snapshot_ref": resp.snapshot_ref,
                 "evidence_id": ev.evidence_id,
+                "extra_evidence_ids": extra_evidence_ids,
             }
             verified_ads.append(ad_row)
             if homepage:

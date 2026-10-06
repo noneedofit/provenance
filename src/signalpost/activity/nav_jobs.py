@@ -105,7 +105,7 @@ def _collect_live(ctx, shared: dict) -> dict:
         if not uuid:
             continue
         eid = ad.get("evidence_id")
-        evidence_ids = [eid] if eid else []
+        evidence_ids = ([eid] if eid else []) + list(ad.get("extra_evidence_ids") or [])
         all_evidence_ids.extend(evidence_ids)
         value = {
             "title": ad.get("title"),

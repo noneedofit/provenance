@@ -100,6 +100,9 @@ class NavFeedIndex:
                 self._conn.execute("ALTER TABLE active_ads ADD COLUMN employer_orgnr TEXT")
             if "employer_homepage" not in cols:
                 self._conn.execute("ALTER TABLE active_ads ADD COLUMN employer_homepage TEXT")
+            if "employer_parent" not in cols:
+                self._conn.execute("ALTER TABLE active_ads ADD COLUMN employer_parent TEXT")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_active_ads_parent ON active_ads(employer_parent)")
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_active_ads_orgnr ON active_ads(employer_orgnr)")
             self._conn.execute("CREATE TABLE IF NOT EXISTS nav_feed_cursor (key TEXT PRIMARY KEY, value TEXT)")
             self._conn.execute(
@@ -179,21 +182,24 @@ class NavFeedIndex:
                 (uuid, title, business_name, norm, municipal, sist_endret, updated_at),
             )
 
-    def set_employer(self, uuid: str, orgnr: str | None, homepage: str | None) -> None:
+    def set_employer(self, uuid: str, orgnr: str | None, homepage: str | None, parent: str | None = None) -> None:
         with self._lock:
             self._conn.execute(
-                "UPDATE active_ads SET employer_orgnr = ?, employer_homepage = ? WHERE uuid = ?", (orgnr, homepage, uuid),
+                "UPDATE active_ads SET employer_orgnr = ?, employer_homepage = ?, employer_parent = ? WHERE uuid = ?",
+                (orgnr, homepage, parent, uuid),
             )
 
     def match_orgnr(self, orgnrs: set[str]) -> list[dict]:
-        """Ads whose employer org number (known from the snapshot) is one of `orgnrs`."""
+        """Ads whose employer org number, or the employer's parent (a subunit's overordnetEnhet), both known
+        from the snapshot, is one of `orgnrs`."""
         orgnrs = {o for o in orgnrs if o}
         if not orgnrs:
             return []
         placeholders = ",".join("?" for _ in orgnrs)
         with self._lock:
             rows = self._conn.execute(
-                f"SELECT * FROM active_ads WHERE employer_orgnr IN ({placeholders})", tuple(orgnrs)
+                f"SELECT * FROM active_ads WHERE employer_orgnr IN ({placeholders}) OR employer_parent IN ({placeholders})",
+                tuple(orgnrs) + tuple(orgnrs),
             ).fetchall()
         return [dict(r) for r in rows]
 
@@ -547,7 +553,7 @@ def load_snapshot(index: NavFeedIndex, path: Path = SNAPSHOT_PATH) -> datetime |
                 index.upsert_active(uuid=uuid, title=title, business_name=business_name, municipal=municipal,
                                     sist_endret=sist_endret, updated_at=meta["as_of"])
                 if len(row) >= 7 and (row[5] or row[6]):
-                    index.set_employer(uuid, row[5], row[6])
+                    index.set_employer(uuid, row[5], row[6], row[7] if len(row) >= 8 else None)
         index.commit()
         return as_of
     except (OSError, ValueError, KeyError, TypeError):
