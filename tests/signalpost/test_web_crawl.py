@@ -130,3 +130,16 @@ def test_redirect_to_platform_missing_page_is_parked():
     # A company site hosted as a platform tenant is alive; the platform's own front page is not.
     assert not _is_dead_redirect("https://www.barokkanerne.no", "https://barokkanerne.squarespace.com/")
     assert _is_dead_redirect("https://acme.no/", "https://www.wix.com/")
+
+
+def test_a_bot_challenge_page_is_not_read_as_the_site():
+    from signalpost.web.crawl import is_bot_challenge
+
+    sg = ('<html><head><meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2F"></meta></head></html>')
+    client = FakeHttpClient(pages={"https://guarded.no/": FakePage(sg, status=202)})
+    ctx = make_ctx("923456783", tier="T2", client=client)
+    cand = Candidate(domain="guarded.no", url="https://guarded.no/", source="name_guess", label="x")
+    assert crawl_candidate(ctx, cand).fatal_error == "bot_challenge"
+    # A normal page that merely loads a challenge script is still a normal page.
+    normal = "<html><body><script>window._cf_chl_opt={}</script>" + "<p>Velkommen til Guarded AS, vi bygger hus.</p>" * 20 + "</body></html>"
+    assert not is_bot_challenge(normal)

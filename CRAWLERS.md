@@ -119,6 +119,7 @@ party platforms, NAV and Mattilsynet; only the Brønnøysund registry APIs pass 
 | Registry live call 404/410 | `not_available`, reason states the HTTP status; identity falls back to the bulk CSV row. |
 | Registry call fails transiently (connection error, timeout, 5xx) | The company is put back in the queue once and processed again after the rest of the batch (counted in `run-report.json` as `registry_retried_companies`); if it fails again, the family is `failed` and refresh carries earlier facts forward. |
 | Accounts API refuses a filing layout it does not serve (non-profit `IDEELL`, HTTP 500 with that message) | `financials` is `not_available` with that reason; this is a permanent answer, not an outage. |
+| A site answers with a bot challenge (CAPTCHA, "checking your browser") | Never bypassed; the candidate counts as unreachable. A registry/Wikidata/NAV/OSM-declared site → `website` `blocked`; a site verified last run → `failed`, earlier facts kept. |
 | No candidate website verifies `exact` | Best `related` candidate published `ambiguous`, or `not_available` with a "checked N candidates" reason. |
 | Request budget exhausted mid-company | Remaining un-run families marked `failed` reason `request_budget`; already-collected claims are kept. |
 | Wall-clock deadline hit mid-batch | Remaining un-run families for that company marked `failed` reason `deadline`; the company still gets exactly one envelope. |

@@ -237,10 +237,36 @@ def _sitemap_links(ctx: Any, homepage: str, homepage_domain: str, limit: int) ->
     return picked[:limit]
 
 
+# A hosting firewall's bot challenge (CAPTCHA or "checking your browser" page) instead of the site. It is
+# never solved or bypassed; the site counts as not reachable this run (`bot_challenge`).
+BOT_CHALLENGE_MARKERS = (
+    "/.well-known/sgcaptcha", "checking your browser", "cf_chl_opt", "window._cf_chl", "cf-browser-verification",
+    "verifying you are human", "enable javascript and cookies to continue", "ddos-guard",
+)
+BOT_CHALLENGE_MAX_TEXT = 400
+
+
+def is_bot_challenge(html: str) -> bool:
+    if not html or len(html) > 300_000:
+        return False
+    lowered = html[:300_000].lower()
+    if not any(marker in lowered for marker in BOT_CHALLENGE_MARKERS):
+        return False
+    # Some sites embed a challenge script on a normal page; a challenge page itself says almost nothing.
+    visible = BeautifulSoup(html, "lxml").get_text(" ", strip=True)
+    return len(visible) <= BOT_CHALLENGE_MAX_TEXT or "checking your browser" in visible.lower()[:200]
+
+
 def _fetch_page(ctx: Any, url: str, purpose: str) -> tuple[PageFetch | None, int]:
     client = ctx.client
     resp = client.get(url, org=ctx.org, purpose=purpose, respect_robots=True)
     used = getattr(resp, "requests_used", 1) or 1
+    if resp.status in (200, 202, 403, 429, 503) and is_bot_challenge(_body_text(resp)):
+        return PageFetch(
+            url=url, final_url=resp.final_url or url, status=resp.status, ok=False, html="", text="",
+            title="", redirect_chain=resp.redirect_chain, content_sha256=resp.content_sha256 or None,
+            snapshot_ref=resp.snapshot_ref, retrieved_at=resp.retrieved_at, error="bot_challenge",
+        ), used
     if not resp.ok:
         return PageFetch(
             url=url, final_url=resp.final_url or url, status=resp.status, ok=False, html="", text="",
@@ -264,6 +290,13 @@ def _fetch_page(ctx: Any, url: str, purpose: str) -> tuple[PageFetch | None, int
         retrieved_at=resp.retrieved_at,
     )
     return page, used
+
+
+def _body_text(resp: Any) -> str:
+    try:
+        return resp.text()
+    except Exception:
+        return ""
 
 
 _CONNECT_ERRORS = {"network_error", "ssl_error"}

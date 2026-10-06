@@ -51,6 +51,16 @@ relationship (`parent`/`brand`), never as an exact own-site; profiles and descri
 it. Domains shared by ten or more organisations (property managers, franchise platforms) are not
 published. Sites that block automated visitors (HTTP 403 "request blocked") are not worked around.
 
+## Sites behind a bot challenge are not read
+
+Some hosting firewalls answer an automated client with a CAPTCHA or "checking your browser" page instead of
+the site (SiteGround's `sgcaptcha`, for example, based on the client IP's reputation). The agent never
+solves or bypasses these (`web/crawl.py:is_bot_challenge`). When the site declared for the company in the
+registry, Wikidata, NAV or OpenStreetMap answers this way, `website` is reported `blocked`, not
+`not_available`; when it is a site verified in an earlier run, the earlier facts are kept. Which sites
+challenge a client can change between runs, so this is a source of run-to-run differences outside the
+agent's control.
+
 ## JS-only sites are not rendered
 
 `web/crawl.py` fetches server-rendered HTML only (stdlib `urllib` + BeautifulSoup/trafilatura) — no

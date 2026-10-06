@@ -135,7 +135,20 @@ def _previous_site_unreachable(ctx: Any, attempts: list[dict]) -> bool:
 def _transient(reason: Any) -> bool:
     """Connection-level or server-side failures; a 404 or DNS failure means the site may really be gone."""
     text = str(reason or "")
-    return text in ("ssl_error", "network_error", "timeout", "http_429") or text.startswith("http_5") or text.startswith("URLError")
+    return (text in ("ssl_error", "network_error", "timeout", "http_429", "bot_challenge")
+            or text.startswith("http_5") or text.startswith("URLError"))
+
+
+# Candidate sources that tie a domain to this organisation number before any page is read.
+_DECLARED_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
+
+
+def _declared_site_challenged(attempts: list[dict]) -> str | None:
+    """The domain of a registry/Wikidata/NAV/OSM-declared site that answered with a bot challenge."""
+    for a in attempts:
+        if a.get("source") in _DECLARED_SOURCES and a.get("status") == "unreachable" and a.get("reason") == "bot_challenge":
+            return a.get("domain")
+    return None
 
 
 def _redirects_into_other_site(cand: Any, pages: list[PageFetch]) -> bool:
@@ -442,6 +455,15 @@ class WebConnector:
             reason = "previously verified site unreachable this run; previous profile kept"
             for fam in ("website", "profiles", "description"):
                 result.families[fam] = FamilyState(family=fam, availability="failed", reason=reason, sources_checked=[a["domain"] for a in attempts])
+        elif (challenged := _declared_site_challenged(attempts)) is not None:
+            # The site the registry (or Wikidata/NAV/OSM) declares for this company answered with a CAPTCHA or
+            # browser check. It was not read, so the family is blocked, not "nothing found".
+            result.families["website"] = FamilyState(
+                family="website", availability="blocked", sources_checked=[a["domain"] for a in attempts],
+                reason=f"declared site {challenged} answered with a bot challenge (CAPTCHA); not bypassed",
+            )
+            result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no verified site to link profiles from")
+            result.families["description"] = FamilyState(family="description", availability="not_available", reason="no verified site to extract description from")
         else:
             reason = f"checked {len(attempts)} candidates: none verified" if attempts else "no candidates"
             result.families["website"] = FamilyState(family="website", availability="not_available", reason=reason, sources_checked=[a["domain"] for a in attempts])

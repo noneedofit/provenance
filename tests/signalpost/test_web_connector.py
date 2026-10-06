@@ -232,3 +232,31 @@ def test_wikidata_profiles_are_published_even_without_a_verified_site():
     assert [c.value["url"] for c in profiles] == ["https://facebook.com/exampleas"]
     assert profiles[0].identity_basis == "wikidata_org_number" and profiles[0].evidence_ids
     assert result.families["profiles"].availability == "available"
+
+
+_SGCAPTCHA = ('<html><head><link rel="icon" href="data:;"><meta http-equiv="refresh" '
+              'content="0;/.well-known/sgcaptcha/?r=%2F&y=ipc:1.2.3.4:1791305696.459"></meta></head></html>')
+
+
+def test_a_declared_site_behind_a_captcha_is_blocked_not_absent():
+    from web_fakes import FakePage
+
+    client = FakeHttpClient(pages={"https://example.no/": FakePage(_SGCAPTCHA, status=202)})
+    ctx = make_ctx(OUR_ORG, tier="T2", client=client,
+                   registry_facts={"name": "EXAMPLE AS", "website": "example.no", "street": "", "postcode": "", "city": ""})
+    result = WebConnector().run(ctx)
+    assert result.families["website"].availability == "blocked"
+    assert "bot challenge" in result.families["website"].reason
+
+
+def test_a_previously_verified_site_behind_a_captcha_keeps_the_previous_profile():
+    from web_fakes import FakePage
+
+    challenge = "<html><body>Checking your browser... Javascript required</body></html>"
+    client = FakeHttpClient(pages={"https://example.no/": FakePage(challenge, status=403)})
+    ctx = make_ctx(OUR_ORG, tier="T2", client=client,
+                   registry_facts={"name": "EXAMPLE AS", "website": "example.no", "street": "", "postcode": "", "city": ""})
+    ctx.previous = _previous_with_site("example.no")
+    result = WebConnector().run(ctx)
+    for fam in ("website", "profiles", "description"):
+        assert result.families[fam].availability == "failed"
