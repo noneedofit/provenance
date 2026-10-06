@@ -170,6 +170,18 @@ def _ensure_caches(explicit: str | None, bulk_path: str | None) -> tuple[str | N
         if not (cache_dir / "wikidata.sqlite").exists() and snapshot.exists():
             shutil.copyfile(snapshot, cache_dir / "wikidata.sqlite")
             print("using the bundled Wikidata snapshot (CC0)", file=sys.stderr)
+    try:
+        from signalpost.caches import places as places_mod
+
+        marker = cache_dir / "places.release"
+        wanted = places_mod.SNAPSHOT_META["overture_release"] + "|" + places_mod.SNAPSHOT_META["osm_base"]
+        if not (cache_dir / places_mod.DB_NAME).exists() or not marker.exists() or marker.read_text().strip() != wanted:
+            print(f"indexing the bundled open places snapshots (Overture {places_mod.SNAPSHOT_META['overture_release']}, OSM) (0 requests)", file=sys.stderr)
+            info = places_mod.build(cache_dir)
+            store.update_meta_part(cache_dir, "places", info)
+            marker.write_text(wanted)
+    except Exception as exc:  # candidates only; the run is complete without them
+        print(f"open places index unavailable ({exc})", file=sys.stderr)
     return str(cache_dir), requests_used
 
 

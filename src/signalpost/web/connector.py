@@ -5,6 +5,12 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
+import threading
+
+import json
+
+import os
+
 import hashlib
 import urllib.parse
 from typing import Any
@@ -19,7 +25,7 @@ from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, crawl_candidate
 from norway_company_agent.website import normalize_social_url
 
-DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage"}
+DECISIVE_SOURCES = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
 
 
 def _registry_facts(ctx: CompanyContext) -> dict[str, Any]:
@@ -63,6 +69,22 @@ def _previous_site_domain(ctx: Any) -> str | None:
             if isinstance(value, str) and value:
                 return (registered_domain(value) or "").lower() or None
     return None
+
+
+def _debug_log(org: str, attempts: list[dict]) -> None:
+    """Diagnostics only: with SIGNALPOST_WEB_DEBUG=<file>, append every candidate verdict as one JSON line.
+    Never part of the output contract."""
+    path = os.environ.get("SIGNALPOST_WEB_DEBUG")
+    if not path:
+        return
+    try:
+        with _DEBUG_LOCK, open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"org": org, "attempts": attempts}, ensure_ascii=False, default=str) + "\n")
+    except OSError:
+        pass
+
+
+_DEBUG_LOCK = threading.Lock()
 
 
 def _previous_site_unreachable(ctx: Any, attempts: list[dict]) -> bool:
@@ -281,6 +303,7 @@ class WebConnector:
                 best_related = (cand, verdict, crawl_result.pages)
 
         result.shared["web_attempts"] = attempts
+        _debug_log(org, attempts)
 
         if exact_pages is not None and exact_candidate is not None and exact_verdict is not None:
             self._publish_exact(ctx, result, exact_candidate, exact_verdict, exact_pages)

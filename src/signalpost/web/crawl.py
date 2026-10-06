@@ -219,6 +219,44 @@ def _fetch_page(ctx: Any, url: str, purpose: str) -> tuple[PageFetch | None, int
     return page, used
 
 
+_CONNECT_ERRORS = {"network_error", "ssl_error"}
+_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
+_NAME_STOP = {"as", "asa", "ans", "da", "enk", "sa", "nuf", "iks", "holding", "invest", "eiendom", "norge", "norway", "group", "gruppen"}
+
+
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFKD", (text or "").translate(_FOLD)).encode("ascii", "ignore").decode().casefold()
+
+
+def _homepage_names_company(ctx: Any, homepage: PageFetch) -> bool:
+    name = str((getattr(ctx, "bulk", None) or {}).get("navn") or "")
+    tokens = {t for t in re.findall(r"[a-z0-9]+", _fold(name)) if len(t) >= 4 and t not in _NAME_STOP}
+    if not tokens:
+        return False
+    page_tokens = set(re.findall(r"[a-z0-9]+", _fold(homepage.title + " " + homepage.text[:20000])))
+    return bool(tokens & page_tokens)
+
+
+def _alternate_homepages(ctx: Any, url: str) -> list[str]:
+    """Other scheme/host spellings of a homepage, in the order browsers effectively try them, limited to
+    hosts that resolve in DNS (a local lookup, not an HTTP request)."""
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if not host:
+        return []
+    other = host[4:] if host.startswith("www.") else f"www.{host}"
+    resolves = getattr(ctx.client, "dns_resolves", None)
+    hosts = [h for h in (host, other) if resolves is None or resolves(h)]
+    path = parts.path or "/"
+    out = []
+    for h in hosts:
+        for scheme in ("https", "http"):
+            alt = f"{scheme}://{h}{path}"
+            if alt != url and alt not in out:
+                out.append(alt)
+    return out[:2]
+
+
 def crawl_candidate(
     ctx: Any,
     candidate: Candidate,
@@ -234,6 +272,17 @@ def crawl_candidate(
     result = CrawlResult(candidate=candidate)
     homepage, used = _fetch_page(ctx, candidate.url, "web_homepage")
     result.requests_used += used
+    if homepage is not None and not homepage.ok and homepage.error in _CONNECT_ERRORS:
+        # Many small Norwegian sites answer only on plain http, or only on (or without) "www.". A connection
+        # failure on the one URL we tried is not evidence that the site does not exist.
+        for alt in _alternate_homepages(ctx, candidate.url):
+            if ctx.client.remaining(ctx.org) < 1:
+                break
+            retry, used = _fetch_page(ctx, alt, "web_homepage_fallback")
+            result.requests_used += used
+            if retry is not None and (retry.ok or retry.error not in _CONNECT_ERRORS):
+                homepage = retry
+                break
     if homepage is None or not homepage.ok:
         result.fatal_error = homepage.error if homepage else "fetch_failed"
         if homepage is not None:
@@ -251,6 +300,10 @@ def crawl_candidate(
     if _is_js_shell(homepage.text, soup):
         result.js_shell = True
 
+    if max_secondary <= 0 and _homepage_names_company(ctx, homepage):
+        # A shell-tier company still gets one contact/about page when its homepage already carries its name:
+        # that page is where the address, phone and org number usually are.
+        max_secondary = 1
     if max_secondary <= 0:
         return result
     if stop_check and stop_check(result.pages):

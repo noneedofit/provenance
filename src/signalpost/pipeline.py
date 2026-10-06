@@ -37,18 +37,18 @@ from .models import (
 from .planner import classify
 from .snapshots import SnapshotStore
 
-DEFAULT_MAX_REQUESTS = 1900
+DEFAULT_MAX_REQUESTS = 2600
 # Families fed by more than one connector (registry activity + website description).
 MULTI_SOURCE_FAMILIES = frozenset({"description"})
 DEFAULT_DEADLINE_S = 2400  # 40 minutes
-# Requests allowed per input company when --max-requests is not given (100 companies -> 1,900).
-DEFAULT_REQUESTS_PER_COMPANY = 19
+# Requests allowed per input company when --max-requests is not given (100 companies -> 2,600).
+DEFAULT_REQUESTS_PER_COMPANY = 26
 # Registry-only fallback: when the time left is short for the companies not yet started, each of them
 # gets just the official-registry pass (a few seconds) instead of nothing at the deadline.
 # The margin also covers full crawls already in flight when the switch happens (up to a few minutes).
 REGISTRY_ONLY_SAFETY_S = 300
 REGISTRY_ONLY_S_PER_COMPANY = 4.0
-DEFAULT_WORKERS = 12
+DEFAULT_WORKERS = 24
 
 
 def _default_connectors() -> list[Any]:

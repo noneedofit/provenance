@@ -53,6 +53,7 @@ IdentityBasis = Literal[
     "registry_declared",        # the register lists this website/email domain for the org number
     "job_feed_org_number",      # NAV ad carries the exact organisation number
     "wikidata_org_number",      # Wikidata item carries the exact organisation number
+    "open_map_org_number",      # OpenStreetMap feature tagged ref:NO:orgnr with the exact organisation number
     "linked_from_verified_site",  # linked from a site already verified as exact
     "corroborated",             # >=2 independent corroborating signals, no conflict
 ]

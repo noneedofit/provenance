@@ -16,9 +16,10 @@ from . import store
 from .aliases import Aliases
 from .email_domains import EmailDomains
 from .nav import Nav
+from .places import Places
 from .wikidata import Wikidata
 
-__all__ = ["Caches", "EmailDomains", "Aliases", "Wikidata", "Nav"]
+__all__ = ["Caches", "EmailDomains", "Aliases", "Wikidata", "Nav", "Places"]
 
 
 @dataclass
@@ -28,6 +29,7 @@ class Caches:
     wikidata: Wikidata | None
     nav: Nav | None
     meta: dict[str, Any]
+    places: Places | None = None
     cache_dir: str | None = None
 
     @classmethod
@@ -44,5 +46,6 @@ class Caches:
         if nav is not None:
             nav.aliases = aliases  # lets Nav.ads_for resolve parent -> subunit org numbers
         meta = store.read_meta(cache_dir) or {}
+        places = Places.load(cache_dir)
         return cls(email_domains=email_domains, aliases=aliases, wikidata=wikidata, nav=nav,
-                    meta=meta, cache_dir=str(cache_dir))
+                    meta=meta, cache_dir=str(cache_dir), places=places)

@@ -6,6 +6,8 @@ subunit websites/emails -> name-guessed slugs. DNS-prefilter guesses before any 
 """
 from __future__ import annotations
 
+import dataclasses
+
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -54,7 +56,8 @@ MAX_NAME_GUESSES = 6
 # total) showed raising this cap from 6->9 / 1->2 added ZERO further gold exact matches
 # (correct_exact held at 43) while costing +53 requests (1665->1718) -- reverted; not worth the
 # budget against the incoming NAV-jobs-feed headroom requirement (target <=1750/gold131).
-T0_MAX_NAME_GUESSES = 1
+T0_MAX_NAME_GUESSES = 3
+OPEN_PLACES_MAX_MATCHES = 4
 
 
 def _slug_tokens(value: str) -> list[str]:
@@ -105,6 +108,7 @@ class Candidate:
     label: str            # human readable provenance for logging/eval
     decisive: bool = False  # True if this source alone can establish identity (subject to live-site checks)
     rank: int = 0
+    hints: tuple[str, ...] = ()  # open_places: which registry keys tied the place to us ("phone", "email", "name", ...)
 
 
 # Priority when the SAME domain is produced by more than one source (e.g. Kitron/Mowi/AF Gruppen: the
@@ -116,8 +120,10 @@ class Candidate:
 _SOURCE_PRIORITY = {
     "wikidata_website": 0,
     "nav_employer_homepage": 0,
+    "osm_orgnr_website": 0,
     "registry_website": 1,
     "registry_email_domain": 2,
+    "open_places": 2,
     "subunit_website": 3,
     "subunit_email_domain": 3,
     "name_guess": 4,
@@ -142,7 +148,10 @@ def _dedupe(candidates: list[Candidate]) -> list[Candidate]:
             best[cand.domain] = cand
             order.append(cand.domain)
         elif _SOURCE_PRIORITY.get(cand.source, 99) < _SOURCE_PRIORITY.get(best[cand.domain].source, 99):
-            best[cand.domain] = cand
+            best[cand.domain] = dataclasses.replace(cand, hints=cand.hints or best[cand.domain].hints)
+        elif cand.hints and not best[cand.domain].hints:
+            # Same domain also nominated by an open places match: keep that corroboration on the winner.
+            best[cand.domain] = dataclasses.replace(best[cand.domain], hints=cand.hints)
     ordered = [best[d] for d in order]
     return ordered
 
@@ -322,6 +331,19 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
             ))
             rank += 1
 
+    # 3c. OpenStreetMap features tagged with our (or a subunit's) org number: keyed by org number, like Wikidata.
+    places = getattr(caches, "places", None) if caches is not None else None
+    sub_orgs = [str(s.get("organisation_number") or "") for s in facts.get("subunits") or []]
+    if places is not None and org:
+        for feat in places.osm_for([str(org)] + sub_orgs):
+            domain = registered_domain(feat.get("website") or "")
+            if domain:
+                candidates.append(Candidate(
+                    domain, _normalize_url(feat["website"]), "osm_orgnr_website",
+                    f"OpenStreetMap {feat['osm_id']} ref:NO:orgnr={feat['orgnr']}", decisive=True, rank=rank,
+                ))
+                rank += 1
+
     # 4. Registry email domain, unless shared/freemail.
     email_domain = facts.get("email_domain")
     if email_domain:
@@ -353,6 +375,28 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
                 domain = registered_domain(sub_domain_raw)
                 if domain:
                     candidates.append(Candidate(domain, _homepage_url(domain), "subunit_email_domain", f"subunit {subunit.get('name', '')} email domain", decisive=False, rank=rank))
+                    rank += 1
+
+    # 5b. Open places dataset (Overture): a place carrying our registry phone/e-mail, or our name core at our
+    # postcode, nominates its website. Strongest matches first (two keys before one); never decisive.
+    if places is not None:
+        phones = list(facts.get("phones") or [])
+        emails = [facts.get("email")] if facts.get("email") else []
+        for subunit in facts.get("subunits") or []:
+            phones += list(subunit.get("phones") or [])
+            if subunit.get("email"):
+                emails.append(subunit["email"])
+        matches = places.match(name=facts.get("name") or "", postcode=facts.get("postcode"), phones=phones, emails=emails)
+        matches.sort(key=lambda m: (-len(m["how"]), m["id"]))
+        for m in matches[:OPEN_PLACES_MAX_MATCHES]:
+            for site in m["websites"][:2]:
+                domain = registered_domain(site)
+                if domain:
+                    candidates.append(Candidate(
+                        domain, _normalize_url(site), "open_places",
+                        f"Overture place {m['id']} ({m['name']}) matched on {'+'.join(m['how'])}",
+                        decisive=False, rank=rank, hints=tuple(m["how"]),
+                    ))
                     rank += 1
 
     # 6. Name-based guesses: legal name, historic names (aliases), subunit trade names.

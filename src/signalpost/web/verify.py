@@ -104,8 +104,14 @@ def find_org_number_in_jsonld(value: Any) -> list[OrgNumberMatch]:
 # --- Parked / conflict helpers ---------------------------------------------------------------------------
 
 
+# Norwegian letters fold the same way everywhere (name, title, address, page text): NFKD alone would drop
+# "ø" entirely ("Trøndelag" -> "trndelag") while the legal-name side maps it to "o".
+_NORWEGIAN_FOLD = str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"})
+
+
 def _normalize(text: str) -> str:
-    return unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode().casefold()
+    folded = (text or "").translate(_NORWEGIAN_FOLD)
+    return unicodedata.normalize("NFKD", folded).encode("ascii", "ignore").decode().casefold()
 
 
 def is_parked_page(html: str, text: str) -> bool:
@@ -251,9 +257,15 @@ def _infer_relationship(our_name: str, site_text: str) -> Relationship:
     return "brand"
 
 
+# A lone trade word is not a distinctive name (bygg.no, transport.no belong to someone else).
+GENERIC_NAME_WORDS = {
+    "bygg", "transport", "eiendom", "holding", "invest", "service", "consulting", "elektro", "handel",
+    "regnskap", "maskin", "entreprenor", "renhold", "tannlege", "frisor", "byggservice", "eiendomsservice",
+}
+
+
 def _legal_name_core(name: str) -> set[str]:
-    text = str(name or "").translate(str.maketrans({"ø": "o", "Ø": "O", "å": "a", "Å": "A", "æ": "ae", "Æ": "AE"}))
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().casefold()
+    text = _normalize(str(name or ""))
     suffixes = {"as", "asa", "ans", "da", "enk", "iks", "sa", "sam", "sti", "stiftelsen", "nuf"}
     return {tok for tok in re.findall(r"[a-z0-9]+", text) if tok not in suffixes and len(tok) > 1}
 
@@ -458,8 +470,10 @@ def assess(
         signals.append(Signal("wikidata", "candidate sourced from Wikidata entry for this organisation number", homepage.final_url, candidate.label))
     if candidate.source == "nav_employer_homepage" and not conflicts:
         signals.append(Signal("nav_employer_homepage", "NAV job ad for this org number links this homepage", homepage.final_url, candidate.label))
+    if candidate.source == "osm_orgnr_website" and not conflicts:
+        signals.append(Signal("osm_orgnr", "OpenStreetMap feature tagged with this organisation number links this site", homepage.final_url, candidate.label))
 
-    decisive_kinds = {"org_number_on_source", "jsonld_org_number", "wikidata", "nav_employer_homepage"}
+    decisive_kinds = {"org_number_on_source", "jsonld_org_number", "wikidata", "nav_employer_homepage", "osm_orgnr"}
     has_decisive = any(s.kind in decisive_kinds for s in signals)
 
     # A domain can be re-registered after the company let it lapse and now serves unrelated spam
@@ -516,13 +530,37 @@ def assess(
         # the match is tautological, not independent confirmation. For every other source (a name guess,
         # the registry hjemmeside, Wikidata, a subunit site, ...) landing on the same domain the
         # registered e-mail uses is a genuine, independent structural signal.
+        # An open places dataset lists this site for a place that carries our registry phone or e-mail. Strong
+        # only when that place also bears our name core (phone/e-mail alone can be a property manager's or an
+        # accountant's switchboard shared by many companies).
+        hints = set(getattr(candidate, "hints", ()) or ())
+        if hints & {"phone", "email"}:
+            kind = "open_places_contact_named" if "name" in hints else "open_places_contact"
+            signals.append(Signal(kind, f"open places dataset lists this site for a place matching our {'/'.join(sorted(hints))}", homepage.final_url, candidate.label))
+
+        # The domain is the company's full legal name (minus legal-form words), e.g. "THE MICE GURU AS" ->
+        # themiceguru.com. Only a distinctive name counts: long enough, not a lone generic trade word.
+        legal_core_tokens = _legal_name_core(registry_facts.get("name") or "")
+        ordered_core = [t for t in re.findall(r"[a-z0-9]+", _normalize(registry_facts.get("name") or "")) if t in legal_core_tokens]
+        slug = "".join(ordered_core)
+        label = (candidate.domain or "").rsplit(".", 1)[0].replace("-", "")
+        if slug and label == slug and len(slug) >= 8 and slug not in GENERIC_NAME_WORDS:
+            signals.append(Signal("domain_name_match", "site domain is the company's full legal name", homepage.final_url, candidate.domain))
+
+        # The registry's own e-mail address for this company is at this domain (domain not shared by other
+        # organisations: shared/freemail domains never become candidates). A registered fact, independent of
+        # anything the page says.
+        if candidate.source == "registry_email_domain":
+            signals.append(Signal("registry_email_domain", "registry e-mail address for this organisation uses this domain", homepage.final_url, candidate.domain))
+
         email_domain = (registry_facts.get("email_domain") or "").strip().lower()
         if email_domain and email_domain == candidate.domain and candidate.source != "registry_email_domain":
             signals.append(Signal("email_domain_match", "registered e-mail domain matches this site's domain", homepage.final_url, email_domain))
 
     corroborating_kinds = {
         "registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match",
-        "email_domain_match",
+        "email_domain_match", "open_places_contact", "open_places_contact_named", "domain_name_match",
+        "registry_email_domain",
     }
     corroborating = [s for s in signals if s.kind in corroborating_kinds]
     distinct_corroborating = {s.kind for s in corroborating}
@@ -531,7 +569,9 @@ def assess(
     # signals (address, phone, a board member's name) are page CONTENT that can genuinely, coincidentally
     # match on a page that isn't entity-specific -- a shared office after an acquisition, a former
     # tenant's address, a person who moved employer. See the name_guess guard below.
-    STRONG_CORROBORATING_KINDS = {"legal_name_match", "registry_email", "email_domain_match"}
+    STRONG_CORROBORATING_KINDS = {
+        "legal_name_match", "registry_email", "email_domain_match", "open_places_contact_named", "domain_name_match",
+    }
 
     # A parent/umbrella or franchise/chain page (group site, "our brands", "our stores", housing
     # manager, franchise/chain wording) is exactly the "flagged as a franchise/parent site" carve-out in
@@ -596,6 +636,7 @@ def assess(
             "jsonld_org_number": "org_number_on_source",
             "wikidata": "wikidata_org_number",
             "nav_employer_homepage": "job_feed_org_number",
+            "osm_orgnr": "open_map_org_number",
         }
         return Verdict("exact", identity_basis_map[basis], "exact", signals=signals, conflicts=[], note="decisive identity signal")
 
@@ -652,7 +693,12 @@ def assess(
                     "corroboration alone) while the authoritative site remains unconfirmed"
                 ),
             )
-        if candidate.source == "name_guess" and not (distinct_corroborating & STRONG_CORROBORATING_KINDS):
+        three_independent_soft = len(distinct_corroborating & {"registered_address", "registry_phone", "role_name"}) >= 3
+        if (
+            candidate.source in ("name_guess", "open_places", "registry_email_domain")
+            and not (distinct_corroborating & STRONG_CORROBORATING_KINDS)
+            and not three_independent_soft
+        ):
             # ORBOTECH NORWAY AS trap: a name-guess with NO independent basis of its own (unlike
             # registry_website/wikidata/nav) landed on a corporate group's brand site after an
             # acquisition (formerly "MK Salg AS"), and the group's Norway landing page genuinely carries

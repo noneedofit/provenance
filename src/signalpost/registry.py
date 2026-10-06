@@ -466,6 +466,7 @@ def locations_claims_from_subunits(builder: _ClaimBuilder, body: dict[str, Any],
             "organisation_number": sub_org, "name": item.get("navn"), "street": addr_norm.get("street"),
             "postcode": addr_norm.get("postcode"), "city": addr_norm.get("city"), "employees": item.get("antallAnsatte"),
             "website": normalize_website(item.get("hjemmeside")), "email": item.get("epostadresse"),
+            "phones": [p for p in (item.get("telefon"), item.get("mobil")) if p],
         })
     builder.note_checked("locations", response.url)
     return facts
@@ -744,6 +745,20 @@ class RegistryConnector:
         if client is not None and (ctx.shared or {}).get("registry_only"):
             # Time budget is short for the rest of the batch; this endpoint is rate-limited to 1/s.
             families["financial_history"] = FamilyState(family="financial_history", availability="failed", reason="time_budget: registry-only pass")
+        elif client is not None and tier == "T0" and str(bulk_row.get("sisteInnsendteAarsregnskap") or "").strip().isdigit():
+            # Shell-tier companies: the filed-years endpoint is throttled (about one call a second across the
+            # run), so the latest filed year comes from the same-day bulk row instead of a live call.
+            year = int(str(bulk_row["sisteInnsendteAarsregnskap"]).strip())
+            eid = builder.add_evidence(
+                source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.now,
+                extraction_method="brreg_bulk_row_v1", span="$.sisteInnsendteAarsregnskap",
+            )
+            builder.add_claim(family="financial_history", field="latest_filed_year", value=year, evidence_ids=[eid])
+            builder.note_checked("financial_history", BULK_DOWNLOAD_URL)
+            families["financial_history"] = FamilyState(
+                family="financial_history", availability="available", reason=None,
+                sources_checked=[BULK_DOWNLOAD_URL], claim_count=1,
+            )
         elif client is not None:
             _history_slot()
             resp = client.get(BRREG_ACCOUNT_YEARS.format(org=org), org=org, purpose="registry_financial_history", accept="application/json", respect_robots=False)

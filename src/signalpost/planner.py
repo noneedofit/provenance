@@ -3,9 +3,9 @@
 Tiers (BUILD_SPEC.md):
 - T0 shell: no staff, holding/property/housing NACE (64.2/68.x/70.1), legal form BRL/ESEK/SAM, no
   registered site/domain. ~5 requests.
-- T1 small: no staff but a registered site/domain, or 1-4 staff. ~15 requests.
-- T2 staffed: 5-49 staff, or a site plus any staff. ~30 requests.
-- T3 large: 50+ staff. ~45 requests.
+- T1 small: no staff but a registered site/domain, or 1-4 staff. ~24 requests.
+- T2 staffed: 5-49 staff, or a site plus any staff. ~36 requests.
+- T3 large: 50+ staff. ~55 requests.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from typing import Any
 SHELL_NACE_PREFIXES = ("64.2", "68.", "70.1")
 SHELL_LEGAL_FORMS = {"BRL", "ESEK", "SAM"}
 
-DEFAULT_ALLOWANCES = {"T0": 5, "T1": 15, "T2": 30, "T3": 45}
+DEFAULT_ALLOWANCES = {"T0": 14, "T1": 24, "T2": 36, "T3": 55}
 
 
 @dataclass

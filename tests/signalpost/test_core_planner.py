@@ -10,7 +10,7 @@ def test_shell_company_is_t0():
     }
     result = planner.classify(row)
     assert result.tier == "T0"
-    assert result.allowance == 5
+    assert result.allowance == 14
 
 
 def test_small_staffed_company_is_t1():
@@ -38,7 +38,7 @@ def test_mid_staffed_company_is_t2():
     }
     result = planner.classify(row)
     assert result.tier == "T2"
-    assert result.allowance == 30
+    assert result.allowance == 36
 
 
 def test_large_company_is_t3():
@@ -48,7 +48,7 @@ def test_large_company_is_t3():
     }
     result = planner.classify(row)
     assert result.tier == "T3"
-    assert result.allowance == 45
+    assert result.allowance == 55
 
 
 def test_bankrupt_company_is_capped_down():

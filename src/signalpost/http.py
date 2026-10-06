@@ -63,7 +63,7 @@ def _retry_after_seconds(headers: dict | None, default: float = 5.0, cap: float 
 USER_AGENT = "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"
 DEFAULT_HOST_CONCURRENCY = 2
 HOST_CONCURRENCY_OVERRIDES = {
-    "data.brreg.no": 6,
+    "data.brreg.no": 10,
 }
 
 
