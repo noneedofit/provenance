@@ -3,44 +3,44 @@
   "organisation_number": "935370744",
   "legal_name": "BJERKVIK AUTOLEIE AS",
   "run": {
-    "run_id": "smoke-100",
+    "run_id": "smoke-A",
     "previous_run_id": null,
-    "started_at": "2026-09-28T11:54:28Z",
-    "completed_at": "2026-09-28T12:00:17Z",
+    "started_at": "2026-10-06T08:39:04Z",
+    "completed_at": "2026-10-06T08:40:23Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T0"
   },
   "sections": {
     "legal_identity_and_brand": [
-      "c_0e0c93c4db9dc20fdd22",
-      "c_41f673bfb8035da51adc",
-      "c_84b29083c56b60feb1e6",
-      "c_d1107aa2b941d9500661",
       "c_c64508cb87cfe572f883",
-      "c_ff2599c121d7fb6b53ca",
       "c_790c0b5a8a373404825e",
-      "c_c01c8bf6abfeab1c8905",
-      "c_02927af4f4e970dd43b2"
+      "c_41f673bfb8035da51adc",
+      "c_0e0c93c4db9dc20fdd22",
+      "c_d1107aa2b941d9500661",
+      "c_ff2599c121d7fb6b53ca",
+      "c_84b29083c56b60feb1e6",
+      "c_02927af4f4e970dd43b2",
+      "c_c01c8bf6abfeab1c8905"
     ],
     "annual_accounts": [
-      "c_2b82bf3273f6c95300f1",
-      "c_7fabd6474e07736763fa",
-      "c_825ec1938f86686e7cf0",
-      "c_23ef2e78bcfe80422d00",
-      "c_b8973e30dc9daae0fbd0",
       "c_c8c57ddc380f9e0055bf",
+      "c_7fabd6474e07736763fa",
       "c_d5e2cd8cb4da18a709ee",
-      "c_c633504d79fbc34470f4"
+      "c_23ef2e78bcfe80422d00",
+      "c_2b82bf3273f6c95300f1",
+      "c_825ec1938f86686e7cf0",
+      "c_b8973e30dc9daae0fbd0",
+      "c_875ea451109dc8499be5"
     ],
     "leadership_and_workplaces": [
-      "c_0c031b88dea19810d811",
       "c_bddc8ca3587c7735c4cb",
-      "c_bcc4210aa100b0e34e25",
       "c_77ef14c700e23637824e",
       "c_99d5542111853ff54ef1",
-      "c_857ab061911b4c75090f",
       "c_3dc8103a261d556cf734",
+      "c_0c031b88dea19810d811",
+      "c_857ab061911b4c75090f",
+      "c_bcc4210aa100b0e34e25",
       "c_62d5b89f652861148828"
     ],
     "website_and_profiles": [
@@ -90,7 +90,7 @@
       "availability": "available",
       "reason": null,
       "sources_checked": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/935370744/aar"
+        "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
       ],
       "claim_count": 1
     },
@@ -129,8 +129,10 @@
     "reviews": {
       "family": "reviews",
       "availability": "not_available",
-      "reason": "no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)",
-      "sources_checked": [],
+      "reason": "checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)",
+      "sources_checked": [
+        "https://smilefjes.mattilsynet.no"
+      ],
       "claim_count": 0
     },
     "jobs": {
@@ -149,96 +151,6 @@
     }
   },
   "claims": [
-    {
-      "claim_id": "c_0e0c93c4db9dc20fdd22",
-      "organisation_number": "935370744",
-      "family": "identity",
-      "field": "legal_name",
-      "value": "BJERKVIK AUTOLEIE AS",
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_6fb02918fee2f122dcb0"
-      ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_41f673bfb8035da51adc",
-      "organisation_number": "935370744",
-      "family": "identity",
-      "field": "legal_form",
-      "value": {
-        "code": "AS",
-        "label": "Aksjeselskap"
-      },
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_5438336dc156f596c047"
-      ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_84b29083c56b60feb1e6",
-      "organisation_number": "935370744",
-      "family": "identity",
-      "field": "status",
-      "value": "active",
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_f7ac59c78e966a60b6fa"
-      ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_d1107aa2b941d9500661",
-      "organisation_number": "935370744",
-      "family": "identity",
-      "field": "nace",
-      "value": {
-        "code": "77.110",
-        "label": "Utleie og leasing av biler og andre lette motorvogner"
-      },
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_1cb416d3513f5736b898"
-      ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
     {
       "claim_id": "c_c64508cb87cfe572f883",
       "organisation_number": "935370744",
@@ -261,8 +173,98 @@
       "evidence_ids": [
         "e_59522f77b9a192a35c29"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_790c0b5a8a373404825e",
+      "organisation_number": "935370744",
+      "family": "identity",
+      "field": "founded_date",
+      "value": "2025-03-31",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_1fc8ac7c9812837cd83e"
+      ],
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_41f673bfb8035da51adc",
+      "organisation_number": "935370744",
+      "family": "identity",
+      "field": "legal_form",
+      "value": {
+        "code": "AS",
+        "label": "Aksjeselskap"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_5438336dc156f596c047"
+      ],
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_0e0c93c4db9dc20fdd22",
+      "organisation_number": "935370744",
+      "family": "identity",
+      "field": "legal_name",
+      "value": "BJERKVIK AUTOLEIE AS",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_6fb02918fee2f122dcb0"
+      ],
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d1107aa2b941d9500661",
+      "organisation_number": "935370744",
+      "family": "identity",
+      "field": "nace",
+      "value": {
+        "code": "77.110",
+        "label": "Utleie og leasing av biler og andre lette motorvogner"
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_1cb416d3513f5736b898"
+      ],
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -288,17 +290,17 @@
       "evidence_ids": [
         "e_9fa51215cd24e86d5c0c"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_790c0b5a8a373404825e",
+      "claim_id": "c_84b29083c56b60feb1e6",
       "organisation_number": "935370744",
       "family": "identity",
-      "field": "founded_date",
-      "value": "2025-03-31",
+      "field": "status",
+      "value": "active",
       "value_key": null,
       "availability": "available",
       "confidence": 1.0,
@@ -307,31 +309,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_1fc8ac7c9812837cd83e"
+        "e_f7ac59c78e966a60b6fa"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_c01c8bf6abfeab1c8905",
-      "organisation_number": "935370744",
-      "family": "identity",
-      "field": "vat_registered",
-      "value": false,
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_ef2edf5de9a4272c107d"
-      ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -351,17 +332,17 @@
       "evidence_ids": [
         "e_8df2d1f51d83212be636"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_e509d00c98891f209b54",
+      "claim_id": "c_c01c8bf6abfeab1c8905",
       "organisation_number": "935370744",
-      "family": "description",
-      "field": "registry_activity",
-      "value": "Utleie av kjøretøy, maskiner og lignende. Kjøp og salg av biler og andre produkter/tjenester som naturlig hører sammen med dette. Herunder å delta i andre selskap med lignende virksomhet, og kjøp og salg av aksjer eller på annen måte gjøre seg interessert i andre foretak.",
+      "family": "identity",
+      "field": "vat_registered",
+      "value": false,
       "value_key": null,
       "availability": "available",
       "confidence": 1.0,
@@ -370,20 +351,209 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_975500168f76391898b9"
+        "e_ef2edf5de9a4272c107d"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_0c031b88dea19810d811",
+      "claim_id": "c_c8c57ddc380f9e0055bf",
       "organisation_number": "935370744",
-      "family": "leadership",
-      "field": "roles_last_changed",
-      "value": "2025-04-12",
-      "value_key": "DAGL",
+      "family": "financials",
+      "field": "accounting_type",
+      "value": {
+        "type": "SELSKAP",
+        "small_enterprise": true
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_049fc5c3065bca56137b"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_7fabd6474e07736763fa",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "annual_result",
+      "value": {
+        "amount": -16519.0,
+        "currency": "NOK"
+      },
+      "value_key": "annual_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e3702d3f926ff21e1805"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d5e2cd8cb4da18a709ee",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "audit_status",
+      "value": {
+        "ikkeRevidertAarsregnskap": false,
+        "fravalgRevisjon": true
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_049fc5c3065bca56137b"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_23ef2e78bcfe80422d00",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "equity",
+      "value": {
+        "amount": 6981.0,
+        "currency": "NOK"
+      },
+      "value_key": "equity",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_098054f2e17fbd6b6902"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_2b82bf3273f6c95300f1",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "operating_result",
+      "value": {
+        "amount": -16519.0,
+        "currency": "NOK"
+      },
+      "value_key": "operating_result",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_f7d15daa823b526391a3"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_825ec1938f86686e7cf0",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "total_assets",
+      "value": {
+        "amount": 7478.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_assets",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_c0a639624104fd0ca3a0"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_b8973e30dc9daae0fbd0",
+      "organisation_number": "935370744",
+      "family": "financials",
+      "field": "total_debt",
+      "value": {
+        "amount": 498.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_debt",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-03-31",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_195ddccc92a06bbec1bb"
+      ],
+      "first_observed_at": "2026-10-06T08:40:22Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_875ea451109dc8499be5",
+      "organisation_number": "935370744",
+      "family": "financial_history",
+      "field": "latest_filed_year",
+      "value": 2025,
+      "value_key": null,
       "availability": "available",
       "confidence": 1.0,
       "identity_basis": "registry_record",
@@ -391,10 +561,10 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_23fd9fcee3d7580fbd88"
+        "e_31f3fcd4d00eea965934"
       ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:18Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -418,29 +588,8 @@
       "evidence_ids": [
         "e_da2b96f29b30060b323c"
       ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_bcc4210aa100b0e34e25",
-      "organisation_number": "935370744",
-      "family": "leadership",
-      "field": "roles_last_changed",
-      "value": "2025-04-12",
-      "value_key": "STYR",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_985eafcc104b01a3af98"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -464,8 +613,8 @@
       "evidence_ids": [
         "e_3c9ed196280acd5788b7"
       ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -489,29 +638,8 @@
       "evidence_ids": [
         "e_012dea61cccdf3f5b585"
       ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_857ab061911b4c75090f",
-      "organisation_number": "935370744",
-      "family": "leadership",
-      "field": "roles_last_changed",
-      "value": "2025-04-12",
-      "value_key": "REGN",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_d9c4cc2a1fdd6a4aa023"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -537,8 +665,71 @@
       "evidence_ids": [
         "e_f57541bf344bc8670051"
       ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_0c031b88dea19810d811",
+      "organisation_number": "935370744",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2025-04-12",
+      "value_key": "DAGL",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_23fd9fcee3d7580fbd88"
+      ],
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_857ab061911b4c75090f",
+      "organisation_number": "935370744",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2025-04-12",
+      "value_key": "REGN",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_d9c4cc2a1fdd6a4aa023"
+      ],
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_bcc4210aa100b0e34e25",
+      "organisation_number": "935370744",
+      "family": "leadership",
+      "field": "roles_last_changed",
+      "value": "2025-04-12",
+      "value_key": "STYR",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_985eafcc104b01a3af98"
+      ],
+      "first_observed_at": "2026-10-06T08:40:20Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
@@ -564,208 +755,17 @@
       "evidence_ids": [
         "e_59522f77b9a192a35c29"
       ],
-      "first_observed_at": "2026-09-28T12:00:12Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_2b82bf3273f6c95300f1",
+      "claim_id": "c_e509d00c98891f209b54",
       "organisation_number": "935370744",
-      "family": "financials",
-      "field": "operating_result",
-      "value": {
-        "amount": -16519.0,
-        "currency": "NOK"
-      },
-      "value_key": "operating_result",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_26ad411e3ebe04721520"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_7fabd6474e07736763fa",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "annual_result",
-      "value": {
-        "amount": -16519.0,
-        "currency": "NOK"
-      },
-      "value_key": "annual_result",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_fafe3afaed0ea5c2e6a5"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_825ec1938f86686e7cf0",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "total_assets",
-      "value": {
-        "amount": 7478.0,
-        "currency": "NOK"
-      },
-      "value_key": "total_assets",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_656a43cd4f8526334171"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_23ef2e78bcfe80422d00",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "equity",
-      "value": {
-        "amount": 6981.0,
-        "currency": "NOK"
-      },
-      "value_key": "equity",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_f11ed6bf0172deb7bcdb"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_b8973e30dc9daae0fbd0",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "total_debt",
-      "value": {
-        "amount": 498.0,
-        "currency": "NOK"
-      },
-      "value_key": "total_debt",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_7ce3e26c9cb13de81872"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_c8c57ddc380f9e0055bf",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "accounting_type",
-      "value": {
-        "type": "SELSKAP",
-        "small_enterprise": true
-      },
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_6629b62c5bad0562be29"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_d5e2cd8cb4da18a709ee",
-      "organisation_number": "935370744",
-      "family": "financials",
-      "field": "audit_status",
-      "value": {
-        "ikkeRevidertAarsregnskap": false,
-        "fravalgRevisjon": true
-      },
-      "value_key": null,
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": {
-        "start": "2025-03-31",
-        "end": "2025-12-31"
-      },
-      "effective_date": null,
-      "evidence_ids": [
-        "e_6629b62c5bad0562be29"
-      ],
-      "first_observed_at": "2026-09-28T12:00:13Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_c633504d79fbc34470f4",
-      "organisation_number": "935370744",
-      "family": "financial_history",
-      "field": "filed_years",
-      "value": [
-        "2025"
-      ],
+      "family": "description",
+      "field": "registry_activity",
+      "value": "Utleie av kjøretøy, maskiner og lignende. Kjøp og salg av biler og andre produkter/tjenester som naturlig hører sammen med dette. Herunder å delta i andre selskap med lignende virksomhet, og kjøp og salg av aksjer eller på annen måte gjøre seg interessert i andre foretak.",
       "value_key": null,
       "availability": "available",
       "confidence": 1.0,
@@ -774,65 +774,90 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_3d2a66b349bee9d27f03"
+        "e_975500168f76391898b9"
       ],
-      "first_observed_at": "2026-09-28T12:00:16Z",
-      "last_observed_at": "2026-09-28T11:54:28Z",
+      "first_observed_at": "2026-10-06T08:40:19Z",
+      "last_observed_at": "2026-10-06T08:39:04Z",
       "status": "current",
       "note": null
     }
   ],
   "evidence": [
     {
-      "evidence_id": "e_6fb02918fee2f122dcb0",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "evidence_id": "e_012dea61cccdf3f5b585",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
       "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller"
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
+      "retrieved_at": "2026-10-06T08:40:20Z",
+      "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
+      "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
+      "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
-      "span": "$.navn",
-      "access_policy": "NLOD-2.0"
+      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=MEDL]",
+      "access_policy": "NLOD-2.0",
+      "id": "e_012dea61cccdf3f5b585",
+      "claim_span": "Styremedlem: Sander August Nybakken"
     },
     {
-      "evidence_id": "e_5438336dc156f596c047",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "evidence_id": "e_049fc5c3065bca56137b",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
       "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
       ],
       "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "extraction_method": "brreg_financials_v1",
       "extractor_version": "1",
-      "span": "$.organisasjonsform",
-      "access_policy": "NLOD-2.0"
+      "span": "$[id=6418431].regnskapstype",
+      "access_policy": "NLOD-2.0",
+      "id": "e_049fc5c3065bca56137b",
+      "claim_span": "type: SELSKAP; small_enterprise: True | ikkeRevidertAarsregnskap: False; fravalgRevisjon: True"
     },
     {
-      "evidence_id": "e_f7ac59c78e966a60b6fa",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "evidence_id": "e_098054f2e17fbd6b6902",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
       "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
       ],
       "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "extraction_method": "brreg_financials_v1",
       "extractor_version": "1",
-      "span": "$.konkurs/underAvvikling",
-      "access_policy": "NLOD-2.0"
+      "span": "$[id=6418431].egenkapitalGjeld.egenkapital.sumEgenkapital",
+      "access_policy": "NLOD-2.0",
+      "id": "e_098054f2e17fbd6b6902",
+      "claim_span": "6981 NOK"
+    },
+    {
+      "evidence_id": "e_195ddccc92a06bbec1bb",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6418431].egenkapitalGjeld.gjeldOversikt.sumGjeld",
+      "access_policy": "NLOD-2.0",
+      "id": "e_195ddccc92a06bbec1bb",
+      "claim_span": "498 NOK"
     },
     {
       "evidence_id": "e_1cb416d3513f5736b898",
@@ -843,47 +868,15 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
+      "retrieved_at": "2026-10-06T08:40:19Z",
       "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
       "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
       "extraction_method": "brreg_entity_v1",
       "extractor_version": "1",
       "span": "$.naeringskode1",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_59522f77b9a192a35c29",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
-      "extractor_version": "1",
-      "span": "$.forretningsadresse",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_9fa51215cd24e86d5c0c",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
-      "extractor_version": "1",
-      "span": "$.postadresse",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_1cb416d3513f5736b898",
+      "claim_span": "Utleie og leasing av biler og andre lette motorvogner (77.110)"
     },
     {
       "evidence_id": "e_1fc8ac7c9812837cd83e",
@@ -894,64 +887,15 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
+      "retrieved_at": "2026-10-06T08:40:19Z",
       "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
       "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
       "extraction_method": "brreg_entity_v1",
       "extractor_version": "1",
       "span": "$.stiftelsesdato",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_ef2edf5de9a4272c107d",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
-      "extractor_version": "1",
-      "span": "$.registrertIMvaregisteret",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_8df2d1f51d83212be636",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
-      "extractor_version": "1",
-      "span": "$.vedtektsfestetFormaal",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_975500168f76391898b9",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:12Z",
-      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
-      "extraction_method": "brreg_entity_v1",
-      "extractor_version": "1",
-      "span": "$.aktivitet",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_1fc8ac7c9812837cd83e",
+      "claim_span": "2025-03-31"
     },
     {
       "evidence_id": "e_23fd9fcee3d7580fbd88",
@@ -962,47 +906,32 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
+      "retrieved_at": "2026-10-06T08:40:20Z",
       "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
       "span": "$.rollegrupper[type.kode=DAGL].sistEndret",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_23fd9fcee3d7580fbd88",
+      "claim_span": "2025-04-12"
     },
     {
-      "evidence_id": "e_da2b96f29b30060b323c",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
-      "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
-      "extraction_method": "brreg_roles_v1",
+      "evidence_id": "e_31f3fcd4d00eea965934",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv",
+      "final_url": null,
+      "redirect_chain": [],
+      "http_status": null,
+      "source_class": "official_registry_bulk",
+      "retrieved_at": "2026-10-06T08:40:18Z",
+      "content_sha256": "be955db9fa06c8825e2e57c6ffc06dd48c11e621bf41950455b44109e795d658",
+      "snapshot_ref": null,
+      "extraction_method": "brreg_bulk_row_v1",
       "extractor_version": "1",
-      "span": "$.rollegrupper[type.kode=DAGL].roller[type.kode=DAGL]",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_985eafcc104b01a3af98",
-      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
-      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
-      "redirect_chain": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller"
-      ],
-      "http_status": 200,
-      "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
-      "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
-      "extraction_method": "brreg_roles_v1",
-      "extractor_version": "1",
-      "span": "$.rollegrupper[type.kode=STYR].sistEndret",
-      "access_policy": "NLOD-2.0"
+      "span": "$.sisteInnsendteAarsregnskap",
+      "access_policy": "NLOD-2.0",
+      "id": "e_31f3fcd4d00eea965934",
+      "claim_span": "2025"
     },
     {
       "evidence_id": "e_3c9ed196280acd5788b7",
@@ -1013,16 +942,113 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
+      "retrieved_at": "2026-10-06T08:40:20Z",
       "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
       "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=LEDE]",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_3c9ed196280acd5788b7",
+      "claim_span": "Styrets leder: Jonas Storslett"
     },
     {
-      "evidence_id": "e_012dea61cccdf3f5b585",
+      "evidence_id": "e_5438336dc156f596c047",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.organisasjonsform",
+      "access_policy": "NLOD-2.0",
+      "id": "e_5438336dc156f596c047",
+      "claim_span": "Aksjeselskap (AS)"
+    },
+    {
+      "evidence_id": "e_59522f77b9a192a35c29",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.forretningsadresse",
+      "access_policy": "NLOD-2.0",
+      "id": "e_59522f77b9a192a35c29",
+      "claim_span": "Nordmoveien 171, 8530 BJERKVIK"
+    },
+    {
+      "evidence_id": "e_6fb02918fee2f122dcb0",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.navn",
+      "access_policy": "NLOD-2.0",
+      "id": "e_6fb02918fee2f122dcb0",
+      "claim_span": "BJERKVIK AUTOLEIE AS"
+    },
+    {
+      "evidence_id": "e_8df2d1f51d83212be636",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.vedtektsfestetFormaal",
+      "access_policy": "NLOD-2.0",
+      "id": "e_8df2d1f51d83212be636",
+      "claim_span": "Utleie av kjøretøy, maskiner og lignende. Kjøp og salg av biler og andre produkter/tjenester som naturlig hører sammen med dette. Herunder å delta i andre selskap med lignende virksomhet, og kjøp og salg av aksjer eller på annen måte gjøre seg interessert i andre foretak."
+    },
+    {
+      "evidence_id": "e_975500168f76391898b9",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.aktivitet",
+      "access_policy": "NLOD-2.0",
+      "id": "e_975500168f76391898b9",
+      "claim_span": "Utleie av kjøretøy, maskiner og lignende. Kjøp og salg av biler og andre produkter/tjenester som naturlig hører sammen med dette. Herunder å delta i andre selskap med lignende virksomhet, og kjøp og salg av aksjer eller på annen måte gjøre seg interessert i andre foretak."
+    },
+    {
+      "evidence_id": "e_985eafcc104b01a3af98",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
       "redirect_chain": [
@@ -1030,13 +1056,53 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
+      "retrieved_at": "2026-10-06T08:40:20Z",
       "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
-      "span": "$.rollegrupper[type.kode=STYR].roller[type.kode=MEDL]",
-      "access_policy": "NLOD-2.0"
+      "span": "$.rollegrupper[type.kode=STYR].sistEndret",
+      "access_policy": "NLOD-2.0",
+      "id": "e_985eafcc104b01a3af98",
+      "claim_span": "2025-04-12"
+    },
+    {
+      "evidence_id": "e_9fa51215cd24e86d5c0c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.postadresse",
+      "access_policy": "NLOD-2.0",
+      "id": "e_9fa51215cd24e86d5c0c",
+      "claim_span": "c/o Sander Nybakken, Geisvik E6 33, 8530 BJERKVIK"
+    },
+    {
+      "evidence_id": "e_c0a639624104fd0ca3a0",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6418431].eiendeler.sumEiendeler",
+      "access_policy": "NLOD-2.0",
+      "id": "e_c0a639624104fd0ca3a0",
+      "claim_span": "7478 NOK"
     },
     {
       "evidence_id": "e_d9c4cc2a1fdd6a4aa023",
@@ -1047,13 +1113,72 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
+      "retrieved_at": "2026-10-06T08:40:20Z",
       "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
       "span": "$.rollegrupper[type.kode=REGN].sistEndret",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_d9c4cc2a1fdd6a4aa023",
+      "claim_span": "2025-04-12"
+    },
+    {
+      "evidence_id": "e_da2b96f29b30060b323c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:20Z",
+      "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
+      "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=DAGL].roller[type.kode=DAGL]",
+      "access_policy": "NLOD-2.0",
+      "id": "e_da2b96f29b30060b323c",
+      "claim_span": "Daglig leder: Sander August Nybakken"
+    },
+    {
+      "evidence_id": "e_e3702d3f926ff21e1805",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=6418431].resultatregnskapResultat.aarsresultat",
+      "access_policy": "NLOD-2.0",
+      "id": "e_e3702d3f926ff21e1805",
+      "claim_span": "-16519 NOK"
+    },
+    {
+      "evidence_id": "e_ef2edf5de9a4272c107d",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.registrertIMvaregisteret",
+      "access_policy": "NLOD-2.0",
+      "id": "e_ef2edf5de9a4272c107d",
+      "claim_span": "false"
     },
     {
       "evidence_id": "e_f57541bf344bc8670051",
@@ -1064,16 +1189,37 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-09-28T12:00:13Z",
+      "retrieved_at": "2026-10-06T08:40:20Z",
       "content_sha256": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "snapshot_ref": "9d31560367504510ad49f976ed33956d575e7094b75cc1910e085366eeb66af1",
       "extraction_method": "brreg_roles_v1",
       "extractor_version": "1",
       "span": "$.rollegrupper[type.kode=REGN].roller[type.kode=REGN]",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_f57541bf344bc8670051",
+      "claim_span": "Regnskapsfører: SPAREBANK 1 REGNSKAPSHUSET"
     },
     {
-      "evidence_id": "e_26ad411e3ebe04721520",
+      "evidence_id": "e_f7ac59c78e966a60b6fa",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/935370744",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/935370744"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-10-06T08:40:19Z",
+      "content_sha256": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "snapshot_ref": "1cc6255c230bf4a6109b51ccd5c710e45eaf07f1344b516cf0308176acdcb74e",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.konkurs/underAvvikling",
+      "access_policy": "NLOD-2.0",
+      "id": "e_f7ac59c78e966a60b6fa",
+      "claim_span": "active"
+    },
+    {
+      "evidence_id": "e_f7d15daa823b526391a3",
       "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
       "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
       "redirect_chain": [
@@ -1081,115 +1227,15 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
+      "retrieved_at": "2026-10-06T08:40:22Z",
+      "content_sha256": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
+      "snapshot_ref": "6327fe3cbb859b495ab3516788acafd708976bc4dd0dd28571609e092aaf4bfc",
       "extraction_method": "brreg_financials_v1",
       "extractor_version": "1",
       "span": "$[id=6418431].resultatregnskapResultat.driftsresultat.driftsresultat",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_fafe3afaed0ea5c2e6a5",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "extraction_method": "brreg_financials_v1",
-      "extractor_version": "1",
-      "span": "$[id=6418431].resultatregnskapResultat.aarsresultat",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_656a43cd4f8526334171",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "extraction_method": "brreg_financials_v1",
-      "extractor_version": "1",
-      "span": "$[id=6418431].eiendeler.sumEiendeler",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_f11ed6bf0172deb7bcdb",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "extraction_method": "brreg_financials_v1",
-      "extractor_version": "1",
-      "span": "$[id=6418431].egenkapitalGjeld.egenkapital.sumEgenkapital",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_7ce3e26c9cb13de81872",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "extraction_method": "brreg_financials_v1",
-      "extractor_version": "1",
-      "span": "$[id=6418431].egenkapitalGjeld.gjeldOversikt.sumGjeld",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_6629b62c5bad0562be29",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/935370744",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/935370744"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:13Z",
-      "content_sha256": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "snapshot_ref": "3c56203a4fc2882b6c7148460c27e393e72804a4e02ab8c77f5d2e530c5b37b5",
-      "extraction_method": "brreg_financials_v1",
-      "extractor_version": "1",
-      "span": "$[id=6418431].regnskapstype",
-      "access_policy": "NLOD-2.0"
-    },
-    {
-      "evidence_id": "e_3d2a66b349bee9d27f03",
-      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/935370744/aar",
-      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/935370744/aar",
-      "redirect_chain": [
-        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/935370744/aar"
-      ],
-      "http_status": 200,
-      "source_class": "official_filing",
-      "retrieved_at": "2026-09-28T12:00:16Z",
-      "content_sha256": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
-      "snapshot_ref": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
-      "extraction_method": "brreg_financial_history_v1",
-      "extractor_version": "1",
-      "span": "$",
-      "access_policy": "NLOD-2.0"
+      "access_policy": "NLOD-2.0",
+      "id": "e_f7d15daa823b526391a3",
+      "claim_span": "-16519 NOK"
     }
   ],
   "changes": [],
@@ -1230,7 +1276,7 @@
       "Its group / ownership structure: no parent relationship or parent-company flag in registry data",
       "Open job postings: not searched: no registered staff or web footprint",
       "Public social or video profiles: no verified site to link profiles from",
-      "Public reviews or ratings: no permitted keyless ratings/reviews source (Google/Trustpilot/Glassdoor require licensed API access)",
+      "Public reviews or ratings: checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)",
       "An official website: no candidates"
     ],
     "method": "template_v1"
@@ -1239,7 +1285,7 @@
   "operations": {
     "requests": 4,
     "bytes": 0,
-    "runtime_ms": 349338,
+    "runtime_ms": 79477,
     "third_party_cost_usd": 0.0
   }
 }

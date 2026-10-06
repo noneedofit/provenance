@@ -1,7 +1,7 @@
 {
-  "started_at": "2026-09-28T11:54:28Z",
-  "completed_at": "2026-09-28T12:01:05Z",
-  "runtime_s": 397.08,
+  "started_at": "2026-10-06T08:39:04Z",
+  "completed_at": "2026-10-06T08:43:11Z",
+  "runtime_s": 247.96,
   "company_count": 100,
   "terminal_status_counts": {
     "completed": 100
@@ -27,9 +27,9 @@
       "available": 12
     },
     "website": {
-      "not_available": 80,
-      "available": 15,
-      "ambiguous": 5
+      "not_available": 73,
+      "available": 18,
+      "ambiguous": 9
     },
     "profiles": {
       "not_available": 92,
@@ -45,9 +45,9 @@
       "available": 1
     },
     "activity": {
-      "not_applicable": 87,
-      "not_available": 10,
-      "available": 3
+      "not_applicable": 83,
+      "not_available": 15,
+      "available": 2
     },
     "reviews": {
       "not_available": 100
@@ -56,59 +56,63 @@
   "requests_by_purpose": {
     "registry_entity": 100,
     "registry_roles": 100,
-    "robots": 123,
-    "registry_subunits": 37,
-    "nav_live_token": 1,
+    "robots": 223,
     "registry_financials": 100,
-    "registry_financial_history": 100,
-    "web_homepage": 150,
-    "nav_feed_page": 119,
+    "nav_live_token": 1,
+    "registry_subunits": 37,
+    "web_homepage": 220,
+    "web_secondary_kontakt": 24,
+    "registry_financial_history": 37,
+    "web_homepage_fallback": 67,
+    "smilefjes_index": 1,
+    "web_secondary_about": 3,
+    "nav_feed_page": 2,
     "nav_live_feedentry": 16,
-    "web_secondary_privacy": 3,
-    "web_secondary_personvern": 9,
-    "web_secondary_vilkar": 1,
+    "web_sitemap": 26,
+    "smilefjes_place": 21,
+    "web_secondary_personvern": 14,
+    "web_secondary_om-oss": 12,
+    "web_secondary_contact": 8,
     "web_secondary_jobb": 4,
-    "web_secondary_kontakt": 19,
-    "web_secondary_nyheter": 2,
-    "nav_search_fallback": 4,
-    "web_sitemap": 17,
-    "web_secondary_om-oss": 11,
-    "site_feed": 16,
+    "site_feed": 20,
+    "web_secondary_vilkar": 1,
     "site_news_page_discovered": 2,
-    "web_secondary_karriere": 1,
-    "web_secondary_contact": 2,
+    "web_secondary_nyheter": 2,
+    "web_secondary_privacy": 3,
+    "youtube_feed": 0,
+    "web_secondary_karriere": 2,
     "web_secondary_about-us": 1,
-    "web_secondary_about": 2,
     "web_secondary_terms": 1,
     "site_news_page": 1
   },
-  "total_requests": 942,
-  "runtime_ms_p50": 321065,
-  "runtime_ms_p95": 368630,
+  "total_requests": 1049,
+  "runtime_ms_p50": 64823,
+  "runtime_ms_p95": 176822,
   "deadline_hits": 0,
   "budget_exhausted_count": 0,
   "cache_versions": {
-    "built_at": "2026-09-28T11:54:28Z",
+    "built_at": "2026-10-06T08:39:04Z",
     "parts": {
       "email_domains": {
-        "built_at": "2026-09-28T11:54:22Z",
-        "domain_count": 127779,
+        "built_at": "2026-10-06T08:39:00Z",
+        "domain_count": 127814,
         "input_path": "data/brreg-enheter.csv",
-        "input_sha256": "c0df09c3fbd654e61a0962043e87a5daed8e5b7093be297cc63afb81e2239deb",
+        "input_sha256": "8483831efe73d873460e4c6765c98f46a1937a59b763c074ea32a6d2e657bc70",
         "license": "NLOD 2.0",
-        "row_count": 1175563,
+        "row_count": 1176724,
         "source_urls": [
           "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
         ]
       },
-      "wikidata": {
-        "built_at": "2026-09-28T11:54:28Z",
-        "license": "CC0",
-        "raw_binding_count": 10944,
-        "row_count": 10283,
-        "source_urls": [
-          "https://query.wikidata.org/sparql?query=<P2333 items with websites/social ids>"
-        ]
+      "places": {
+        "emails": 160896,
+        "format": "2",
+        "osm": 11177,
+        "osm_base": "2026-06-01T08:52:28Z",
+        "overture_release": "2026-09-23.1",
+        "overture_source": "s3://overturemaps-us-west-2/release/2026-09-23.1/theme=places/type=place/",
+        "phones": 194094,
+        "places": 228308
       }
     }
   },
@@ -124,6 +128,6 @@
     "problems": {}
   },
   "third_party_cost_usd": 0.0,
-  "setup_requests": 2,
-  "total_requests_including_setup": 944
+  "setup_requests": 1,
+  "total_requests_including_setup": 1050
 }
