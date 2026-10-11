@@ -59,6 +59,25 @@ def test_find_org_numbers_handles_spacing_dots_no_prefix_and_mva_suffix():
     assert any(m.digits == SPEC_EXAMPLE_ORG for m in matches2)
 
 
+def test_find_org_numbers_treats_foretaksregisteret_and_vat_forms_as_owner_labels():
+    spaced = f"{CONFLICT_ORG[:3]} {CONFLICT_ORG[3:6]} {CONFLICT_ORG[6:]}"
+    nbsp = spaced.replace(" ", "\xa0")
+    for text in (f"Foretaksregisteret: NO {spaced} MVA", f"Org.nr: NO {spaced} MVA", f"NO\xa0{nbsp}\xa0MVA",
+                 f"Foretaksregisteret {CONFLICT_ORG}"):
+        assert [(m.digits, m.labeled) for m in find_org_numbers(text)] == [(CONFLICT_ORG, True)], text
+    assert [(m.digits, m.labeled) for m in find_org_numbers(f"Ring {spaced}")] == [(CONFLICT_ORG, False)]
+
+
+def test_sister_company_footer_in_vat_form_is_a_conflict():
+    # HURTIG TRYKK EIENDOM AS trap: the sister company's site shows our shared address, phone and e-mail, and
+    # its own number in the legally required footer form.
+    p = page(f"Eksempel Trykk AS, Storgata 1, 0155 Oslo, tlf 12345678, post@example.no. "
+             f"Foretaksregisteret: NO {CONFLICT_ORG[:3]} {CONFLICT_ORG[3:6]} {CONFLICT_ORG[6:]} MVA")
+    verdict = assess(OUR_ORG, [p], REGISTRY_FACTS, cand(source="name_guess"))
+    assert verdict.status == "related"
+    assert verdict.conflicts and verdict.conflicts[0].org_number == CONFLICT_ORG
+
+
 def test_find_org_numbers_ignores_random_9_digit_runs():
     # A random 9-digit phone-like number that fails the mod-11 check must not be misread as an org number.
     matches = find_org_numbers("Call us at 123456789 any time")

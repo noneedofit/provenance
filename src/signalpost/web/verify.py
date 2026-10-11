@@ -37,10 +37,15 @@ _ORGNR_CANDIDATE_RE = re.compile(
     r"(?:\bNO[\s.]?)?\b(\d[\d\s. ]{7,15}\d)\b(?:\s?MVA\b)?", re.IGNORECASE
 )
 _ORGNR_LABEL_RE = re.compile(
-    r"(org(?:anisasjonsnummer|\.?\s*nr)\.?\s*[:.]?\s*|eies\s+av\s+|belongs\s+to\s+(?:org\s+)?)"
+    r"(org(?:anisasjonsnummer|\.?\s*nr)\.?\s*[:.]?\s*(?:NO\s?)?|eies\s+av\s+|belongs\s+to\s+(?:org\s+)?"
+    r"|foretaksregisteret\s*[:.]?\s*(?:NO\s?)?)"
     r"(\d[\d\s. ]{7,15}\d)",
     re.IGNORECASE,
 )
+
+# The VAT form of an organisation number ("NO 957 585 256 MVA"): a business states it in its own footer,
+# letterhead or terms, so it names the site's owner as clearly as an "Org.nr" label does.
+_ORGNR_VAT_RE = re.compile(r"\bNO\s?(\d{3}[\s.]?\d{3}[\s.]?\d{3})\s?MVA\b", re.IGNORECASE)
 
 _MOD11_WEIGHTS = (3, 2, 7, 6, 5, 4, 3, 2)
 
@@ -61,7 +66,7 @@ def is_valid_orgnr(digits: str) -> bool:
 class OrgNumberMatch:
     digits: str
     span: str
-    labeled: bool  # preceded by "org.nr" / "organisasjonsnummer" etc.
+    labeled: bool  # preceded by "org.nr" / "organisasjonsnummer" / "Foretaksregisteret", or "NO ... MVA"
 
 
 def find_org_numbers(text: str) -> list[OrgNumberMatch]:
@@ -72,6 +77,10 @@ def find_org_numbers(text: str) -> list[OrgNumberMatch]:
     for match in _ORGNR_LABEL_RE.finditer(text):
         digits = re.sub(r"\D", "", match.group(2))
         if is_valid_orgnr(digits):
+            found[digits] = OrgNumberMatch(digits, match.group(0).strip()[:200], labeled=True)
+    for match in _ORGNR_VAT_RE.finditer(text):
+        digits = re.sub(r"\D", "", match.group(1))
+        if is_valid_orgnr(digits) and digits not in found:
             found[digits] = OrgNumberMatch(digits, match.group(0).strip()[:200], labeled=True)
     for match in _ORGNR_CANDIDATE_RE.finditer(text):
         digits = re.sub(r"\D", "", match.group(1))

@@ -116,6 +116,8 @@ Revision-1 measurements (6 Oct 2026):
 | 1,500 companies drawn like the scored population (account filers, 60% with registered staff), one run (defaults), 7 Oct | 27.9 min, 19,688 requests (13 per company), no deadline or budget hits, 1,500 of 1,500 completed, validation passed; website 33.5%, profiles 21.3%, reviews 3.1% |
 | 300 account filers, before → after the 7 Oct changes | website 100 → 104 companies (0 lost), profiles 61 → 63; the 4 new sites checked by hand: all correct (3 show the org number) |
 | Builderr's 100-company sample, before → after the 7 Oct changes | websites matching Builderr's 72 → 73 of 84 (+P.E. Gaarud, +H. Lundbeck), social platforms 76 → 81 of 86 |
+| Independent audit of 40 random corroborated websites (sites accepted without the org number; Gemini with Google Search, every NO re-checked live), 11 Oct | 37 correct, 3 wrong owner: a sister company's site (its "Foretaksregisteret: NO … MVA" footer was not read as an owner label), a dealer chain's site (owner named only on the privacy page, behind a forward), and a foreign parent's site with no org number at all (not detectable) |
+| 502 companies with a website, before → after the 11 Oct owner check (same time window) | the 2 detectable wrong-owner sites no longer published as own sites; 9 sites now rest on our org number found on the privacy/terms page instead of corroboration or the register alone; 0 sites lost; +0.04 requests per company |
 | Determinism, two fresh runs of the 100 smoke-test companies from a clean clone | 0 fact differences, 0 evidence differences (ids, sources, quotes) |
 | Clean clone of the submitted commit | see `smoke-test/README.md` (audit 0 problems, rerun 0 changes) |
 

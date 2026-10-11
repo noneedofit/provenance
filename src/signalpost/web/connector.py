@@ -136,9 +136,17 @@ def _is_group_site(ctx: Any, cand: Candidate, verdict: Any, pages: list[PageFetc
 
 
 def _worth_confirming(verdict: Any) -> bool:
-    """An ambiguous verdict whose only support is our name (in the title or as the domain): one more look at
-    the pages that name the business behind a site can settle it either way."""
-    if verdict.status != "ambiguous" or verdict.conflicts:
+    """One more look at the pages that name the business behind a site (privacy, terms, contact) can settle it
+    either way. Worth it for:
+    - an ambiguous verdict whose only support is our name (in the title or as the domain);
+    - an exact verdict without our org number (corroborated or registry-declared): the privacy page of a
+      sister company's or a chain's site names that other organisation as its owner (hurtig-trykk.no for
+      HURTIG TRYKK EIENDOM AS; eiksenteret.no, Eikmaskin AS, for a member dealer)."""
+    if verdict.conflicts:
+        return False
+    if verdict.status == "exact":
+        return verdict.identity_basis in {"corroborated", "registry_declared"}
+    if verdict.status != "ambiguous":
         return False
     kinds = {s.kind for s in verdict.signals}
     return bool(kinds & {"legal_name_match", "domain_name_match"})
@@ -492,8 +500,9 @@ class WebConnector:
             verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count,
                                         require_decisive=strict, own_email_domain=own_email)
             if _worth_confirming(verdict) and fetch_confirmation_pages(ctx, crawl_result):
-                # The site carries our name but nothing else read so far ties it to our record: read its
-                # privacy/terms/contact pages (where the org number usually is) and assess again, same rules.
+                # Nothing read so far shows an org number: read the site's privacy/terms/contact pages (where
+                # the owner's org number usually is) and assess again, same rules. Ours there settles it; a
+                # different owner's makes the site related, not ours.
                 verdict = verify_mod.assess(org, crawl_result.pages, facts, cand, website_org_count=website_org_count,
                                             require_decisive=strict, own_email_domain=own_email)
             attempts.append({

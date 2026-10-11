@@ -254,12 +254,15 @@ def fetch_confirmation_pages(ctx: Any, result: CrawlResult, limit: int = CONFIRM
     if homepage is None:
         return 0
     seen = {u.rstrip("/") for p in result.pages for u in (p.url, p.final_url) if u}
+    # The site as read: the candidate's domain, or the domain its homepage forwards to (eiksenteret.com ->
+    # www.eiksenteret.no, whose privacy page names the chain that owns it).
+    site_domains = {result.candidate.domain, registered_domain(urllib.parse.urlparse(homepage.final_url).hostname or "")}
     soup = BeautifulSoup(homepage.html, "lxml")
     picked: dict[str, int] = {}
     for anchor in soup.select("a[href]"):
         url = urllib.parse.urljoin(homepage.final_url, str(anchor.get("href") or "").strip())
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme not in {"http", "https"} or registered_domain(parsed.hostname or "") != result.candidate.domain:
+        if parsed.scheme not in {"http", "https"} or registered_domain(parsed.hostname or "") not in site_domains:
             continue
         clean = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", "", "", ""))
         if clean.rstrip("/") in seen:

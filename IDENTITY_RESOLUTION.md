@@ -63,7 +63,9 @@ Pure function, no network. Given the crawled pages and the org's registry facts,
 - **A registry-declared domain shared by 2–3 organisations** is `exact` only when the page names this
   organisation (legal name in the title) *and* shows its registered e-mail, phone or address.
 - **A different valid org number shown prominently → never `exact`.** Becomes `related` with a heuristic
-  `relationship` (`parent`/`subsidiary`/`franchise`/`brand`/`service_provider`).
+  `relationship` (`parent`/`subsidiary`/`franchise`/`brand`/`service_provider`). "Prominently" means
+  labelled as the site's owner: "Org.nr", "organisasjonsnummer", "Foretaksregisteret", "eies av", or the
+  VAT form "NO 957 585 256 MVA" of a footer; a bare 9-digit run in a list is not enough.
 - **A registry-declared domain used by ≥2 other organisations → `related`** (shared/parent site), never
   `exact` on bare registry-declared trust.
 - **Content that reads as hijacked/re-registered (casino, adult, pharma-spam markers, word-boundary
@@ -72,10 +74,12 @@ Pure function, no network. Given the crawled pages and the org's registry facts,
 - **A parked/for-sale placeholder homepage → `rejected`**, including registrar parking pages ("is
   registered, but the owner currently does not have an active website") and short "lanseres snart" /
   "kommer snart" / "under construction" pages.
-- **A site that matches only on our name** (in the title or as the domain) gets one more look before the
-  verdict stands: up to two unread pages that usually name the business behind a site (privacy statement,
-  sales terms, impressum, then contact/about) are fetched and the same rules are applied again. Our org
-  number there makes it `exact`; nothing new leaves it `ambiguous`.
+- **A site that matches only on our name** (in the title or as the domain), **or one that is `exact`
+  without our org number** (corroborated or registry-declared), gets one more look before the verdict
+  stands: up to two unread pages that usually name the business behind a site (privacy statement, sales
+  terms, impressum, then contact/about) are fetched and the same rules are applied again. Our org number
+  there makes it `exact` on that number; a different owner's org number there makes it `related`; nothing
+  new leaves the verdict as it was.
 - **A registry `hjemmeside` that forwards to the domain of the registry's own e-mail address for us**
   (`lundbeck.no` → `lundbeck.com/no`, e-mail `norway@lundbeck.com`) is not treated as forwarding to
   someone else's site: the register ties both domains to this organisation.
@@ -102,7 +106,7 @@ with a reason naming how many candidates were tried.
 
 ## Regression-tested traps
 
-`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (130 web-module
+`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (134 web-module
 tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
 `uv run --with pytest pytest -q tests/signalpost`):
 
@@ -119,6 +123,7 @@ tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/
 | **Property manager's switchboard** | a housing co-op's registry phone is its manager's (`vestbo.no`) | `test_open_places_phone_match_alone_is_not_enough` |
 | **Accountant's domain** | a registry e-mail on an accountant's domain whose page shows the client's (= accountant's) address | `test_registry_email_domain_with_address_only_stays_ambiguous` |
 | **Registered site forwarding to a shared e-mail domain** | A company's registered site forwarding to its accountant's site, where the company's registered e-mail also lives — the forward is trusted only when no other organisation uses that e-mail domain (H. LUNDBECK AS: lundbeck.no → lundbeck.com, own e-mail domain) | `test_a_registry_site_forwarding_to_our_own_email_domain_is_our_site`, `test_a_registry_site_forwarding_to_a_shared_email_domain_is_not_trusted_on_the_register_alone` |
+| **Sister company's or chain's site with our shared details** | HURTIG TRYKK EIENDOM AS (property company) on its sister printer's `hurtig-trykk.no`: same address, phone, e-mail and manager, footer "Foretaksregisteret: NO 957 585 256 MVA"; INDRE ØSTFOLD MASKINSENTER AS on the dealer chain's `eiksenteret.no`, whose privacy page names Eikmaskin AS, org.nr. 955 456 653 — found by an independent audit of 40 corroborated sites on 11 Oct 2026 | `test_find_org_numbers_treats_foretaksregisteret_and_vat_forms_as_owner_labels`, `test_sister_company_footer_in_vat_form_is_a_conflict`, `test_a_corroborated_match_whose_privacy_page_names_another_owner_is_not_our_site`, `test_a_corroborated_match_whose_privacy_page_shows_our_org_number_gets_that_as_its_basis` |
 | **Own-name domain forwarding to the parent** | FRONT SYSTEMS AS: frontsystems.no forwards to the parent's egsoftware.com, whose links are the parent's profiles — found by the 7 Oct 2026 hand-check list | `test_a_name_domain_forwarding_to_the_parents_site_does_not_give_the_parents_profiles` |
 | **Generic path on a shared site** | A property manager's `/index.php` listed as a company's homepage | `test_a_generic_registry_listed_path_on_a_shared_site_is_not_our_page` |
 | **Live, unconflicted but wrong owner** | A registry-declared site whose footer/JSON-LD names a different legal entity (Xledger Labs AS → xledger.com, which only ever names "Xledger"/"Xledger AS") | covered in `verify.py`'s `site_owner_mismatch` path, exercised via the connector test suite |

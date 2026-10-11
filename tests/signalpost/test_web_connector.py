@@ -304,6 +304,54 @@ def test_a_name_only_match_stays_unpublished_when_the_privacy_page_does_not_tie_
     assert "https://eksempelfirma.no/personvern" in ctx.client.calls
 
 
+CORROBORATED_HOME_HTML = """
+<html><head><title>Eksempelfirma Eiendom</title></head><body>
+<p>Velkommen til Eksempelfirma. Storgata 1, 0155 Oslo. Telefon 12 34 56 78.</p>
+<a href="/personvern">Personvern</a>
+</body></html>
+"""
+
+
+def _corroborated_ctx(personvern_html: str):
+    client = FakeHttpClient(pages={
+        "https://eksempelfirma.no/": FakePage(CORROBORATED_HOME_HTML),
+        "https://eksempelfirma.no/personvern": FakePage(personvern_html),
+    }, dns={"eksempelfirma.no"})
+    # T0 (no staff, like a property company): the crawl reads no secondary pages, only the confirmation step does.
+    return make_ctx(OUR_ORG, tier="T0", client=client, registry_facts={
+        "name": "EKSEMPELFIRMA EIENDOM AS", "street": "Storgata 1", "postcode": "0155", "city": "OSLO", "phones": ["12345678"],
+    })
+
+
+def test_a_corroborated_match_whose_privacy_page_names_another_owner_is_not_our_site():
+    # HURTIG TRYKK EIENDOM AS trap: the sister company's site carries our shared address and phone; only its
+    # privacy page or footer says whose site it is.
+    ctx = _corroborated_ctx("<html><body>Behandlingsansvarlig er Eksempelfirma AS, org.nr. 934567897.</body></html>")
+    result = WebConnector().run(ctx)
+    site = [c for c in result.claims if c.field == "official_website" and c.availability == "available"]
+    assert not any(c.relationship == "exact" for c in site)
+    assert "https://eksempelfirma.no/personvern" in ctx.client.calls
+
+
+def test_the_privacy_page_is_read_on_the_domain_the_site_forwards_to():
+    # eiksenteret.com -> www.eiksenteret.no: the chain's privacy page is on the domain the homepage forwards to.
+    ctx = _corroborated_ctx("")
+    ctx.client.pages["https://eksempelfirma.no/"] = FakePage(CORROBORATED_HOME_HTML, final_url="https://www.eksempelkjeden.no/")
+    ctx.client.pages["https://www.eksempelkjeden.no/personvern"] = FakePage(
+        "<html><body>Behandlingsansvarlig er Eksempelkjeden AS, org.nr. 934567897.</body></html>")
+    result = WebConnector().run(ctx)
+    site = [c for c in result.claims if c.field == "official_website" and c.availability == "available"]
+    assert "https://www.eksempelkjeden.no/personvern" in ctx.client.calls
+    assert not any(c.relationship == "exact" for c in site)
+
+
+def test_a_corroborated_match_whose_privacy_page_shows_our_org_number_gets_that_as_its_basis():
+    ctx = _corroborated_ctx(f"<html><body>Behandlingsansvarlig er Eksempelfirma Eiendom AS, org.nr. {OUR_ORG}.</body></html>")
+    result = WebConnector().run(ctx)
+    site = [c for c in result.claims if c.field == "official_website"]
+    assert site and site[0].availability == "available" and site[0].identity_basis == "org_number_on_source"
+
+
 def _group_site_ctx(name: str):
     sister = "934567897"
     html = (f"<html><head><title>Eksempelfirma</title></head><body>Eksempelfirma Butikk AS, org.nr {sister}."

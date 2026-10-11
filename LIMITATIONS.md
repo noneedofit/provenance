@@ -52,6 +52,11 @@ profiles only when its domain is exactly the company's name (published with the 
 Domains shared by ten or more organisations (property managers, franchise platforms) are not published,
 except for a page on such a domain that the register lists for the company itself and that names it
 (a chain member's own page). Sites that block automated visitors (HTTP 403 "request blocked") are not worked around.
+A site matched without our org number is checked once more on its privacy, terms or contact page; when that
+page names a different owner (a sister company or a chain), the site is not published as the company's own.
+A parent's site that shows no org number at all and carries the company's name and registered e-mail
+domain (a foreign parent's site for its Norwegian subsidiary) cannot be told apart from the company's own
+site, and is published as its own.
 
 ## Sites behind a bot challenge are not read
 
