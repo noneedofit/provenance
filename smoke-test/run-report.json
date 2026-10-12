@@ -1,7 +1,7 @@
 {
-  "started_at": "2026-10-11T18:33:53Z",
-  "completed_at": "2026-10-11T18:39:49Z",
-  "runtime_s": 356.16,
+  "started_at": "2026-10-12T08:13:02Z",
+  "completed_at": "2026-10-12T08:20:27Z",
+  "runtime_s": 444.71,
   "company_count": 100,
   "terminal_status_counts": {
     "completed": 100
@@ -28,8 +28,8 @@
     },
     "website": {
       "not_available": 71,
-      "available": 19,
-      "ambiguous": 10
+      "available": 18,
+      "ambiguous": 11
     },
     "profiles": {
       "not_available": 92,
@@ -41,11 +41,12 @@
     },
     "jobs": {
       "not_applicable": 63,
-      "not_available": 37
+      "not_available": 36,
+      "available": 1
     },
     "activity": {
-      "not_applicable": 82,
-      "not_available": 16,
+      "not_applicable": 83,
+      "not_available": 15,
       "available": 2
     },
     "reviews": {
@@ -54,57 +55,58 @@
   },
   "requests_by_purpose": {
     "registry_entity": 100,
+    "robots": 245,
     "registry_roles": 100,
-    "robots": 233,
     "registry_subunits": 100,
     "registry_financials": 100,
     "registry_financial_history": 37,
-    "web_homepage": 254,
-    "web_homepage_fallback": 60,
-    "nav_live_token": 1,
+    "web_homepage": 241,
+    "web_secondary_kontakt": 31,
     "smilefjes_index": 1,
+    "web_homepage_fallback": 80,
+    "nav_live_token": 2,
     "web_secondary_about": 3,
     "web_confirm_privacy": 6,
-    "web_secondary_contact": 8,
     "web_confirm_terms": 2,
-    "web_secondary_kontakt": 28,
+    "web_secondary_contact": 6,
     "web_confirm_about-us": 3,
     "smilefjes_place": 21,
     "site_news_page_discovered": 2,
     "youtube_feed": 0,
-    "nav_feed_page": 6,
-    "web_secondary_om-oss": 12,
-    "web_secondary_karriere": 2,
-    "web_secondary_privacy": 3,
+    "nav_feed_page": 14,
+    "nav_live_feedentry": 20,
     "web_sitemap": 22,
-    "site_feed": 21,
-    "web_secondary_personvern": 13,
-    "web_secondary_about-us": 1,
-    "web_secondary_jobb": 3,
+    "web_secondary_privacy": 3,
+    "web_secondary_om-oss": 12,
+    "web_homepage_other_host": 2,
+    "web_secondary_karriere": 2,
+    "web_secondary_personvern": 14,
+    "web_secondary_jobb": 4,
+    "site_feed": 20,
     "web_secondary_vilkar": 1,
     "web_secondary_nyheter": 2,
-    "nav_live_feedentry": 31,
+    "web_secondary_about-us": 1,
     "web_confirm_about": 1,
     "web_secondary_terms": 1,
     "site_news_page": 1,
     "web_confirm_personvern": 1,
-    "web_confirm_salgsbetingelser": 1
+    "web_confirm_salgsbetingelser": 2
   },
-  "total_requests": 1181,
-  "runtime_ms_p50": 136466,
-  "runtime_ms_p95": 236753,
+  "total_requests": 1203,
+  "runtime_ms_p50": 244102,
+  "runtime_ms_p95": 360651,
   "deadline_hits": 0,
   "budget_exhausted_count": 0,
   "cache_versions": {
-    "built_at": "2026-10-11T18:33:53Z",
+    "built_at": "2026-10-12T08:13:02Z",
     "parts": {
       "email_domains": {
-        "built_at": "2026-10-11T18:33:50Z",
-        "domain_count": 127861,
+        "built_at": "2026-10-12T08:12:58Z",
+        "domain_count": 127863,
         "input_path": "data/brreg-enheter.csv",
-        "input_sha256": "08775f0d05f5a9b08e3173b35d2d85351b85a16be7b5d60e41a9655ed2d8b44e",
+        "input_sha256": "511f437caeccc62aa75c3208b3eaa6db6f5f697cc4a4db70806796a754bc8fca",
         "license": "NLOD 2.0",
-        "row_count": 1177715,
+        "row_count": 1177617,
         "source_urls": [
           "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
         ]
@@ -135,6 +137,6 @@
   "third_party_cost_usd": 0.0,
   "registry_retried_companies": 0,
   "setup_requests": 1,
-  "setup_s": 340.4,
-  "total_requests_including_setup": 1182
+  "setup_s": 368.4,
+  "total_requests_including_setup": 1204
 }
