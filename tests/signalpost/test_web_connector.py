@@ -475,3 +475,12 @@ def test_a_parked_guessed_domain_does_not_try_the_other_host_spelling():
     ctx = make_ctx(OUR_ORG, tier="T1", client=client, registry_facts={"name": "EKSEMPELFIRMA AS"})
     WebConnector().run(ctx)
     assert not any(u.startswith(("https://www.eksempelfirma.no", "http://www.eksempelfirma.no")) for u in client.calls)
+
+
+def test_a_published_homepage_is_written_the_same_whichever_source_found_it():
+    # GEMMA AS: a NAV ad gives "https://www.dingullsmed.no", a redirect "https://www.dingullsmed.no/"; a run where
+    # NAV times out must not look like a changed website.
+    from signalpost.web.connector import _without_default_port
+    assert _without_default_port("https://www.dingullsmed.no") == "https://www.dingullsmed.no/"
+    assert _without_default_port("https://peab.no:443/bygg/") == "https://peab.no/bygg/"
+    assert _without_default_port("https://example.no/?lang=no") == "https://example.no/?lang=no"

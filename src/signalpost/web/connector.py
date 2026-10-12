@@ -250,10 +250,14 @@ def _public_url(cand: Any, homepage: PageFetch) -> str:
 
 
 def _without_default_port(url: str) -> str:
-    """https://peab.no:443/bygg/ -> https://peab.no/bygg/ (a default port is noise in a published URL)."""
+    """https://peab.no:443/bygg/ -> https://peab.no/bygg/ (a default port is noise in a published URL), and a bare
+    host gets its "/" (https://www.dingullsmed.no -> https://www.dingullsmed.no/): sources write the same homepage
+    both ways (a NAV ad without it, a redirect with it), and the published value must not change with the source."""
     parts = urllib.parse.urlsplit(url or "")
     if (parts.scheme, parts.port) in (("https", 443), ("http", 80)):
         parts = parts._replace(netloc=parts.hostname or parts.netloc)
+    if parts.netloc and not parts.path:
+        parts = parts._replace(path="/")
     return urllib.parse.urlunsplit(parts)
 
 
@@ -706,7 +710,7 @@ class WebConnector:
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
         ev = _make_evidence(homepage, verdict.note, "web_related_site_v1")
         result.evidence.append(ev)
-        value = homepage.final_url
+        value = _without_default_port(homepage.final_url)
         result.claims.append(Claim(
             claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
             family="website", field="official_website", value=value, availability="ambiguous",

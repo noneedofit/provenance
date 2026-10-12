@@ -110,7 +110,7 @@ with a reason naming how many candidates were tried.
 
 ## Regression-tested traps
 
-`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (139 web-module
+`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (140 web-module
 tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
 `uv run --with pytest pytest -q tests/signalpost`):
 
