@@ -456,7 +456,9 @@ def crawl_candidate(
     result.pages.append(homepage)
 
     if is_parked_page(homepage.html, homepage.text, homepage.final_url) or _is_dead_redirect(candidate.url, homepage.final_url):
-        swapped = _other_host_homepage(ctx, candidate, homepage.final_url, result)
+        # Only for a site declared for this org number (register, Wikidata, NAV, OSM): a guessed domain on a
+        # registrar's parking page is parked under both spellings, and trying the other one is a wasted request.
+        swapped = _other_host_homepage(ctx, candidate, homepage.final_url, result) if candidate.decisive else None
         if swapped is None:
             result.parked = True
             return result

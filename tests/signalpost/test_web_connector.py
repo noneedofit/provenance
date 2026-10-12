@@ -466,3 +466,12 @@ def test_a_placeholder_on_one_host_spelling_falls_back_to_the_other():
     site = [c for c in result.claims if c.field == "official_website"]
     assert site and site[0].availability == "available" and site[0].identity_basis == "org_number_on_source"
     assert "https://eksempelfirma.no/" in client.calls
+
+
+def test_a_parked_guessed_domain_does_not_try_the_other_host_spelling():
+    # A registrar's parking page covers both spellings of a guessed domain: no second request.
+    parked = "<html><body>eksempelfirma.no is registered, but the owner currently does not have an active website here.</body></html>"
+    client = FakeHttpClient(pages={"https://eksempelfirma.no/": FakePage(parked)}, dns={"eksempelfirma.no", "www.eksempelfirma.no"})
+    ctx = make_ctx(OUR_ORG, tier="T1", client=client, registry_facts={"name": "EKSEMPELFIRMA AS"})
+    WebConnector().run(ctx)
+    assert not any(u.startswith(("https://www.eksempelfirma.no", "http://www.eksempelfirma.no")) for u in client.calls)

@@ -67,7 +67,8 @@ contract; this section covers budgets and fallback order.
   then contact/about; `fetch_confirmation_pages`) before its verdict is final.
   Parked/for-sale placeholders and JS-only shells are detected and recorded, never rendered. A placeholder
   on one host spelling gets one try on the other (www.a-ss.net shows the registrar's reserved page,
-  a-ss.net the company's site), https then http.
+  a-ss.net the company's site), https then http; only for a site declared for the org number (register,
+  Wikidata, NAV, OSM), since a registrar parks a guessed domain under both spellings.
 - **Fallback order**: the connector tries candidates until the first `exact` verdict, or — if none verify
   exactly — publishes the best `related` candidate as an `ambiguous` claim (`confidence=0.4`, never
   treated as the company's own site by downstream connectors), or `not_available` with a reason stating
