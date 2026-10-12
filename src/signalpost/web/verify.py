@@ -263,6 +263,24 @@ def _infer_relationship(our_name: str, site_text: str) -> Relationship:
     return "brand"
 
 
+# Signals read from the page's own content (not from the domain name or the register alone).
+_CONTENT_SIGNAL_KINDS = frozenset({"registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match"})
+# Words too common to show that a page is about one particular company.
+_COMMON_NAME_WORDS = frozenset({"norway", "norge", "norsk", "norske", "norwegian", "nordic", "nord", "group", "gruppen"})
+
+
+def _page_names_us(name: str, page_text: str) -> bool:
+    """A distinctive word of our legal name (4+ letters, not a trade or country word; 3+ when the name has no
+    longer one), or the whole name run together (DIN TUR AS -> "dintur"), appears in the page text."""
+    words = [w for w in re.findall(r"[a-z0-9]+", _normalize(name)) if w in _legal_name_core(name)]
+    distinctive = [w for w in words if w not in GENERIC_NAME_WORDS and w not in _COMMON_NAME_WORDS]
+    keys = [w for w in distinctive if len(w) >= 4] or [w for w in distinctive if len(w) >= 3]
+    text = _normalize(page_text)
+    found = set(re.findall(r"[a-z0-9]+", text))
+    joined = "".join(words)
+    return any(k in found for k in keys) or (len(joined) >= 5 and joined in re.sub(r"[^a-z0-9]", "", text))
+
+
 # A lone trade word is not a distinctive name (bygg.no, transport.no belong to someone else).
 GENERIC_NAME_WORDS = {
     "bygg", "transport", "eiendom", "holding", "invest", "service", "consulting", "elektro", "handel",
@@ -645,11 +663,20 @@ def assess(
     # owner, not reading as a parent/umbrella site with zero org-specific corroboration, not showing
     # content topically unrelated to the company (hijacked/re-registered domain), and not redirecting
     # wholesale to a different registered domain ---
+    # The register only records the address the company once gave. The domain can since have lapsed and
+    # been taken by someone else (norwaysays.com, now an unrelated person's page), or serve another
+    # organisation's site (uvdal.no, a tourism site, for MILJORINGEN SA). The page must show something of
+    # the company: a registered fact (address, phone, e-mail, board member), our name in the title, or a
+    # distinctive word of our name anywhere in the text.
+    shows_us = bool(distinct_corroborating_raw & _CONTENT_SIGNAL_KINDS) or _page_names_us(
+        registry_facts.get("name") or "", "\n".join(_page_all_text(p) for p in live_pages))
+
     registry_declared_ok = False
     shared_domain = website_org_count is not None and website_org_count >= 2
     if candidate.source == "registry_website" and not conflicts and not hijacked and not is_chain_domain:
         unsupported_umbrella = umbrella_wording and not distinct_corroborating
-        if not shared_domain and not unsupported_umbrella and not owner_name_mismatch and not redirected_off_domain:
+        if (not shared_domain and not unsupported_umbrella and not owner_name_mismatch and not redirected_off_domain
+                and shows_us):
             registry_declared_ok = True
             signals.append(Signal("registry_declared", "registry-listed hjemmeside is live and unconflicted", homepage.final_url, candidate.url))
 

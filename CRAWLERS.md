@@ -65,7 +65,9 @@ contract; this section covers budgets and fallback order.
   homepage links, falling back to `sitemap.xml` only if no priority links were found on the homepage.
   A candidate that matches only on the company name gets up to two more pages (privacy, terms, impressum,
   then contact/about; `fetch_confirmation_pages`) before its verdict is final.
-  Parked/for-sale placeholders and JS-only shells are detected and recorded, never rendered.
+  Parked/for-sale placeholders and JS-only shells are detected and recorded, never rendered. A placeholder
+  on one host spelling gets one try on the other (www.a-ss.net shows the registrar's reserved page,
+  a-ss.net the company's site), https then http.
 - **Fallback order**: the connector tries candidates until the first `exact` verdict, or — if none verify
   exactly — publishes the best `related` candidate as an `ambiguous` claim (`confidence=0.4`, never
   treated as the company's own site by downstream connectors), or `not_available` with a reason stating

@@ -48,6 +48,16 @@ PARKED_MARKERS = (
     "buy this domain", "this domain is parked", "future home of something quite cool",
     # Registrar parking pages (Domeneshop and similar), seen on name-guessed .no domains
     "does not have an active website here", "currently does not have an active website",
+    # A host's "no site yet" page (ITPAYS: bjornstadsport.no) and cPanel's default page, which an empty
+    # page forwards to (aardal-as.no -> /cgi-sys/defaultwebpage.cgi)
+    "ingen side enda", "har ikke lagt ut noen nettsider", "/cgi-sys/defaultwebpage.cgi",
+    # A registrar's reserved redirect page on one host spelling (www.a-ss.net; the site is on a-ss.net)
+    "omdirigeringstjenesten er forbeholdt", "this redirect service is reserved for",
+)
+# Web-server default pages are placeholders at any length: Apache's runs to some 3,000 characters.
+SERVER_DEFAULT_MARKERS = (
+    "welcome to nginx!", "apache2 ubuntu default page", "apache2 debian default page",
+    "test page for the apache http server", "default web site page",
 )
 # "Coming soon" wording only marks a placeholder when it is (nearly) all the page says and the page has
 # almost no navigation: real sites also write "nye produkter kommer snart", or label a shop category so.
@@ -111,7 +121,7 @@ def is_parked_page(html: str, text: str, url: str = "") -> bool:
     page. Placeholder wording is checked on the page's own text as well as the extracted text: text
     extraction keeps only the "main" paragraph and can drop the "under construction" line."""
     haystack = fold((html or "")[:5000] + " " + (text or "")[:2000])
-    if any(marker in haystack for marker in PARKED_MARKERS):
+    if any(marker in haystack for marker in PARKED_MARKERS + SERVER_DEFAULT_MARKERS):
         return True
     visible = [fold(text or "")]
     navigable = False
@@ -384,6 +394,32 @@ def _alternate_homepages(ctx: Any, url: str, *, skip_same_host_http: bool = Fals
     return out[:2]
 
 
+def _other_host_homepage(ctx: Any, candidate: Candidate, url: str, result: CrawlResult) -> PageFetch | None:
+    """A host can park only one spelling of a domain: www.a-ss.net shows the registrar's reserved page while
+    a-ss.net forwards to the company's site (a-ss.no). Try the other spelling (with or without "www.") once,
+    https then http; return its homepage when it loads and is not a placeholder itself. A forward to another
+    domain is judged by the same identity rules as any other forwarding homepage."""
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    if not host or registered_domain(host) != candidate.domain:
+        return None
+    other = host[4:] if host.startswith("www.") else f"www.{host}"
+    resolves = getattr(ctx.client, "dns_resolves", None)
+    if resolves is not None and not resolves(other):
+        return None
+    for scheme in ("https", "http"):
+        if ctx.client.remaining(ctx.org) < 1:
+            return None
+        page, used = _fetch_page(ctx, f"{scheme}://{other}/", "web_homepage_other_host")
+        result.requests_used += used
+        if page is None or (not page.ok and page.error in _CONNECT_ERRORS):
+            continue
+        if (page.ok and not _is_dead_redirect(candidate.url, page.final_url)
+                and not is_parked_page(page.html, page.text, page.final_url)):
+            return page
+        return None
+    return None
+
+
 def crawl_candidate(
     ctx: Any,
     candidate: Candidate,
@@ -420,8 +456,12 @@ def crawl_candidate(
     result.pages.append(homepage)
 
     if is_parked_page(homepage.html, homepage.text, homepage.final_url) or _is_dead_redirect(candidate.url, homepage.final_url):
-        result.parked = True
-        return result
+        swapped = _other_host_homepage(ctx, candidate, homepage.final_url, result)
+        if swapped is None:
+            result.parked = True
+            return result
+        result.pages[-1] = homepage = swapped
+        homepage.page_kind = "homepage"
 
     soup = BeautifulSoup(homepage.html, "lxml")
     homepage.links = _extract_links(homepage.final_url, soup, candidate.domain)

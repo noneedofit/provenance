@@ -50,8 +50,11 @@ Pure function, no network. Given the crawled pages and the org's registry facts,
   already tied to our org number; or a `registry_website` candidate that is live, not parked, shows no
   conflicting org number, whose domain is not shared by ≥2 organisations, is not a known franchise/chain
   domain, does not name a different legal entity as the page's owner (copyright line / JSON-LD
-  `legalName`), and — if it reads as a parent/umbrella page — carries at least one independent
-  corroborating signal specific to this org.
+  `legalName`), shows something of the company (a registered address, phone, e-mail or board member, the
+  legal name in the title, or a distinctive word of the name anywhere on the pages read: the register only
+  records the address the company once gave, and the domain may since have lapsed or serve someone else),
+  and — if it reads as a parent/umbrella page — carries at least one independent corroborating signal
+  specific to this org.
 - **`exact` OR via ≥2 independent corroborating signals, zero conflicts**: registered street+postcode,
   registry phone (8 digits), registry email, a registered CEO/board member name, the legal name in
   `<title>`, the domain spelling the full legal name, the registry e-mail's domain, or an open-places
@@ -72,8 +75,9 @@ Pure function, no network. Given the crawled pages and the org's registry facts,
   matched) → `rejected`**, never trusted via registry-declared trust or corroboration, even if a stale
   cached address fragment is still present.
 - **A parked/for-sale placeholder homepage → `rejected`**, including registrar parking pages ("is
-  registered, but the owner currently does not have an active website") and short "lanseres snart" /
-  "kommer snart" / "under construction" pages.
+  registered, but the owner currently does not have an active website"), hosts' "no site yet" pages
+  ("Ingen side enda"), web-server and cPanel default pages at any length (Apache's "It works" page runs to
+  3,000 characters), and short "lanseres snart" / "kommer snart" / "under construction" pages.
 - **A site that matches only on our name** (in the title or as the domain), **or one that is `exact`
   without our org number** (corroborated or registry-declared), gets one more look before the verdict
   stands: up to two unread pages that usually name the business behind a site (privacy statement, sales
@@ -106,7 +110,7 @@ with a reason naming how many candidates were tried.
 
 ## Regression-tested traps
 
-`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (134 web-module
+`tests/signalpost/test_web_verify.py`, `test_web_candidates.py`, `test_web_blocklist.py` (137 web-module
 tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/web_fakes.py`; run with
 `uv run --with pytest pytest -q tests/signalpost`):
 
@@ -124,6 +128,7 @@ tests in `test_web_*.py`, no network — fake `HttpClient` in `tests/signalpost/
 | **Accountant's domain** | a registry e-mail on an accountant's domain whose page shows the client's (= accountant's) address | `test_registry_email_domain_with_address_only_stays_ambiguous` |
 | **Registered site forwarding to a shared e-mail domain** | A company's registered site forwarding to its accountant's site, where the company's registered e-mail also lives — the forward is trusted only when no other organisation uses that e-mail domain (H. LUNDBECK AS: lundbeck.no → lundbeck.com, own e-mail domain) | `test_a_registry_site_forwarding_to_our_own_email_domain_is_our_site`, `test_a_registry_site_forwarding_to_a_shared_email_domain_is_not_trusted_on_the_register_alone` |
 | **Sister company's or chain's site with our shared details** | HURTIG TRYKK EIENDOM AS (property company) on its sister printer's `hurtig-trykk.no`: same address, phone, e-mail and manager, footer "Foretaksregisteret: NO 957 585 256 MVA"; INDRE ØSTFOLD MASKINSENTER AS on the dealer chain's `eiksenteret.no`, whose privacy page names Eikmaskin AS, org.nr. 955 456 653 — found by an independent audit of 40 corroborated sites on 11 Oct 2026 | `test_find_org_numbers_treats_foretaksregisteret_and_vat_forms_as_owner_labels`, `test_sister_company_footer_in_vat_form_is_a_conflict`, `test_a_corroborated_match_whose_privacy_page_names_another_owner_is_not_our_site`, `test_a_corroborated_match_whose_privacy_page_shows_our_org_number_gets_that_as_its_basis` |
+| **Registry-listed site that is no longer the company's** | Found by an independent audit of 40 registry-listed sites on 12 Oct 2026: `abc-rammer.no` (Apache default page), `aardal-as.no` (empty page forwarding to cPanel's default page), `bjornstadsport.no` (host's "Ingen side enda"), `norwaysays.com` (lapsed, now an unrelated person's page), `uvdal.no` for MILJØRINGEN SA (another organisation's tourism site) | `test_server_default_and_host_placeholder_pages_are_rejected_at_any_length`, `test_a_registry_listed_site_must_show_something_of_the_company` |
 | **Own-name domain forwarding to the parent** | FRONT SYSTEMS AS: frontsystems.no forwards to the parent's egsoftware.com, whose links are the parent's profiles — found by the 7 Oct 2026 hand-check list | `test_a_name_domain_forwarding_to_the_parents_site_does_not_give_the_parents_profiles` |
 | **Generic path on a shared site** | A property manager's `/index.php` listed as a company's homepage | `test_a_generic_registry_listed_path_on_a_shared_site_is_not_our_page` |
 | **Live, unconflicted but wrong owner** | A registry-declared site whose footer/JSON-LD names a different legal entity (Xledger Labs AS → xledger.com, which only ever names "Xledger"/"Xledger AS") | covered in `verify.py`'s `site_owner_mismatch` path, exercised via the connector test suite |

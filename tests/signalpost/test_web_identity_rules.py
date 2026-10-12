@@ -170,3 +170,33 @@ def test_group_site_needs_a_word_of_our_name_in_the_domain():
     wd = lambda d: Candidate(domain=d, url=f"https://{d}/", source="wikidata_website", label="t", decisive=True)
     assert connector._is_group_site(ctx("AF GRUPPEN ASA"), wd("afgruppen.no"), verdict)
     assert not connector._is_group_site(ctx("STIFTELSEN HAVNAHUSET BU- OG SERVICESENTER"), wd("vestbo.no"), verdict)
+
+
+def test_server_default_and_host_placeholder_pages_are_rejected_at_any_length():
+    # Found by an independent audit of registry-listed sites, 12 Oct 2026.
+    from signalpost.web.verify import is_parked_page
+    apache = ("<html><head><title>Apache2 Ubuntu Default Page: It works</title></head><body>"
+              + "This is the default welcome page used to test the correct operation of the Apache2 server. " * 40 + "</body></html>")
+    assert is_parked_page(apache, "", "http://www.abc-rammer.no/")
+    cpanel = '<html><head><META HTTP-EQUIV="refresh" CONTENT="0;URL=/cgi-sys/defaultwebpage.cgi"></head><body></body></html>'
+    assert is_parked_page(cpanel, "", "http://www.aardal-as.no/")
+    itpays = ("<html><head><title>Ingen side enda - BJORNSTADSPORT.NO</title></head><body>Her kommer BJORNSTADSPORT.NO "
+              "Eieren av dette nettstedet har ikke lagt ut noen nettsider enda.</body></html>")
+    assert is_parked_page(itpays, "", "https://www.bjornstadsport.no/")
+
+
+def test_a_registry_listed_site_must_show_something_of_the_company():
+    # norwaysays.com: the registry still lists it for NORWAY SAYS AS, but the domain now carries an unrelated
+    # person's page. uvdal.no, listed for MILJORINGEN SA, is another organisation's tourism site.
+    unrelated = page("Charaka Jayamal | Business, Accounting and Entrepreneurship Educator, GLOBIZ Business Academy, Norway",
+                     url="https://www.norwaysays.com/")
+    v = assess(ORG, [unrelated], facts("NORWAY SAYS AS", street=None, postcode=None), cand("norwaysays.com", source="registry_website"))
+    assert v.status != "exact"
+    tourism = page("Hytter og tomter, overnatting og aktiviteter i Uvdal. Nore og Uvdal Næringsselskap.", url="https://uvdal.no/")
+    assert assess(ORG, [tourism], facts("MILJØRINGEN SA", street=None, postcode=None), cand("uvdal.no", source="registry_website")).status != "exact"
+    # A distinctive word of the name anywhere on the site is enough, as is the name run together.
+    own = page("Grønstvet og Huseby er en liten gjeng av tømrermestere.", url="https://gh-bygg.no/")
+    v = assess(ORG, [own], facts("GRØNSTVET OG HUSEBY AS", street=None, postcode=None), cand("gh-bygg.no", source="registry_website"))
+    assert v.status == "exact" and v.identity_basis == "registry_declared"
+    short = page("Velkommen til Dintur.no", url="https://dintur.no/")
+    assert assess(ORG, [short], facts("DIN TUR AS", street=None, postcode=None), cand("dintur.no", source="registry_website")).status == "exact"

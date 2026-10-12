@@ -451,3 +451,18 @@ def test_a_name_domain_forwarding_to_the_parents_site_does_not_give_the_parents_
     ctx = make_ctx(OUR_ORG, tier="T0", client=client, registry_facts={"name": "EKSEMPELFIRMA AS", "website": "eksempelfirma.no"})
     result = WebConnector().run(ctx)
     assert not [c for c in result.claims if c.family == "profiles"]
+
+
+def test_a_placeholder_on_one_host_spelling_falls_back_to_the_other():
+    # www.a-ss.net shows the registrar's reserved redirect page; a-ss.net is the company's site.
+    reserved = ("<html><head><title>Reserved service</title></head><body><h1>Reservert tjeneste</h1>"
+                "<p>Denne omdirigeringstjenesten er forbeholdt domenenavn hos registraren.</p></body></html>")
+    client = FakeHttpClient(pages={
+        "https://www.eksempelfirma.no/": FakePage(reserved),
+        "https://eksempelfirma.no/": FakePage(f"<html><body>Eksempelfirma AS, org no: {OUR_ORG} MVA</body></html>"),
+    }, dns={"www.eksempelfirma.no", "eksempelfirma.no"})
+    ctx = make_ctx(OUR_ORG, tier="T1", client=client, registry_facts={"name": "EKSEMPELFIRMA AS", "website": "www.eksempelfirma.no"})
+    result = WebConnector().run(ctx)
+    site = [c for c in result.claims if c.field == "official_website"]
+    assert site and site[0].availability == "available" and site[0].identity_basis == "org_number_on_source"
+    assert "https://eksempelfirma.no/" in client.calls
