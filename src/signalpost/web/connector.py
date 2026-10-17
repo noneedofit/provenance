@@ -169,6 +169,7 @@ def _publish_profiles(
     for link in links:
         source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
         ev = _make_evidence(source_page, link["url"], "web_social_link_v1")
+        ev.claim_span = link.get("href") or None  # the link as written on the page, not the normalised URL
         result.evidence.append(ev)
         result.claims.append(Claim(
             claim_id=claim_key(org, "profiles", "profile", link["url"]), organisation_number=org,

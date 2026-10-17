@@ -19,7 +19,7 @@ import time
 from typing import Any
 
 from .context import CompanyContext
-from .evidence_text import json_quote
+from .evidence_text import json_quote, raw_json_quote
 from .models import (
     Claim,
     ConnectorResult,
@@ -176,8 +176,14 @@ class _ClaimBuilder:
         span: str | None, content_sha256: str | None = None, final_url: str | None = None,
         redirect_chain: list[str] | None = None, http_status: int | None = None,
         snapshot_ref: str | None = None, access_policy: str | None = "NLOD-2.0", quote: str | None = None,
+        raw: bytes | None = None,
     ) -> str:
-        """`quote`: the exact source text the value was read from (becomes the evidence's claim_span)."""
+        """`quote`: the exact source text the value was read from (becomes the evidence's claim_span).
+
+        `raw`: the response body; when `span` is a JSON path into it, the quote is that path's text copied
+        verbatim from the body, so it can be found word for word in the source.
+        """
+        quote = raw_json_quote(raw, span) or quote
         eid = evidence_id(source_url, span)
         if eid not in self.evidence:
             self.evidence[eid] = Evidence(
@@ -331,7 +337,7 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
             source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
             extraction_method="brreg_entity_v1", span=span, content_sha256=response.content_sha256,
             final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-            snapshot_ref=response.snapshot_ref, quote=quote,
+            snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None), quote=quote,
         )
 
     if body.get("navn"):
@@ -344,7 +350,10 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
     status = "bankrupt" if body.get("konkurs") else "liquidating" if body.get("underAvvikling") else "active"
     builder.add_claim(family="identity", field="status", value=status, evidence_ids=[ev(
         f"{span_prefix}.konkurs/underAvvikling",
-        json_quote(body, ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")),
+        " | ".join(q for q in (
+            raw_json_quote(getattr(response, "body", None), f"$.{key}")
+            for key in ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")
+        ) if q) or json_quote(body, ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")),
     )])
     nace = body.get("naeringskode1")
     if nace:
@@ -413,10 +422,10 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
                 source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
                 extraction_method="brreg_roles_v1", span=f"$.rollegrupper[type.kode={group_code}].sistEndret",
                 content_sha256=response.content_sha256, final_url=response.final_url,
-                redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+                redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             )
             builder.add_claim(family="leadership", field="roles_last_changed", value=last_changed, value_key=group_code, evidence_ids=[eid])
-        for role in group.get("roller", []):
+        for role_index, role in enumerate(group.get("roller", [])):
             role_code = _get(role, "type", "kode")
             role_label = _get(role, "type", "beskrivelse")
             person = role.get("person") or {}
@@ -429,12 +438,13 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
             if not display_name or not role_code:
                 continue
             resigned = bool(role.get("avregistrert"))
-            span = f"$.rollegrupper[type.kode={group_code}].roller[type.kode={role_code}]"
+            # The holder's own position in the group: several board members share one role code.
+            span = f"$.rollegrupper[type.kode={group_code}].roller[{role_index}]"
             eid = builder.add_evidence(
                 source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
                 extraction_method="brreg_roles_v1", span=span, content_sha256=response.content_sha256,
                 final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-                snapshot_ref=response.snapshot_ref,
+                snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             )
             value = {"role_code": role_code, "role_label": role_label, "name": display_name}
             if entity_name and entity.get("organisasjonsnummer"):
@@ -475,7 +485,7 @@ def locations_claims_from_subunits(builder: _ClaimBuilder, body: dict[str, Any],
             source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
             extraction_method="brreg_subunits_v1", span=span, content_sha256=response.content_sha256,
             final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-            snapshot_ref=response.snapshot_ref,
+            snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
         )
         builder.add_claim(family="locations", field="workplace", value=value, value_key=sub_org, evidence_ids=[eid])
         facts.append({
@@ -531,7 +541,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
             extraction_method="brreg_financials_v1", span=span, content_sha256=response.content_sha256,
             final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-            snapshot_ref=response.snapshot_ref,
+            snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
         )
         builder.add_claim(
             family="financials", field=field, value={"amount": amount, "currency": currency}, value_key=field,
@@ -542,7 +552,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
         source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
         extraction_method="brreg_financials_v1", span=f"$[id={record_id}].regnskapstype",
         content_sha256=response.content_sha256, final_url=response.final_url,
-        redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+        redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
         quote=", ".join(x for x in (json_quote(latest, ("regnskapstype",)), json_quote(principles, ("smaaForetak",))) if x) or None,
     )
     builder.add_claim(
@@ -557,7 +567,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
             extraction_method="brreg_financials_v1", span=f"$[id={record_id}].virksomhet.morselskap",
             content_sha256=response.content_sha256, final_url=response.final_url,
-            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             quote=json_quote(latest.get("virksomhet"), ("morselskap",)),
         )
         builder.add_claim(
@@ -571,7 +581,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
             extraction_method="brreg_financials_v1", span=f"$[id={record_id}].revisjon",
             content_sha256=response.content_sha256, final_url=response.final_url,
-            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref,
+            redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             quote=json_quote(audit, tuple(audit)) if isinstance(audit, dict) else None,
         )
         builder.add_claim(
@@ -596,7 +606,7 @@ def financial_history_claims(builder: _ClaimBuilder, body: Any, response: Any, *
         source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
         extraction_method="brreg_financial_history_v1", span="$", content_sha256=response.content_sha256,
         final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
-        snapshot_ref=response.snapshot_ref,
+        snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
     )
     builder.add_claim(family="financial_history", field="filed_years", value=years, evidence_ids=[eid])
     builder.note_checked("financial_history", response.url)

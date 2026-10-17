@@ -60,7 +60,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from ..context import CompanyContext
-from ..evidence_text import json_quote
+from ..evidence_text import json_quote, raw_json_quote
 from ..models import ConnectorResult, utc_now
 from ._common import make_evidence, norm_title
 from .nav_feed import (
@@ -148,6 +148,13 @@ def _name_overlaps(candidate_norm: str, target_norms: set[str], *, min_overlap: 
             return True
     return False
 
+
+
+def _feedentry_quote(resp: Any, nested: bool) -> str | None:
+    """The ad's title and employer exactly as the feed entry returned them (verbatim JSON text)."""
+    prefix = "$.ad_content" if nested else "$"
+    parts = [raw_json_quote(getattr(resp, "body", None), f"{prefix}.{key}") for key in ("title", "employer")]
+    return " | ".join(p for p in parts if p) or None
 
 class NavLiveConnector:
     name = "nav"
@@ -636,7 +643,8 @@ class NavLiveConnector:
                 extraction_method="nav_live_feedentry_v1",
                 span=f"$.ad_content.employer.orgnr={orgnr or 'null'}",
                 access_policy="NLOD-2.0 (NAV)",
-                quote=", ".join(q for q in (json_quote(ad, ("title",)), json_quote(employer, ("name", "orgnr"))) if q) or None,
+                quote=_feedentry_quote(resp, ad is not entry)
+                or ", ".join(q for q in (json_quote(ad, ("title",)), json_quote(employer, ("name", "orgnr"))) if q) or None,
             )
             evidence.append(ev)
 

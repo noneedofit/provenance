@@ -89,6 +89,100 @@ def json_quote(obj: Any, keys: tuple[str, ...]) -> str | None:
     return ", ".join(parts) or None
 
 
+_PATH_STEP = re.compile(r"\.([^.\[]+)|\[([^\]]+)\]")
+_DECODER = json.JSONDecoder()
+_WS = re.compile(r"\s*")
+RAW_QUOTE_MAX = 1500
+
+
+def _object_members(text: str, i: int):
+    """(key, key_start, value_start, value_end) for each member of the JSON object starting at text[i]."""
+    i = _WS.match(text, i + 1).end()
+    if text[i] == "}":
+        return
+    while True:
+        key, key_end = _DECODER.raw_decode(text, i)
+        value_start = _WS.match(text, _WS.match(text, key_end).end() + 1).end()
+        _, value_end = _DECODER.raw_decode(text, value_start)
+        yield key, i, value_start, value_end
+        i = _WS.match(text, value_end).end()
+        if text[i] != ",":
+            return
+        i = _WS.match(text, i + 1).end()
+
+
+def _array_items(text: str, i: int):
+    """(value_start, value_end) for each item of the JSON array starting at text[i]."""
+    i = _WS.match(text, i + 1).end()
+    if text[i] == "]":
+        return
+    while True:
+        _, end = _DECODER.raw_decode(text, i)
+        yield i, end
+        i = _WS.match(text, end).end()
+        if text[i] != ",":
+            return
+        i = _WS.match(text, i + 1).end()
+
+
+def _matches(item: Any, condition: str) -> bool:
+    path, _, wanted = condition.partition("=")
+    for key in path.split("."):
+        item = item.get(key) if isinstance(item, dict) else None
+    return item is not None and str(item) == wanted
+
+
+def _excerpt(text: str, path: str) -> str | None:
+    start = _WS.match(text).end()
+    value_start, value_end = start, _DECODER.raw_decode(text, start)[1]
+    quote_start = value_start
+    rest = path.strip()[1:]
+    for m in _PATH_STEP.finditer(rest):
+        key, condition = m.group(1), m.group(2)
+        if key is not None:
+            if text[value_start] != "{":
+                return None
+            member = next((x for x in _object_members(text, value_start) if x[0] == key), None)
+            if member is None:
+                return None
+            _, quote_start, value_start, value_end = member
+        else:
+            if text[value_start] != "[":
+                return None
+            items = list(_array_items(text, value_start))
+            if condition.isdigit():
+                found = items[int(condition)] if int(condition) < len(items) else None
+            else:
+                found = next((x for x in items if _matches(json.loads(text[x[0]:x[1]]), condition)), None)
+            if found is None:
+                return None
+            quote_start = value_start = found[0]
+            value_end = found[1]
+    return text[quote_start:value_end]
+
+
+def raw_json_quote(body: bytes | None, path: str | None) -> str | None:
+    """The exact text a JSON path points at in the raw response, e.g. '"sumDriftsinntekter":35247070'.
+
+    A member is quoted with its key; an array item as the whole item. Copied byte for byte from what the
+    source returned (not re-serialised), so a reader or checker finds the quote verbatim in the source.
+    A person's birth date is never quoted: a role holder's quote narrows to their name. Over-long quotes are
+    cut to a prefix, which is still verbatim. Returns None when the path cannot be resolved.
+    """
+    if not body or not path or not path.startswith("$") or "/" in path:
+        return None
+    try:
+        text = body.decode("utf-8")
+        quote = _excerpt(text, path)
+        if quote is not None and '"fodselsdato"' in quote:
+            quote = _excerpt(text, path + ".person.navn")
+    except (ValueError, IndexError, UnicodeDecodeError):
+        return None
+    if quote is None or '"fodselsdato"' in quote:
+        return None
+    return quote[:RAW_QUOTE_MAX]
+
+
 def _located_value(span: str) -> str:
     """`$.a.b=value` -> `a.b: value`; any other span is already text."""
     m = _PATH_VALUE.match(span.strip())

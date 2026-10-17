@@ -268,7 +268,8 @@ def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
             if normalized:
                 key = (normalized["platform"], normalized["url"])
                 if key not in found:
-                    found[key] = {**normalized, "source_url": page.final_url}
+                    # `href`: the link exactly as written on the page, quoted as the evidence.
+                    found[key] = {**normalized, "source_url": page.final_url, "href": raw}
         org, _ = _first_org([page])
         if org:
             same_as = org.get("sameAs")
@@ -280,7 +281,7 @@ def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
                 if normalized:
                     key = (normalized["platform"], normalized["url"])
                     if key not in found:
-                        found[key] = {**normalized, "source_url": page.final_url}
+                        found[key] = {**normalized, "source_url": page.final_url, "href": raw}
     return sorted(found.values(), key=lambda item: (item["platform"], item["url"]))
 
 
