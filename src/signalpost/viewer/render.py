@@ -90,6 +90,14 @@ def build_row(envelope: dict, page_url: str) -> dict:
     claims = envelope.get("claims", [])
     families = envelope.get("families", {})
     by_family = claims_by_family(claims)
+    evidence = evidence_by_id(envelope.get("evidence", []))
+
+    def source(claim: dict | None) -> str | None:
+        """Source URL of a claim's first evidence item, so compare cells link to what backs them."""
+        for eid in (claim or {}).get("evidence_ids") or []:
+            if evidence.get(eid, {}).get("source_url"):
+                return evidence[eid]["source_url"]
+        return None
 
     legal_name = envelope.get("legal_name") or org
     identity = by_family.get("identity", [])
@@ -118,6 +126,7 @@ def build_row(envelope: dict, page_url: str) -> dict:
 
     employees_value = _val(first_available(identity, "identity", "registered_employees", "employees_registered"))
     employees = employees_value.get("count") if isinstance(employees_value, dict) else employees_value
+    employees_source = source(first_available(identity, "identity", "registered_employees", "employees_registered"))
 
     fin = by_family.get("financials", [])
     revenue_claim = field_value(fin, "financials", "revenue")
@@ -128,6 +137,8 @@ def build_row(envelope: dict, page_url: str) -> dict:
         revenue_currency = revenue_claim["value"].get("currency", "NOK")
     result_claim = field_value(fin, "financials", "annual_result")
     result = result_claim["value"].get("amount") if result_claim and isinstance(result_claim.get("value"), dict) else None
+    period = (revenue_claim or result_claim or {}).get("reporting_period") or {}
+    financial_year = (period.get("end") or "")[:4] or None
 
     website_claims = [c for c in by_family.get("website", []) if c.get("status", "current") == "current"]
     website_state = "none"
@@ -143,6 +154,9 @@ def build_row(envelope: dict, page_url: str) -> dict:
     activity = [c for c in by_family.get("activity", []) if c.get("availability") == "available"]
     activity_sorted = sorted(activity, key=lambda c: c.get("effective_date") or "", reverse=True)
     latest_activity = activity_sorted[0] if activity_sorted else None
+    latest_activity_value = latest_activity.get("value") if latest_activity else None
+    if isinstance(latest_activity_value, dict):  # dated items are {title, url, published, source}
+        latest_activity_value = latest_activity_value.get("title") or latest_activity_value.get("url")
 
     return {
         "org": org,
@@ -157,14 +171,19 @@ def build_row(envelope: dict, page_url: str) -> dict:
         "employee_band": employee_band(employees),
         "revenue": revenue,
         "revenue_currency": revenue_currency,
+        "revenue_source": source(revenue_claim),
         "result": result,
+        "result_source": source(result_claim),
+        "financial_year": financial_year,
+        "employees_source": employees_source,
         "website": website_url,
         "website_state": website_state,
         "profiles_count": profiles_count,
         "jobs_count": len(jobs),
         "jobs_hiring": len(jobs) > 0,
         "activity_count": len(activity),
-        "latest_activity_text": latest_activity.get("value") if latest_activity else None,
+        "latest_activity_text": latest_activity_value,
+        "latest_activity_source": source(latest_activity),
         "latest_activity_date": latest_activity.get("effective_date") if latest_activity else None,
         "coverage": coverage_score(families),
         "families": {f: families.get(f, {}).get("availability", "not_available") for f in COVERAGE_FAMILIES},
@@ -262,13 +281,14 @@ def render_compare_page(rows: list[dict]) -> str:
     body = f"""
 <h1>Compare companies</h1>
 <p class="muted">Pick 2–4 companies to see key facts side by side, with links to the evidence behind each figure.</p>
-<div class="compare-controls">
+<div id="compare-result" style="margin-bottom:18px"></div>
+<div class="toolbar compare-controls">
+  <input type="search" id="compare-search" placeholder="Filter by name or org number…" aria-label="Filter companies to compare">
   <button type="button" class="btn btn-primary" id="compare-render">Show comparison</button>
 </div>
 <div id="compare-list-page">
 {items}
 </div>
-<div id="compare-result" style="margin-top:18px"></div>
 """
     return page_shell(
         title="Compare",

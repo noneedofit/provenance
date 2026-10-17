@@ -135,3 +135,32 @@ def test_wikidata_uses_bundled_snapshot_by_default_without_requests(tmp_path, mo
     monkeypatch.setattr(wd, "build", live_query_must_not_run)
     cache_dir, used = cli._ensure_caches(str(tmp_path / "c"), "bulk.csv")
     assert used == 0 and (tmp_path / "c" / "wikidata.sqlite").stat().st_size > 100_000
+
+
+def test_run_output_folder_includes_the_viewer(tmp_path, monkeypatch, capsys):
+    import json
+    from pathlib import Path
+
+    from signalpost import cli, pipeline
+
+    envelope = Path("smoke-test/envelopes.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    out = tmp_path / "out"
+
+    def fake_run_batch(orgs, output_dir, **kwargs):
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        (Path(output_dir) / "envelopes.jsonl").write_text(envelope + "\n", encoding="utf-8")
+        report = {"total_requests": 0}
+        (Path(output_dir) / "run-report.json").write_text(json.dumps(report), encoding="utf-8")
+        return report
+
+    monkeypatch.setattr(cli, "_resolve_bulk_path", lambda explicit, budget: (None, 0))
+    monkeypatch.setattr(cli, "_ensure_caches", lambda explicit, bulk: (None, 0))
+    monkeypatch.setattr(pipeline, "run_batch", fake_run_batch)
+    orgs = tmp_path / "orgs.txt"
+    orgs.write_text(json.loads(envelope)["organisation_number"] + "\n", encoding="utf-8")
+    assert cli.main(["run", "--organisations", str(orgs), "--output-dir", str(out),
+                     "--state-dir", str(tmp_path / "state"), "--run-id", "t"]) == 0
+    assert (out / "site" / "index.html").exists() and (out / "site" / "compare.html").exists()
+    report = json.loads(capsys.readouterr().out)  # stdout stays pure report JSON
+    assert report["viewer"] == "site/index.html"
+    assert json.loads((out / "run-report.json").read_text(encoding="utf-8"))["viewer"] == "site/index.html"

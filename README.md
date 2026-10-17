@@ -14,6 +14,25 @@ keeps prior evidence, and never invents a false change.
 Built on the Builderr Signalpost starter kit (its SSRF guard and social-URL normaliser live on in
 `src/signalpost/urls.py`; the kit's prototype scripts are not part of this agent).
 
+## Find, compare and verify (after a run)
+
+Every `signalpost run` also writes a browsable, offline site to `<output-dir>/site/`. Open
+`<output-dir>/site/index.html` in any browser (a plain `file://` URL works; no server, no internet).
+The 100-company smoke test's copy is in [`smoke-test/site/`](smoke-test/site/index.html).
+
+- **Find:** type a name, org number, municipality or industry in the search box on the directory page;
+  filter by legal form, size, website, hiring or recent activity. `directory.csv` has every row.
+- **Compare:** tick "Compare" on 2–4 companies, then "Compare selected" (or open
+  `compare.html?orgs=<org>,<org>`). The table shows the financial year, revenue, annual result,
+  registered employees, website, hiring and latest activity side by side, each with a `source` link.
+- **Verify:** open a company. Every summary sentence cites numbered facts; every fact has a `source`
+  button showing the source URL, retrieval time, content hash, extraction method and the exact
+  supporting text. Missing families say why (not found, blocked, failed). "Download company JSON"
+  gives the raw envelope.
+
+Without a browser: `envelopes.jsonl` has one JSON object per company; each claim's `evidence_ids`
+point into that company's `evidence` list (source URL, retrieval time, hash and supporting text).
+
 ## What it actually does
 
 - Anchors identity in the Brønnøysund bulk registry (`data.brreg.no`), then calls the live entity,
@@ -138,6 +157,7 @@ or budget hits and all 1,500 completed. 1,500 random register companies took 25�
 3 differences being websites that were down in one run or changed their own text between runs.
 
 Output, written to `--output-dir`:
+- `site/index.html` — the browsable viewer (search, compare, evidence on every fact; see above).
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.
 - `run-report.json` — request counts by purpose, runtime p50/p95, family-state counts, deadline/budget
   hits, validation result, `third_party_cost_usd: 0.0`.
@@ -158,6 +178,8 @@ Checks the envelope-invariants contract: exactly one envelope per organisation n
 dangling evidence references. Exits non-zero on failure.
 
 ### Build the viewer
+
+`signalpost run` builds it into `<output-dir>/site/` automatically. To rebuild it from any envelopes file:
 
 ```bash
 uv run python -m signalpost.viewer.build --envelopes out/envelopes.jsonl --out out/site

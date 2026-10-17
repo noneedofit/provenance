@@ -208,18 +208,21 @@
       ["Legal form", function (d) { return d.legal_form; }],
       ["Municipality", function (d) { return d.municipality; }],
       ["Industry (NACE)", function (d) { return d.nace_label || d.nace_code || null; }],
-      ["Employees", function (d) { return d.employees; }],
-      ["Revenue", function (d) { return d.revenue ? fmtAmount(d.revenue, d.revenue_currency) : null; }],
-      ["Result", function (d) { return d.result != null ? fmtAmount(d.result, d.revenue_currency) : null; }],
+      ["Registered employees", function (d) { return d.employees; }, function (d) { return d.employees_source; }],
+      ["Financial year", function (d) { return d.financial_year; }],
+      ["Revenue", function (d) { return d.revenue != null ? fmtAmount(d.revenue, d.revenue_currency) : null; },
+        function (d) { return d.revenue_source; }],
+      ["Annual result", function (d) { return d.result != null ? fmtAmount(d.result, d.revenue_currency) : null; },
+        function (d) { return d.result_source; }],
       ["Website", function (d) {
         if (!d.website) return null;
         return d.website + (d.website_state === "exact" ? "" : " (related / ambiguous)");
-      }],
+      }, function (d) { return d.website; }],
       ["Profiles", function (d) { return d.profiles_count; }],
       ["Hiring", function (d) { return d.jobs_hiring ? d.jobs_count + " open role(s)" : "not hiring / none found"; }],
       ["Latest activity", function (d) {
         return d.latest_activity_text ? d.latest_activity_text + (d.latest_activity_date ? " (" + d.latest_activity_date + ")" : "") : null;
-      }],
+      }, function (d) { return d.latest_activity_source; }],
       ["Data coverage", function (d) { return d.coverage + " / 12 families available"; }],
     ];
 
@@ -243,12 +246,30 @@
         html += "<tr><th scope=\"row\">" + escapeHtml(row[0]) + "</th>";
         chosen.forEach(function (d) {
           var v = row[1](d);
-          html += "<td>" + (v === null || v === undefined || v === "" ? '<span class="muted">not available</span>' : escapeHtml(v)) + "</td>";
+          var src = v === null || v === undefined || v === "" || !row[2] ? null : row[2](d);
+          html += "<td>" + (v === null || v === undefined || v === "" ? '<span class="muted">not available</span>' : escapeHtml(v));
+          if (src && /^https?:\/\//.test(src)) {
+            html += ' <a class="small" href="' + escapeHtml(src) + '" target="_blank" rel="noopener noreferrer">source</a>';
+          }
+          html += "</td>";
         });
         html += "</tr>";
       });
       html += "</tbody></table></div>";
+      html += '<p class="muted small">Every figure links to its source; open a company for the full evidence on each fact.</p>';
       resultDiv.innerHTML = html;
+      resultDiv.scrollIntoView({ block: "start" });
+    }
+
+    var filter = document.getElementById("compare-search");
+    if (filter) {
+      filter.addEventListener("input", function () {
+        var q = filter.value.trim().toLowerCase();
+        items.forEach(function (item) {
+          var hay = ((item.d.legal_name || "") + " " + item.d.org).toLowerCase();
+          item.el.style.display = !q || hay.indexOf(q) !== -1 ? "" : "none";
+        });
+      });
     }
 
     items.forEach(function (item) {

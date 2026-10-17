@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import time
@@ -235,6 +236,17 @@ def cmd_run(args: argparse.Namespace) -> int:
     report["setup_requests"] = setup_requests
     report["setup_s"] = round(setup_s, 1)
     report["total_requests_including_setup"] = int(report.get("total_requests", 0)) + setup_requests
+    # The browsable product (search, compare, evidence per fact) is built from the envelopes just written,
+    # so every run's output folder can be opened directly; a viewer failure never fails the run itself.
+    envelopes_path = Path(args.output_dir) / "envelopes.jsonl"
+    if envelopes_path.exists():
+        try:
+            from .viewer.build import build_site
+            with contextlib.redirect_stdout(sys.stderr):  # stdout carries only the report JSON
+                build_site(envelopes_path, Path(args.output_dir) / "site")
+            report["viewer"] = "site/index.html"
+        except Exception as exc:  # noqa: BLE001
+            print(f"viewer build failed: {exc!r}", file=sys.stderr)
     report_path = Path(args.output_dir) / "run-report.json"
     if report_path.exists():
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
