@@ -25,8 +25,10 @@ Checks on this commit:
   dropped connections in both runs (on its contact page in one, its homepage in the other) while two runs
   hit it at once, so its related-site verdict could be reached in only one of them.
 - Quotes: 4,178 evidence quotes were checked against the saved raw responses; every register, accounts,
-  group, job-ad, feed and social-link quote occurs there word for word (18 descriptive match notes, such
-  as "registry e-mail domain matches the site", are not quotes). No birth date appears anywhere.
+  group, job-ad and feed quote occurs there word for word. The other 18 are 11 related/group-site notes
+  ("site shows a different organisation number ..."), 5 address matches whose punctuation differs from the
+  page, and 2 texts the page encodes differently (an escaped JSON-LD description, a malformed link).
+  No birth date appears anywhere.
 - An immediate rerun with the same `--state-dir` reported **0 changes** (idempotent refresh).
 - Audit: 0 problems (every published claim has evidence, no dangling or duplicate claims).
 
