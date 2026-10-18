@@ -33,6 +33,8 @@ from .models import (
 BRREG_ENTITY = "https://data.brreg.no/enhetsregisteret/api/enheter/{org}"
 BRREG_ROLES = BRREG_ENTITY + "/roller"
 BRREG_SUBUNITS = "https://data.brreg.no/enhetsregisteret/api/underenheter?overordnetEnhet={org}&size=1000"
+BRREG_GROUP = "https://data.brreg.no/enhetsregisteret/api/konsernstruktur/{org}"
+GROUP_MAX_SUBSIDIARIES = 50
 BRREG_ACCOUNTS = "https://data.brreg.no/regnskapsregisteret/regnskap/{org}"
 # The filed-years endpoint is documented at roughly 30 requests/minute; space calls across all threads.
 _HISTORY_MIN_INTERVAL_S = 1.0
@@ -885,23 +887,116 @@ class RegistryConnector:
                 reason="registry client unavailable",
             )
 
+        # -------- group structure (konsernstruktur: 404 for a company outside any registered group) --------
+        group_checked = False
+        if client is not None and not (ctx.shared or {}).get("registry_only"):
+            resp = client.get(BRREG_GROUP.format(org=org), org=org, purpose="registry_group", accept="application/json", respect_robots=False)
+            if resp.ok:
+                try:
+                    group_structure_claims(builder, _json(resp), resp, org)
+                    group_checked = True
+                except Exception as exc:
+                    errors.append({"stage": "registry_group", "error": str(exc)})
+            elif resp.status in (404, 410):
+                group_checked = True
+                builder.note_checked("group", BRREG_GROUP.format(org=org))
+
         # -------- group --------
         group_claims = [c for c in builder.claims if c.family == "group"]
         group_sources = list(dict.fromkeys([BRREG_ENTITY.format(org=org)] + builder.sources_checked.get("group", [])))
         if group_claims:
             families["group"] = FamilyState(family="group", availability="available", sources_checked=group_sources, claim_count=len(group_claims))
-        elif families.get("financials") is not None and families["financials"].availability == "failed":
+        elif families.get("financials") is not None and families["financials"].availability == "failed" and not group_checked:
             # The parent-company flag comes from the accounts; unread accounts mean "not checked".
             families["group"] = FamilyState(family="group", availability="failed", reason="annual accounts unavailable this run", sources_checked=group_sources)
         elif families.get("financials") is not None and "filing layout" in (families["financials"].reason or ""):
             families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship in registry data; the accounts (parent-company flag) are not served by the register API", sources_checked=group_sources)
         else:
-            families["group"] = FamilyState(family="group", availability="not_available", reason="no parent relationship or parent-company flag in registry data", sources_checked=group_sources)
+            families["group"] = FamilyState(family="group", availability="not_available", reason="not part of a registered group (register group structure) and no parent-company flag in the accounts", sources_checked=group_sources)
 
         ctx.registry["subunits"] = subunit_facts
         shared = {"registry_facts": registry_facts(ctx, builder=builder, entity_body=entity_body, bulk_row=bulk_row, subunit_facts=subunit_facts)}
 
         return ConnectorResult(claims=builder.claims, evidence=list(builder.evidence.values()), families=families, errors=errors, shared=shared)
+
+
+def _group_node_quote(text: str, org: str) -> str | None:
+    """Verbatim text of one group-tree node: from its "dato" key to its parent's org number.
+
+    A node's keys after "children" are scalars and small objects, so this run is contiguous in the raw
+    JSON and never includes the node's descendants.
+    """
+    marker = f'"organisasjonsnummer":"{org}","parentNavn":'
+    at = text.find(marker)
+    if at < 0:
+        return None
+    start = text.rfind('"dato":', 0, at)
+    end_key = text.find('"parentOrganisasjonsnummer":"', at)
+    if start < 0 or end_key < 0:
+        return None
+    end = text.find('"', end_key + len('"parentOrganisasjonsnummer":"'))
+    return text[start:end + 1] if end > 0 else None
+
+
+def _group_root_quote(text: str) -> str | None:
+    """Verbatim text of the tree's top entity: its keys follow its "children" list at the end of the body."""
+    start = text.rfind('"navn":')
+    end = text.rfind("}")
+    return text[start:end] if 0 <= start < end else None
+
+
+def group_structure_claims(builder: "_ClaimBuilder", body: dict[str, Any], response: Any, org: str) -> None:
+    """Parent, top parent and direct subsidiaries from the register's group structure (konsernstruktur)."""
+    raw = response.body.decode("utf-8", "replace") if getattr(response, "body", None) else ""
+    nodes: list[dict[str, Any]] = []
+
+    def walk(node: dict[str, Any]) -> None:
+        for child in node.get("children") or []:
+            if isinstance(child, dict):
+                nodes.append(child)
+                walk(child)
+
+    walk(body)
+    root_org = str(body.get("organisasjonsnummer") or "")
+
+    def ev(span: str, quote: str | None) -> str:
+        return builder.add_evidence(
+            source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
+            extraction_method="brreg_group_structure_v1", span=span, content_sha256=response.content_sha256,
+            final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
+            snapshot_ref=response.snapshot_ref, quote=quote,
+        )
+
+    def link_value(node: dict[str, Any], name_key: str, org_key: str) -> dict[str, Any]:
+        return {
+            "name": node.get(name_key), "organisation_number": node.get(org_key),
+            "ownership": node.get("grunnlag"), "relation": _get(node, "knytningsform", "beskrivelse"),
+            "registered": node.get("dato"),
+        }
+
+    ours = next((n for n in nodes if str(n.get("organisasjonsnummer")) == org), None)
+    if ours is not None and ours.get("parentOrganisasjonsnummer"):
+        builder.add_claim(
+            family="group", field="parent_company", value=link_value(ours, "parentNavn", "parentOrganisasjonsnummer"),
+            value_key=str(ours["parentOrganisasjonsnummer"]), effective_date=ours.get("dato"),
+            evidence_ids=[ev(f"$..[organisasjonsnummer={org}]", _group_node_quote(raw, org))],
+        )
+        if root_org and root_org != str(ours["parentOrganisasjonsnummer"]):
+            builder.add_claim(
+                family="group", field="ultimate_parent",
+                value={"name": body.get("navn"), "organisation_number": root_org},
+                value_key=root_org, evidence_ids=[ev("$.organisasjonsnummer", _group_root_quote(raw))],
+            )
+    children = [n for n in nodes if str(n.get("parentOrganisasjonsnummer")) == org]
+    for child in sorted(children, key=lambda n: str(n.get("organisasjonsnummer")))[:GROUP_MAX_SUBSIDIARIES]:
+        child_org = str(child.get("organisasjonsnummer"))
+        builder.add_claim(
+            family="group", field="subsidiary", value=link_value(child, "navn", "organisasjonsnummer"),
+            value_key=child_org, effective_date=child.get("dato"),
+            evidence_ids=[ev(f"$..[organisasjonsnummer={child_org}]", _group_node_quote(raw, child_org))],
+        )
+    if nodes:
+        builder.note_checked("group", response.url)
 
 
 def _unsupported_accounts_layout(response: Any) -> str | None:

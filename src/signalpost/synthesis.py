@@ -661,6 +661,32 @@ def _sentence_leadership_detail(envelope: Envelope) -> SummarySentence | None:
     return SummarySentence(text="It has " + _join(parts) + ".", claim_ids=claim_ids)
 
 
+def _sentence_group(envelope: Envelope) -> SummarySentence | None:
+    """Ownership from the register's group structure: direct parent, top parent and subsidiaries."""
+    parent = _single(envelope, "group", "parent_company")
+    top = _single(envelope, "group", "ultimate_parent")
+    subs = _current_claims(envelope, "group", "subsidiary")
+    parts: list[str] = []
+    claim_ids: list[str] = []
+    if parent is not None and isinstance(parent.value, dict):
+        share = parent.value.get("ownership")
+        owned = f"{share} owned" if share else "owned"
+        parts.append(f"is {owned} by {parent.value.get('name')} ({parent.value.get('organisation_number')})")
+        claim_ids.append(parent.claim_id)
+        if top is not None and isinstance(top.value, dict):
+            parts.append(f"part of the group headed by {top.value.get('name')}")
+            claim_ids.append(top.claim_id)
+    if subs:
+        names = [str(c.value.get("name")) for c in subs[:3] if isinstance(c.value, dict) and c.value.get("name")]
+        more = f", including {_join(names)}" if names else ""
+        parts.append(f"has {_count(len(subs), 'registered subsidiary', 'registered subsidiaries')}{more}")
+        claim_ids.extend(c.claim_id for c in subs)
+    if not parts:
+        return None
+    name = envelope.legal_name or "The company"
+    return SummarySentence(text=f"In the register's group structure, {name} " + _join(parts) + ".", claim_ids=claim_ids)
+
+
 def _plain(value: Any) -> str:
     if isinstance(value, dict):
         if "amount" in value:
@@ -708,6 +734,7 @@ def build_summary(envelope: Envelope) -> Summary:
         _sentence_financial_health(envelope),
         _sentence_trend(envelope),
         _sentence_filing_lag(envelope),
+        _sentence_group(envelope),
         _sentence_leadership(envelope),
         _sentence_leadership_detail(envelope),
         _sentence_footprint(envelope),
