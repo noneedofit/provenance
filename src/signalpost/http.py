@@ -315,12 +315,14 @@ class BudgetedHttpClient:
         )
 
     def post_json(
-        self, url: str, payload: Any, *, org: str | None = None, purpose: str = "", timeout: float = 20.0
+        self, url: str, payload: Any, *, org: str | None = None, purpose: str = "", timeout: float = 20.0,
+        headers: dict[str, str] | None = None, snapshot: bool = True,
     ) -> Response:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         return self._request(
             "POST", url, org=org, purpose=purpose, accept="application/json", max_bytes=2_000_000,
-            timeout=timeout, respect_robots=False, max_redirects=0, snapshot=True, body=body,
+            timeout=timeout, respect_robots=False, max_redirects=0, snapshot=snapshot, body=body,
+            extra_headers={"Content-Type": "application/json", **(headers or {})},
         )
 
     @property

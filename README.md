@@ -156,7 +156,7 @@ set is 1,500):
   `SIGNALPOST_NAV_SNAPSHOT=0` walks the full NAV window live instead. `SIGNALPOST_WEB_DEBUG=<file>`
   appends every website candidate verdict to a file for diagnostics (not part of the output).
 - Optional search provider: with `BRAVE_SEARCH_API_KEY` set (Brave Search API, as recommended in the
-  starter kit), one query per company without an org-number-keyed website nominates up to 3 candidate
+  starter kit; `SERPER_API_KEY` or `TAVILY_API_KEY` are used instead when no Brave key is set), one query per company without an org-number-keyed website nominates up to 3 candidate
   domains (`SIGNALPOST_SEARCH_RPS`, default 1/s; `SIGNALPOST_SEARCH_MAX`, default unlimited). Search only
   generates candidates: each must pass the same live verification as a name guess, including a hard
   signal, and no search output is stored as evidence. Without the key no search request is made.
