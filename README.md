@@ -161,7 +161,9 @@ set is 1,500):
   generates candidates: each must pass the same live verification as a name guess, including a hard
   signal, and no search output is stored as evidence. Without the key no search request is made.
 
-Measured: 1,500 companies drawn like the scored population (account filers, 60% with registered staff)
+Measured on 19 Oct 2026 (with group structure and earlier filed years): 1,000 companies drawn like the
+scored population took 29.7 minutes and 14,063 requests in one run with the defaults, 0 deadline or budget
+hits, 998 completed and 2 partial, peak memory 699 MB. Earlier: 1,500 companies drawn like the scored population (account filers, 60% with registered staff)
 took 28 minutes and about 19,700 requests (13 per company) in one run with the defaults, with no deadline
 or budget hits and all 1,500 completed. 1,500 random register companies took 25–28 minutes and about
 14,500 requests (peak memory 738 MB); a second, separate run of those gave identical facts for 1,497, the
