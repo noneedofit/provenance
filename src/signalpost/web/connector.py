@@ -71,7 +71,8 @@ def _previous_site_domain(ctx: Any) -> str | None:
     previous = getattr(ctx, "previous", None) or {}
     envelope = previous.get("last_envelope") or {}
     for claim in envelope.get("claims", []):
-        if claim.get("field") == "official_website" and claim.get("status") == "current" and claim.get("relationship") in (None, "exact"):
+        # Any website published last run (exact or related): a fetch failure this run must not erase it.
+        if claim.get("field") == "official_website" and claim.get("status") == "current" and claim.get("availability") in (None, "available", "ambiguous"):
             value = claim.get("value") or {}
             if isinstance(value, dict) and value.get("domain"):
                 return str(value["domain"]).lower()
@@ -196,20 +197,32 @@ _DEBUG_LOCK = threading.Lock()
 
 
 def _previous_site_unreachable(ctx: Any, attempts: list[dict]) -> bool:
+    """Last run's website could not be read in full this run: its homepage or any page on it hit a
+    connection-level or server error. Its verdict could then differ for that reason alone."""
     domain = _previous_site_domain(ctx)
     if not domain:
         return False
-    return any(
+    if any(
         a.get("domain", "").lower() == domain and a.get("status") in ("unreachable", "error") and _transient(a.get("reason"))
         for a in attempts
-    )
+    ):
+        return True
+    client = getattr(ctx, "client", None)
+    for entry in getattr(client, "request_log", None) or []:
+        if entry.org != ctx.org or not entry.error or entry.purpose == "robots":
+            continue
+        host = urllib.parse.urlsplit(entry.url).hostname or ""
+        if (registered_domain(host) or "").lower() == domain and _transient(entry.error):
+            return True
+    return False
 
 
 def _transient(reason: Any) -> bool:
     """Connection-level or server-side failures; a 404 or DNS failure means the site may really be gone."""
     text = str(reason or "")
     return (text in ("ssl_error", "network_error", "timeout", "http_429", "bot_challenge")
-            or text.startswith("http_5") or text.startswith("URLError"))
+            or text.startswith(("http_5", "URLError", "ConnectionReset", "ConnectionAborted", "RemoteDisconnected",
+                                "TimeoutError", "IncompleteRead", "BrokenPipe", "socket.timeout")))
 
 
 # Candidate sources that tie a domain to this organisation number before any page is read.

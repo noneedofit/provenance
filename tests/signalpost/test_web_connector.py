@@ -484,3 +484,24 @@ def test_a_published_homepage_is_written_the_same_whichever_source_found_it():
     assert _without_default_port("https://www.dingullsmed.no") == "https://www.dingullsmed.no/"
     assert _without_default_port("https://peab.no:443/bygg/") == "https://peab.no/bygg/"
     assert _without_default_port("https://example.no/?lang=no") == "https://example.no/?lang=no"
+
+
+def test_previous_related_site_with_a_failed_subpage_is_kept_not_dropped():
+    """fossberg.no: last run published a related site; this run its contact page reset the connection,
+    so the verdict could not be repeated. That is 'not checked', not 'gone'."""
+    from types import SimpleNamespace
+
+    from signalpost.http import RequestLogEntry
+    from signalpost.web.connector import _previous_site_unreachable, _transient
+
+    previous = {"last_envelope": {"claims": [{
+        "field": "official_website", "status": "current", "availability": "ambiguous", "relationship": "brand",
+        "value": "https://fossberg.no/",
+    }]}}
+    log = [RequestLogEntry(purpose="web_secondary_kontakt", org="933337529", url="https://fossberg.no/kontakt/",
+                           status=0, requests_used=1, elapsed_ms=10, error="ConnectionResetError: [Errno 54] Connection reset by peer")]
+    ctx = SimpleNamespace(org="933337529", previous=previous, client=SimpleNamespace(request_log=log))
+    assert _transient("ConnectionResetError: [Errno 54] Connection reset by peer")
+    assert _previous_site_unreachable(ctx, attempts=[])
+    other = SimpleNamespace(org="933337529", previous=previous, client=SimpleNamespace(request_log=[]))
+    assert not _previous_site_unreachable(other, attempts=[])

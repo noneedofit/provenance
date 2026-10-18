@@ -135,6 +135,8 @@ def build_row(envelope: dict, page_url: str) -> dict:
     if revenue_claim and isinstance(revenue_claim.get("value"), dict):
         revenue = revenue_claim["value"].get("amount")
         revenue_currency = revenue_claim["value"].get("currency", "NOK")
+    group_revenue_claim = field_value(fin, "financials", "group_revenue")
+    group_revenue = group_revenue_claim["value"].get("amount") if group_revenue_claim and isinstance(group_revenue_claim.get("value"), dict) else None
     result_claim = field_value(fin, "financials", "annual_result")
     result = result_claim["value"].get("amount") if result_claim and isinstance(result_claim.get("value"), dict) else None
     period = (revenue_claim or result_claim or {}).get("reporting_period") or {}
@@ -174,6 +176,8 @@ def build_row(envelope: dict, page_url: str) -> dict:
         "revenue_source": source(revenue_claim),
         "result": result,
         "result_source": source(result_claim),
+        "group_revenue": group_revenue,
+        "group_revenue_source": source(group_revenue_claim),
         "financial_year": financial_year,
         "employees_source": employees_source,
         "website": website_url,
