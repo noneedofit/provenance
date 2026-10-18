@@ -412,7 +412,12 @@ def run_batch(
             }
             envelope.run.completed_at = utc_now()
             org_requests = budget.org_used(org)
-            envelope.operations = Operations(requests=org_requests, bytes=0, runtime_ms=int((time.monotonic() - t_start) * 1000), third_party_cost_usd=0.0)
+            from .web import search as search_mod
+
+            envelope.operations = Operations(
+                requests=org_requests, bytes=0, runtime_ms=int((time.monotonic() - t_start) * 1000),
+                third_party_cost_usd=search_mod.cost_usd(org),
+            )
             return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
         except Exception as exc:  # last-resort: still emit exactly one envelope for this org
             fam_states = {fam: FamilyState(family=fam, availability="failed", reason="crash") for fam in FAMILIES}

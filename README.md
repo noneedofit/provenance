@@ -36,7 +36,11 @@ point into that company's `evidence` list (source URL, retrieval time, hash and 
 ## What it actually does
 
 - Anchors identity in the Brønnøysund bulk registry (`data.brreg.no`), then calls the live entity,
-  roles, subunits and financial-accounts APIs for the company's registry facts.
+  roles, subunits, group-structure and financial-accounts APIs for the company's registry facts: every
+  filed year the accounts API returns (latest as `financials`, earlier years as `financial_history`), a
+  parent company's consolidated group accounts (`group_*`), one fact per filed year with its official
+  accounts copy, and the registered group (direct parent with ownership share, top parent, subsidiaries).
+  Register quotes are the exact JSON text of the response, so each one can be found word for word.
 - Generates website candidates from registry data, Wikidata, NAV job ads, two bundled open places
   datasets (Overture Maps places matched on the registry phone/e-mail or name and postcode, and
   OpenStreetMap features tagged with the org number) and name guesses, crawls each one, and verifies it
@@ -52,8 +56,10 @@ point into that company's `evidence` list (source URL, retrieval time, hash and 
 - Diffs every run against the previous stored profile for the same organisation, emitting `Change`
   events only for genuine differences and carrying forward claims whose source could not be re-checked
   this run.
-- Builds deterministic English summary sentences from claims only (no LLM), and a static, offline-capable
-  HTML viewer.
+- Builds a deterministic English summary from claims only (no LLM): a one-line verdict, what it does,
+  scale, margin and equity ratio, multi-year revenue/result trends (group figures for a parent company),
+  ownership, leadership, footprint, hiring, changes since the previous run, and what is unknown and why.
+  Every sentence cites the claims it rests on. Plus a static, offline-capable HTML viewer.
 - Enforces a global outbound request budget (every redirect hop and retry counts), a wall-clock deadline,
   and an SSRF guard on every fetched URL.
 
@@ -149,6 +155,11 @@ set is 1,500):
   (rebuilt with `scripts/build_places_snapshot.py` and `scripts/build_nav_snapshot.py`);
   `SIGNALPOST_NAV_SNAPSHOT=0` walks the full NAV window live instead. `SIGNALPOST_WEB_DEBUG=<file>`
   appends every website candidate verdict to a file for diagnostics (not part of the output).
+- Optional search provider: with `BRAVE_SEARCH_API_KEY` set (Brave Search API, as recommended in the
+  starter kit), one query per company without an org-number-keyed website nominates up to 3 candidate
+  domains (`SIGNALPOST_SEARCH_RPS`, default 1/s; `SIGNALPOST_SEARCH_MAX`, default unlimited). Search only
+  generates candidates: each must pass the same live verification as a name guess, including a hard
+  signal, and no search output is stored as evidence. Without the key no search request is made.
 
 Measured: 1,500 companies drawn like the scored population (account filers, 60% with registered staff)
 took 28 minutes and about 19,700 requests (13 per company) in one run with the defaults, with no deadline
@@ -216,7 +227,8 @@ itself.
 | Component | What | Licence / terms |
 |---|---|---|
 | Language model | none — every claim and summary sentence is built deterministically from fetched evidence; no LLM is called anywhere in the pipeline | n/a |
-| Brønnøysund Enhetsregisteret (bulk + live) | company identity, roles, subunits, group | NLOD 2.0 |
+| Brønnøysund Enhetsregisteret (bulk + live) | company identity, roles, subunits, group structure (`konsernstruktur`) | NLOD 2.0 |
+| Brave Search API (optional, only with `BRAVE_SEARCH_API_KEY`) | website candidates only, never evidence; results kept in memory only | Brave Search API terms; key supplied by the evaluator |
 | Brønnøysund Regnskapsregisteret | annual accounts | NLOD 2.0 |
 | NAV `pam-stilling-feed` (bundled active-ads snapshot + live catch-up) | job postings | NLOD; keyless public feed token. The arbeidsplassen search fallback is off by default (`SIGNALPOST_NAV_SEARCH_MAX`) |
 | Wikidata (bundled snapshot; live SPARQL opt-in) | company websites/social profile cache | CC0 |
@@ -244,4 +256,4 @@ fixed official URLs and are counted separately as `setup_requests` in `run-repor
 
 ## Expected cost per run
 
-**$0** for a 1,000-company batch or any other size. No third-party API spend; `run-report.json`'s `third_party_cost_usd` is always `0.0`.
+**$0** for a 1,000-company batch or any other size without a search key: no third-party API spend, and `run-report.json`'s `third_party_cost_usd` is `0.0`. With the optional `BRAVE_SEARCH_API_KEY`, at most one search per company (only companies with no org-number-keyed website candidate), so at most about $5 per 1,000 companies at Brave's list price; the report states the actual figure.

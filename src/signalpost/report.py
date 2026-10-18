@@ -58,5 +58,5 @@ def build_report(
         "budget_exhausted_count": budget_exhausted_count,
         "cache_versions": cache_versions,
         "validation": validation,
-        "third_party_cost_usd": 0.0,
+        "third_party_cost_usd": round(sum(env.operations.third_party_cost_usd for env in envelopes), 4),
     }

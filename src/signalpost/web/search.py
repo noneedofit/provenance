@@ -9,7 +9,8 @@ candidate domains are taken; nothing from the provider becomes evidence.
 Configuration (all optional; without a key this module does nothing and makes no request):
 - `BRAVE_SEARCH_API_KEY` (or `BRAVE_API_KEY`): the subscription token, sent as a header, never logged.
 - `SIGNALPOST_SEARCH_RPS`: request rate limit across all workers (default 1 per second).
-- `SIGNALPOST_SEARCH_MAX`: maximum searches in one run (default: one per company in the batch).
+- `SIGNALPOST_SEARCH_MAX`: maximum searches in one run (default: unlimited; at most one per company).
+- `SIGNALPOST_SEARCH_COST_USD`: price per search for the cost report (default 0.005, Brave's list price).
 """
 from __future__ import annotations
 
@@ -44,7 +45,7 @@ SKIP_DOMAINS: frozenset[str] = frozenset({
 })
 
 _LOCK = threading.Lock()
-_STATE = {"last": 0.0, "used": 0}
+_STATE: dict = {"last": 0.0, "used": 0, "per_org": {}}
 
 
 def api_key() -> str | None:
@@ -79,6 +80,21 @@ def reset_for_tests() -> None:
     with _LOCK:
         _STATE["last"] = 0.0
         _STATE["used"] = 0
+        _STATE["per_org"] = {}
+
+
+def _price() -> float:
+    try:
+        return max(0.0, float(os.environ.get("SIGNALPOST_SEARCH_COST_USD") or 0.005))
+    except ValueError:
+        return 0.005
+
+
+def cost_usd(org: str | None = None) -> float:
+    """Declared third-party cost of the searches made so far (for one company, or the whole run)."""
+    with _LOCK:
+        count = _STATE["per_org"].get(org, 0) if org is not None else _STATE["used"]
+    return round(count * _price(), 4)
 
 
 def build_query(name: str, municipality: str | None) -> str:
@@ -117,6 +133,8 @@ def search_candidates(client: Any, org: str, name: str, municipality: str | None
     key = api_key()
     if not key or client is None or not name or not _rate_wait():
         return []
+    with _LOCK:
+        _STATE["per_org"][org] = _STATE["per_org"].get(org, 0) + 1
     params = {"q": build_query(name, municipality), "country": "NO", "search_lang": "nb", "count": str(MAX_RESULTS)}
     url = ENDPOINT + "?" + urllib.parse.urlencode(params)
     try:
