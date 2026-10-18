@@ -199,7 +199,7 @@ def _financial_history_claims(envelope: Envelope, field_key: str) -> list[Claim]
 def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
     desc = _single(envelope, "description", "company_description")
     if desc is not None and isinstance(desc.value, str) and desc.value.strip():
-        text = desc.value.strip()
+        text = " ".join(desc.value.split())
         quote = text if len(text) <= 200 else text[:197].rstrip() + "..."
         return SummarySentence(
             text=f'{envelope.legal_name or "The company"} describes itself on its website as: "{quote.rstrip(".")}".',
@@ -253,6 +253,26 @@ def _sentence_legal_form(envelope: Envelope) -> SummarySentence | None:
     return SummarySentence(text=f"{name} " + ", ".join(parts) + ".", claim_ids=claim_ids)
 
 
+def _sentence_group_scale(envelope: Envelope) -> SummarySentence | None:
+    """For a parent company: the consolidated group's revenue and result, kept apart from its own accounts."""
+    revenue = _single(envelope, "financials", "group_revenue")
+    result = _single(envelope, "financials", "group_annual_result")
+    if revenue is None and result is None:
+        return None
+    parts, claim_ids = [], []
+    if revenue is not None:
+        parts.append(f"revenue of {format_money(revenue.value)}")
+        claim_ids.append(revenue.claim_id)
+    if result is not None:
+        parts.append(f"an annual result of {format_money(result.value)}")
+        claim_ids.append(result.claim_id)
+    year = _period_label(revenue or result) or "its latest filed year"
+    return SummarySentence(
+        text=f"As a parent company it also files consolidated group accounts: the group reported " + _join(parts) + f" for {year}.",
+        claim_ids=claim_ids,
+    )
+
+
 def _sentence_size(envelope: Envelope) -> SummarySentence | None:
     employees = _single(envelope, "identity", "employees")
     revenue = _single(envelope, "financials", "revenue")
@@ -280,12 +300,9 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
         else:
             parts.append(f"an operating result of {format_money(op_result.value)} ({period})")
         claim_ids.append(op_result.claim_id)
-    text = "It " + _join(parts) + "."
+    own = " in its own (parent-company) accounts" if _single(envelope, "financials", "group_revenue") else ""
+    text = "It " + _join(parts) + own + "."
 
-    trend = _sentence_revenue_trend(envelope, revenue)
-    if trend is not None:
-        text = text + " " + trend.text
-        claim_ids = claim_ids + trend.claim_ids
     return SummarySentence(text=text, claim_ids=claim_ids)
 
 
@@ -422,25 +439,283 @@ def _sentence_change(envelope: Envelope, change) -> SummarySentence:
     return SummarySentence(text=text, claim_ids=[change.claim_id])
 
 
+# --- Interpretation: conclusions drawn only from cited claims ------------------------------------------
+
+def _amount_of(claim: Claim | None) -> float | None:
+    if claim is None:
+        return None
+    try:
+        return float(_scalar(claim.value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _employee_count(envelope: Envelope) -> tuple[int | None, Claim | None]:
+    claim = _single(envelope, "identity", "employees")
+    if claim is None:
+        return None, None
+    value = claim.value.get("count") if isinstance(claim.value, dict) else claim.value
+    try:
+        return int(value), claim
+    except (TypeError, ValueError):
+        return None, claim
+
+
+def _years_since(date_text: Any, now_text: str | None) -> int | None:
+    try:
+        year, month, day = (int(x) for x in str(date_text)[:10].split("-"))
+        n_year, n_month, n_day = (int(x) for x in str(now_text)[:10].split("-"))
+    except (TypeError, ValueError):
+        return None
+    return n_year - year - ((n_month, n_day) < (month, day))
+
+
+def _size_word(employees: int | None, revenue: float | None) -> str | None:
+    """EU-style size band from registered staff (revenue only when staff is unknown)."""
+    if employees is not None:
+        if employees >= 250:
+            return "large"
+        if employees >= 50:
+            return "medium-sized"
+        if employees >= 10:
+            return "small"
+        return "micro" if employees >= 1 else None
+    if revenue is not None:
+        if revenue >= 500_000_000:
+            return "large"
+        if revenue >= 100_000_000:
+            return "medium-sized"
+        if revenue >= 20_000_000:
+            return "small"
+    return None
+
+
+def _basis(envelope: Envelope) -> tuple[str, str]:
+    """('group_', 'The group's') when consolidated group accounts exist, else ('', 'Its')."""
+    if _single(envelope, "financials", "group_revenue") or _single(envelope, "financials", "group_annual_result"):
+        return "group_", "The group's"
+    return "", "Its"
+
+
+def _sentence_overview(envelope: Envelope) -> SummarySentence | None:
+    """One-line verdict: age, size, industry, place, profitability and hiring, each from a cited claim."""
+    name = envelope.legal_name or "The company"
+    claim_ids: list[str] = []
+    founded = _single(envelope, "identity", "founded_date")
+    age = _years_since(founded.value, envelope.run.started_at) if founded is not None else None
+    employees, emp_claim = _employee_count(envelope)
+    prefix, _ = _basis(envelope)
+    revenue = _single(envelope, "financials", prefix + "revenue")
+    result = _single(envelope, "financials", prefix + "annual_result")
+    nace = _single(envelope, "identity", "nace_label")
+    municipality = _single(envelope, "identity", "municipality")
+    size = _size_word(employees, _amount_of(revenue))
+    descriptor = []
+    if age is not None:
+        descriptor.append("newly founded" if age < 2 else "young" if age < 5 else "established")
+        claim_ids.append(founded.claim_id)
+    if size:
+        descriptor.append(size)
+        claim_ids.append((emp_claim or revenue).claim_id)
+    what = "company"
+    if nace is not None:
+        what = f'company in "{_display(nace.value).lower()}"'
+        claim_ids.append(nace.claim_id)
+    where = ""
+    if municipality is not None:
+        where = f" based in {_display(municipality.value).title()}"
+        claim_ids.append(municipality.claim_id)
+    if not claim_ids:
+        return None
+    text = f"In short: {name} is {_article(' '.join(descriptor + [what]))}{where}"
+    tail = []
+    net = _amount_of(result)
+    if net is not None and result is not None:
+        year = _period_label(result) or "its latest filed year"
+        whose = " at group level" if prefix else ""
+        tail.append(f"{'profitable' if net > 0 else 'loss-making' if net < 0 else 'breaking even'}{whose} in {year}")
+        claim_ids.append(result.claim_id)
+    jobs = _current_claims(envelope, "jobs", "job_posting")
+    jobs_state = envelope.families.get("jobs")
+    if jobs:
+        tail.append(f"hiring ({_count(len(jobs), 'open ad')} on NAV)")
+        claim_ids.extend(c.claim_id for c in jobs)
+    elif jobs_state is not None and jobs_state.availability == "not_available":
+        tail.append("with no open NAV job ads under its org number")
+    if tail:
+        text += ", " + _join(tail)
+    return SummarySentence(text=text + ".", claim_ids=claim_ids)
+
+
+def _sentence_financial_health(envelope: Envelope) -> SummarySentence | None:
+    """Margin, equity ratio and debt from the latest filed accounts, with the year they refer to."""
+    nace = _single(envelope, "identity", "nace_label")
+    nace_code = str((nace.value or {}).get("code") or "") if nace is not None and isinstance(nace.value, dict) else ""
+    if nace_code[:2] in ("64", "65", "66"):
+        # Banks, insurers and other financial firms: margin and equity-ratio rules of thumb do not apply.
+        return None
+    prefix, whose = _basis(envelope)
+    revenue = _single(envelope, "financials", prefix + "revenue")
+    operating = _single(envelope, "financials", prefix + "operating_result")
+    equity = _single(envelope, "financials", prefix + "equity")
+    assets = _single(envelope, "financials", prefix + "total_assets")
+    rev, op, eq, tot = _amount_of(revenue), _amount_of(operating), _amount_of(equity), _amount_of(assets)
+    parts: list[str] = []
+    claim_ids: list[str] = []
+    if rev and op is not None and rev > 0:
+        parts.append(f"an operating margin of {op / rev * 100:.1f}%")
+        claim_ids += [revenue.claim_id, operating.claim_id]
+    if eq is not None and tot:
+        ratio = eq / tot * 100
+        if eq < 0:
+            parts.append(f"negative equity of {format_money(equity.value)} (liabilities exceed assets)")
+        else:
+            strength = "a strong" if ratio >= 40 else "a moderate" if ratio >= 15 else "a thin"
+            parts.append(f"{strength} equity ratio of {ratio:.0f}% of total assets")
+        claim_ids += [equity.claim_id, assets.claim_id]
+    if not parts:
+        return None
+    year = _period_label(revenue or equity) or "the latest filed year"
+    kind = "consolidated accounts" if prefix else "accounts"
+    return SummarySentence(text=f"{whose} {year} {kind} show " + _join(parts) + ".", claim_ids=claim_ids)
+
+
+def _sentence_trend(envelope: Envelope) -> SummarySentence | None:
+    """Revenue and annual result across every filed year this run read (oldest to latest)."""
+    sentences: list[str] = []
+    claim_ids: list[str] = []
+    prefix, _ = _basis(envelope)
+    labels = (("revenue", "Group revenue" if prefix else "Revenue"), ("annual_result", "The group's annual result" if prefix else "The annual result"))
+    for field, label in labels:
+        latest = _single(envelope, "financials", prefix + field)
+        history = _financial_history_claims(envelope, prefix + field)
+        if latest is None or not history:
+            continue
+        series = history + [latest]
+        values = [(_period_label(c), _amount_of(c)) for c in series]
+        if any(v is None or y is None for y, v in values):
+            continue
+        first_year, first = values[0]
+        prev_year, prev = values[-2]
+        last_year, last = values[-1]
+        if field == "revenue":
+            pct = _pct_change(prev, last)
+            if pct is None:
+                continue
+            move = "rose" if pct > 0.5 else "fell" if pct < -0.5 else "was flat"
+            text = f"{label} {move}" + (f" {abs(pct):.1f}%" if move != "was flat" else "") + f" from {prev_year} to {last_year} ({format_money(prev)} to {format_money(last)})"
+            if len(values) > 2:
+                text += f"; it was {format_money(first)} in {first_year}"
+        else:
+            signs = ["profit" if v > 0 else "loss" if v < 0 else "zero" for _, v in values]
+            years = ", ".join(f"{y}: {format_money(v)}" for y, v in values)
+            if len(set(signs)) == 1:
+                text = f"{label} was a {signs[0]} in each of the {len(values)} filed years read ({years})"
+            else:
+                text = f"{label} went from a {signs[-2]} in {prev_year} to a {signs[-1]} in {last_year} ({years})"
+        sentences.append(text + ".")
+        claim_ids += [c.claim_id for c in series]
+    if not sentences:
+        return None
+    return SummarySentence(text=" ".join(sentences), claim_ids=claim_ids)
+
+
+def _sentence_filing_lag(envelope: Envelope) -> SummarySentence | None:
+    """Say so when the register lists a newer filed year than the figures this profile could read."""
+    filed = _single(envelope, "financial_history", "latest_filed_year")
+    revenue = _single(envelope, "financials", "revenue") or _single(envelope, "financials", "annual_result")
+    if filed is None or revenue is None:
+        return None
+    figures_year = _period_label(revenue)
+    filed_year = str(_display(filed.value))[:4]
+    if not figures_year or not filed_year.isdigit() or filed_year <= figures_year:
+        return None
+    return SummarySentence(
+        text=(
+            f"The register lists accounts filed for {filed_year}, but their figures were not yet published in the "
+            f"accounts API; the latest figures shown are for {figures_year}."
+        ),
+        claim_ids=[filed.claim_id, revenue.claim_id],
+    )
+
+
+def _sentence_leadership_detail(envelope: Envelope) -> SummarySentence | None:
+    """Board size and when the register last recorded a leadership change."""
+    roles = _current_claims(envelope, "leadership", "role")
+    board = [c for c in roles if _role_code(c) in ("LEDE", "MEDL", "NEST")]
+    changed = sorted(_current_claims(envelope, "leadership", "roles_last_changed"), key=lambda c: str(c.value), reverse=True)
+    parts: list[str] = []
+    claim_ids: list[str] = []
+    if len(board) > 1:
+        parts.append(f"a board of {len(board)}")
+        claim_ids += [c.claim_id for c in board]
+    if changed:
+        months = None
+        years = _years_since(changed[0].value, envelope.run.started_at)
+        if years is not None and years < 1:
+            months = True
+        parts.append(f"leadership last changed in the register on {changed[0].value}" + (" (within the past year)" if months else ""))
+        claim_ids.append(changed[0].claim_id)
+    if not parts:
+        return None
+    return SummarySentence(text="It has " + _join(parts) + ".", claim_ids=claim_ids)
+
+
+def _plain(value: Any) -> str:
+    if isinstance(value, dict):
+        if "amount" in value:
+            return format_money(value)
+        if "title" in value:
+            return str(value["title"])
+        if "name" in value and "role_label" in value:
+            return f"{value['role_label']} {value['name']}"
+        return _display(value)
+    return _display(value) if value is not None else "nothing"
+
+
+def _sentence_changes(envelope: Envelope) -> list[SummarySentence]:
+    previous = envelope.run.previous_run_id
+    if not envelope.changes:
+        if previous:
+            return [SummarySentence(text=f"No material changes since the previous check (run {previous}).", claim_ids=[])]
+        return []
+    out = []
+    for change in envelope.changes[:8]:
+        field = change.field.replace("_", " ")
+        if change.previous_value is not None and change.current_value is not None:
+            text = f"Changed since the previous check: {field} went from {_plain(change.previous_value)} to {_plain(change.current_value)}."
+        elif change.current_value is not None:
+            text = f"New since the previous check: {field} {_plain(change.current_value)}."
+        else:
+            text = f"No longer found since the previous check: {field} {_plain(change.previous_value)}."
+        out.append(SummarySentence(text=text, claim_ids=[change.claim_id] if change.claim_id else []))
+    if len(envelope.changes) > 8:
+        out.append(SummarySentence(text=f"{len(envelope.changes) - 8} further changes are listed in the change log.", claim_ids=[]))
+    return out
+
+
 # --- Public API -----------------------------------------------------------------------------------
 
 def build_summary(envelope: Envelope) -> Summary:
     sentences: list[SummarySentence] = []
 
-    what_it_does = _sentence_what_it_does(envelope)
-    legal = _sentence_legal_form(envelope)
-    size = _sentence_size(envelope)
-    leadership = _sentence_leadership(envelope)
-    footprint = _sentence_footprint(envelope)
-    hiring = _sentence_hiring(envelope)
-    rating = _sentence_rating(envelope)
-
-    for sentence in (what_it_does, legal, size, leadership, footprint, hiring, rating):
-        if sentence is not None:
-            sentences.append(sentence)
-
-    for change in envelope.changes:
-        sentences.append(_sentence_change(envelope, change))
+    ordered = (
+        _sentence_overview(envelope),
+        _sentence_what_it_does(envelope),
+        _sentence_legal_form(envelope),
+        _sentence_size(envelope),
+        _sentence_group_scale(envelope),
+        _sentence_financial_health(envelope),
+        _sentence_trend(envelope),
+        _sentence_filing_lag(envelope),
+        _sentence_leadership(envelope),
+        _sentence_leadership_detail(envelope),
+        _sentence_footprint(envelope),
+        _sentence_hiring(envelope),
+        _sentence_rating(envelope),
+    )
+    sentences.extend(sentence for sentence in ordered if sentence is not None)
+    sentences.extend(_sentence_changes(envelope))
 
     if not sentences:
         # Sparse shell: fall back to whatever identity facts exist.
@@ -473,7 +748,7 @@ def build_summary(envelope: Envelope) -> Summary:
         reason = state.reason or state.availability
         unknowns.append(f"{label.capitalize()}: {reason}")
 
-    return Summary(language="en", sentences=sentences, unknowns=unknowns, method="template_v1")
+    return Summary(language="en", sentences=sentences, unknowns=unknowns, method="template_v2")
 
 
 def summary_markdown(envelope: Envelope) -> str:

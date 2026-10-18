@@ -547,6 +547,56 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             family="financials", field=field, value={"amount": amount, "currency": currency}, value_key=field,
             reporting_period=period, evidence_ids=[eid],
         )
+    # Earlier filed years in the same response (the API returns up to three): published as financial history,
+    # each figure with its own reporting period, so trends rest on filed numbers rather than on a guess.
+    for record in company_records[1:]:
+        earlier_end = _get(record, "regnskapsperiode", "tilDato")
+        if record.get("regnskapstype") != latest.get("regnskapstype") or not earlier_end or earlier_end >= (period_end or ""):
+            continue
+        earlier_period = {"start": _get(record, "regnskapsperiode", "fraDato"), "end": earlier_end}
+        for field, path in _METRIC_PATHS.items():
+            amount = _get(record, *path)
+            if amount is None:
+                continue
+            eid = builder.add_evidence(
+                source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+                extraction_method="brreg_financials_v1", span=f"$[id={record.get('id')}]." + ".".join(path),
+                content_sha256=response.content_sha256, final_url=response.final_url,
+                redirect_chain=response.redirect_chain, http_status=response.status,
+                snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
+            )
+            builder.add_claim(
+                family="financial_history", field=field,
+                value={"amount": amount, "currency": record.get("valuta") or currency},
+                value_key=f"{field}|{earlier_end[:4]}", reporting_period=earlier_period, evidence_ids=[eid],
+            )
+    # A parent company also files consolidated group accounts (regnskapstype KONSERN): published as separate
+    # `group_*` figures so the group's scale is never confused with the parent's own (often holding) accounts.
+    group_records = [r for r in records if r.get("regnskapstype") == "KONSERN"]
+    if latest.get("regnskapstype") != "KONSERN":
+        for index, record in enumerate(group_records):
+            end = _get(record, "regnskapsperiode", "tilDato")
+            if not end:
+                continue
+            group_period = {"start": _get(record, "regnskapsperiode", "fraDato"), "end": end}
+            for field, path in _METRIC_PATHS.items():
+                amount = _get(record, *path)
+                if amount is None:
+                    continue
+                eid = builder.add_evidence(
+                    source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+                    extraction_method="brreg_financials_v1", span=f"$[id={record.get('id')}]." + ".".join(path),
+                    content_sha256=response.content_sha256, final_url=response.final_url,
+                    redirect_chain=response.redirect_chain, http_status=response.status,
+                    snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
+                )
+                builder.add_claim(
+                    family="financials" if index == 0 else "financial_history", field=f"group_{field}",
+                    value={"amount": amount, "currency": record.get("valuta") or currency},
+                    value_key=f"group_{field}" if index == 0 else f"group_{field}|{end[:4]}",
+                    reporting_period=group_period, evidence_ids=[eid],
+                    note="consolidated group accounts (KONSERN)",
+                )
     principles = latest.get("regnkapsprinsipper") if isinstance(latest.get("regnkapsprinsipper"), dict) else {}
     eid_meta = builder.add_evidence(
         source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,

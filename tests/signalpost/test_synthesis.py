@@ -47,7 +47,7 @@ def test_revenue_trend_percentage() -> None:
     envelope = make_envelope(run_id="run-1", claims=[prev, latest], evidence=[ev])
     summary = build_summary(envelope)
     joined = " ".join(s.text for s in summary.sentences)
-    assert "up 50.0%" in joined
+    assert "rose 50.0% from 2024 to 2025" in joined
 
 
 def test_unknowns_list_not_available_families() -> None:
@@ -85,7 +85,7 @@ def test_what_changed_sentence_cites_change_claim() -> None:
     change_sentences = [s for s in summary.sentences if "previous check" in s.text]
     assert len(change_sentences) == 1
     assert change_sentences[0].claim_ids == [claim.claim_id]
-    assert "run-2" in change_sentences[0].text
+    assert "went from Old Name AS to New Name AS" in change_sentences[0].text
 
 
 def test_sparse_shell_summary() -> None:
@@ -107,3 +107,18 @@ def test_summary_markdown_renders() -> None:
     md = summary_markdown(envelope)
     assert md.startswith("#")
     assert "AS" in md
+
+
+def test_parent_company_summary_uses_group_accounts() -> None:
+    ev = make_evidence("https://data.brreg.no/regnskapsregisteret/regnskap/" + ORG)
+    own = make_claim(family="financials", field="revenue", value={"amount": 914_000_000, "currency": "NOK"},
+                     evidence_ids=[ev.evidence_id], reporting_period=("2025-01-01", "2025-12-31"))
+    group = make_claim(family="financials", field="group_revenue", value={"amount": 31_992_000_000, "currency": "NOK"},
+                       evidence_ids=[ev.evidence_id], reporting_period=("2025-01-01", "2025-12-31"))
+    group_prev = make_claim(family="financial_history", field="group_revenue", value={"amount": 30_638_000_000, "currency": "NOK"},
+                            evidence_ids=[ev.evidence_id], reporting_period=("2024-01-01", "2024-12-31"))
+    envelope = make_envelope(run_id="run-1", claims=[own, group, group_prev], evidence=[ev])
+    joined = " ".join(s.text for s in build_summary(envelope).sentences)
+    assert "own (parent-company) accounts" in joined
+    assert "the group reported revenue of NOK 31.99B" in joined
+    assert "Group revenue rose 4.4% from 2024 to 2025" in joined

@@ -16,6 +16,7 @@ import tldextract
 
 from ..text import fold
 from .blocklist import is_marketplace_or_directory
+from . import search as search_mod
 
 # Words that should not, on their own, drive a name-guess slug (too generic to be a reliable identity guess).
 # Includes bare industry-sector words that show up as a HISTORIC/trade name on their own (e.g. Bergen
@@ -140,6 +141,7 @@ _SOURCE_PRIORITY = {
     "open_places": 2,
     "subunit_website": 3,
     "subunit_email_domain": 3,
+    "search_result": 4,
     "name_guess": 4,
 }
 
@@ -485,7 +487,19 @@ def generate_candidates(ctx: Any) -> list[Candidate]:
             candidates.append(Candidate(domain, _homepage_url(domain), "name_guess", f"first word of '{facts.get('name')}'", decisive=False, rank=rank))
             rank += 1
 
+    # 7. Search provider (only with a configured key): candidates for a company whose register entry and
+    # org-number-keyed sources name no website. A result is only a candidate; verify.py treats it like a
+    # name guess (a hard signal is required), and no search output is kept as evidence.
+    if search_mod.enabled() and tier != "T0" and not any(c.source in _DECISIVE_FOR_SEARCH for c in candidates):
+        municipality = bulk.get("forretningsadresse.kommune") or facts.get("city")
+        for domain, url in search_mod.search_candidates(client, str(org or ""), str(facts.get("name") or ""), municipality, registered_domain):
+            candidates.append(Candidate(domain, url, "search_result", "search provider result (candidate only)", decisive=False, rank=rank))
+            rank += 1
+
     return _dedupe(candidates)
+
+
+_DECISIVE_FOR_SEARCH = {"registry_website", "wikidata_website", "nav_employer_homepage", "osm_orgnr_website"}
 
 
 _FREEMAIL_FALLBACK = {

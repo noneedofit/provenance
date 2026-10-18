@@ -774,7 +774,7 @@ def assess(
             )
         three_independent_soft = len(distinct_corroborating_raw & {"registered_address", "registry_phone", "role_name"}) >= 3
         if (
-            candidate.source in ("name_guess", "open_places", "registry_email_domain")
+            candidate.source in ("name_guess", "open_places", "registry_email_domain", "search_result")
             and not (distinct_corroborating_raw & STRONG_CORROBORATING_KINDS)
             and not three_independent_soft
         ):

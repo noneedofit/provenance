@@ -109,7 +109,8 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
             return text, org_url, text, "jsonld_description_v1"
 
     for page in pages:
-        if not page.ok:
+        # A contact, privacy or jobs page's meta description describes that page, not the company.
+        if not page.ok or _not_about_the_company(page):
             continue
         soup = BeautifulSoup(page.html, "lxml")
         tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
@@ -129,6 +130,15 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
             if len(para) >= 60 and _usable_description(para, names):
                 return para[:MAX_DESCRIPTION_CHARS], page.final_url, para[:MAX_DESCRIPTION_CHARS], "trafilatura_first_paragraph_v1"
     return None, None, None, None
+
+
+_PAGE_NOT_ABOUT_COMPANY = ("kontakt", "contact", "personvern", "privacy", "cookie", "jobb", "karriere", "career", "vilkar", "terms")
+
+
+def _not_about_the_company(page: PageFetch) -> bool:
+    kind = str(getattr(page, "page_kind", "") or "").casefold()
+    path = str(getattr(page, "final_url", "") or "").casefold().split("?")[0].rstrip("/").rsplit("/", 1)[-1]
+    return kind != "homepage" and any(word in kind or word in path for word in _PAGE_NOT_ABOUT_COMPANY)
 
 
 def _trim(text: str) -> str:
@@ -202,6 +212,7 @@ _BOILERPLATE_MARKERS = (
     "informasjonskapsler", "cookies", "personvernerklæring", "personvernerklaering",
     "vi bruker cookies", "we use cookies", "accept all cookies", "aksepter alle",
     "denne nettsiden bruker", "this website uses",
+    "kontakt oss her", "kontakte oss", "komme i kontakt med oss", "contact us here",
 )
 _WELCOME_ONLY_RE = re.compile(
     r"^(velkommen til|welcome to)\s+[^.!?]{0,80}[.!?]?$", re.IGNORECASE

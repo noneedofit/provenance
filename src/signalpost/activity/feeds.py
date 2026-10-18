@@ -34,6 +34,7 @@ from xml.etree import ElementTree as ET
 
 from bs4 import BeautifulSoup
 
+from ..models import evidence_id
 from ._common import make_claim, make_evidence
 
 MAX_ACTIVITY_ITEMS = 10
@@ -118,6 +119,63 @@ def parse_norwegian_date(text: str) -> str | None:
         if 1 <= month <= 12 and 1 <= day <= 31:
             return f"{year:04d}-{month:02d}-{day:02d}"
     return None
+
+
+_SECTION_TITLE = re.compile(
+    r"^(siste\s+)?(nyheter|news|presse(meldinger)?|press|aktuelt|blogg?|artikler|articles|arkiv|archive)"
+    r"(\s*(/|og|&|and)\s*\w+)?(\s+(fra|from|i|hos)\s+.{1,40})?$",
+    re.IGNORECASE,
+)
+_DATE_TAGS = ("pubDate", "published", "updated", "dc:date")
+
+
+def raw_feed_item_quote(text: str, item: dict) -> str | None:
+    """The item's own <title> and date elements copied verbatim from the feed XML (found via its link)."""
+    url = str(item.get("url") or "")
+    if not text or not url:
+        return None
+    at = -1
+    for needle in (url, url.replace("&", "&amp;")):
+        at = text.find(needle)
+        if at >= 0:
+            break
+    if at < 0:
+        return None
+    start = max(text.rfind("<item", 0, at), text.rfind("<entry", 0, at))
+    ends = [i for i in (text.find("</item>", at), text.find("</entry>", at)) if i >= 0]
+    if start < 0 or not ends:
+        return None
+    block = text[start:min(ends)]
+    parts = []
+    title = re.search(r"<title\b[^>]*>.*?</title>", block, re.S)
+    if title:
+        parts.append(title.group(0))
+    for tag in _DATE_TAGS:
+        found = re.search(rf"<{tag}\b[^>]*>.*?</{tag}>", block, re.S)
+        if found:
+            parts.append(found.group(0))
+            break
+    return " | ".join(parts)[:500] or None
+
+
+def raw_news_page_quote(page_html: str, date_span: str | None) -> str | None:
+    """The page's heading and the tag carrying its publication date, copied verbatim from the HTML."""
+    parts = []
+    heading = re.search(r"<h1\b[^>]*>.*?</h1>", page_html, re.S) or re.search(r"<title\b[^>]*>.*?</title>", page_html, re.S)
+    if heading and len(heading.group(0)) <= 300:
+        parts.append(heading.group(0))
+    date_tag = None
+    if date_span and date_span.startswith("<time"):
+        value = re.search(r'datetime="([^"]*)"', date_span)
+        if value:
+            date_tag = re.search(r"<time\b[^>]*" + re.escape(value.group(1)) + r"[^>]*>", page_html)
+    elif date_span and "article:published_time" in date_span:
+        date_tag = re.search(r"<meta\b[^>]*article:published_time[^>]*>", page_html)
+    elif date_span == "JSON-LD datePublished":
+        date_tag = re.search(r'"datePublished"\s*:\s*"[^"]*"', page_html)
+    if date_tag:
+        parts.append(date_tag.group(0))
+    return " | ".join(parts)[:500] or None
 
 
 def feed_item_quote(item: dict) -> str:
@@ -285,12 +343,18 @@ def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict, *, 
         extraction_method="rss_v1", span=f"feed item count={len(parsed)}", access_policy="robots-allowed",
     )
     out = []
+    raw_text = resp.text()
     for item in parsed:
         url = item.get("url")
         if not url or not item.get("published") or url in seen_urls or not is_company_item(item, feed_url):
             continue
         seen_urls.add(url)
-        out.append((item, ev))
+        quote = raw_feed_item_quote(raw_text, item)
+        # Each item gets its own evidence record, quoting its own XML, so every dated item is checkable alone.
+        item_ev = ev.model_copy(update={
+            "evidence_id": evidence_id(feed_url, f"feed item {url}"), "span": f"feed item {url}"[:500], "claim_span": quote,
+        }) if quote else ev
+        out.append((item, item_ev))
     return out
 
 
@@ -333,8 +397,11 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
         http_status=resp.status, source_class="company_owned", retrieved_at=resp.retrieved_at,
         content_sha256=resp.content_sha256, snapshot_ref=resp.snapshot_ref,
         extraction_method="html_news_v1", span=span or "", access_policy="robots-allowed",
+        quote=raw_news_page_quote(html, span),
     )
     title = _extract_title(html, fallback=news_url)
+    if _SECTION_TITLE.match(title.strip()):
+        return None  # a news/blog listing page ("Nyheter", "Nyheter fra X"), not one dated article
     return ({"title": title, "url": news_url, "published": iso}, ev)
 
 
@@ -400,7 +467,7 @@ def collect(ctx) -> dict:
     evidence = []
     quotes: dict[str, list[str]] = {}
     for item, ev in candidates[:MAX_ACTIVITY_ITEMS]:
-        if item.get("published_raw"):
+        if item.get("published_raw") and str(ev.span or "").startswith("feed item count"):
             # Quote the feed as written ("Wed, 04 Feb 2026 10:00:00 +0000"), not the normalised ISO date.
             quotes.setdefault(ev.evidence_id, []).append(feed_item_quote(item))
             ev.claim_span = " | ".join(quotes[ev.evidence_id])[:500]
