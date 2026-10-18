@@ -51,6 +51,7 @@ def _history_slot() -> None:
 
 
 BRREG_ACCOUNT_YEARS = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/{org}/aar"
+BRREG_ACCOUNT_PDF = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/{org}/{year}"
 BULK_DOWNLOAD_URL = "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"
 
 # Legal forms with a categorical accounting/filing obligation (from Brreg's public guidance; see the
@@ -661,6 +662,22 @@ def financial_history_claims(builder: _ClaimBuilder, body: Any, response: Any, *
         snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
     )
     builder.add_claim(family="financial_history", field="filed_years", value=years, evidence_ids=[eid])
+    # One fact per filed year, with the register's official copy of that year's annual accounts.
+    for index, raw_year in enumerate(body):
+        year = str(raw_year)
+        if not year.isdigit():
+            continue
+        year_eid = builder.add_evidence(
+            source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+            extraction_method="brreg_financial_history_v1", span=f"$[{index}]", content_sha256=response.content_sha256,
+            final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
+            snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
+        )
+        builder.add_claim(
+            family="financial_history", field="annual_accounts_copy",
+            value={"year": year, "url": BRREG_ACCOUNT_PDF.format(org=builder.org, year=year)},
+            value_key=year, reporting_period={"start": f"{year}-01-01", "end": f"{year}-12-31"}, evidence_ids=[year_eid],
+        )
     builder.note_checked("financial_history", response.url)
 
 
