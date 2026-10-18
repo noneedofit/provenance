@@ -206,6 +206,8 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
             claim_ids=[desc.claim_id],
         )
     nace = _single(envelope, "identity", "nace_label")
+    if nace is not None and _display(nace.value).strip().casefold() in ("uoppgitt", "unspecified"):
+        nace = None  # the register's "industry not stated" code says nothing about the business
     purpose = _single(envelope, "description", "registry_activity") or _single(envelope, "identity", "statutory_purpose")
     if nace is not None or purpose is not None:
         parts = []
@@ -349,6 +351,9 @@ def _sentence_leadership(envelope: Envelope) -> SummarySentence | None:
             claim_ids.append(chair.claim_id)
     if not parts:
         return None
+    ceo_name = _role_person(ceo) if ceo is not None else None
+    if ceo_name and chair is not None and ceo_name == _role_person(chair):
+        return SummarySentence(text=f"{name} is led by {ceo_name}, who is both CEO and board chair.", claim_ids=claim_ids)
     return SummarySentence(text=f"{name} is led by " + " and ".join(parts) + ".", claim_ids=claim_ids)
 
 
@@ -518,7 +523,7 @@ def _sentence_overview(envelope: Envelope) -> SummarySentence | None:
         descriptor.append(size)
         claim_ids.append((emp_claim or revenue).claim_id)
     what = "company"
-    if nace is not None:
+    if nace is not None and _display(nace.value).strip().casefold() not in ("uoppgitt", "unspecified"):
         what = f'company in "{_display(nace.value).lower()}"'
         claim_ids.append(nace.claim_id)
     where = ""
@@ -607,12 +612,14 @@ def _sentence_trend(envelope: Envelope) -> SummarySentence | None:
             if len(values) > 2:
                 text += f"; it was {format_money(first)} in {first_year}"
         else:
-            signs = ["profit" if v > 0 else "loss" if v < 0 else "zero" for _, v in values]
+            signs = ["a profit" if v > 0 else "a loss" if v < 0 else "break-even" for _, v in values]
             years = ", ".join(f"{y}: {format_money(v)}" for y, v in values)
             if len(set(signs)) == 1:
-                text = f"{label} was a {signs[0]} in each of the {len(values)} filed years read ({years})"
+                text = f"{label} was {signs[0]} in each of the {len(values)} filed years read ({years})"
+            elif signs[-1] == signs[-2]:
+                text = f"{label} was {signs[-1]} in {last_year}, as in {prev_year} ({years})"
             else:
-                text = f"{label} went from a {signs[-2]} in {prev_year} to a {signs[-1]} in {last_year} ({years})"
+                text = f"{label} went from {signs[-2]} in {prev_year} to {signs[-1]} in {last_year} ({years})"
         sentences.append(text + ".")
         claim_ids += [c.claim_id for c in series]
     if not sentences:
@@ -647,18 +654,16 @@ def _sentence_leadership_detail(envelope: Envelope) -> SummarySentence | None:
     parts: list[str] = []
     claim_ids: list[str] = []
     if len(board) > 1:
-        parts.append(f"a board of {len(board)}")
+        parts.append(f"It has a board of {len(board)}.")
         claim_ids += [c.claim_id for c in board]
     if changed:
-        months = None
         years = _years_since(changed[0].value, envelope.run.started_at)
-        if years is not None and years < 1:
-            months = True
-        parts.append(f"leadership last changed in the register on {changed[0].value}" + (" (within the past year)" if months else ""))
+        recent = " (within the past year)" if years is not None and years < 1 else ""
+        parts.append(f"The register last recorded a change to its roles on {changed[0].value}{recent}.")
         claim_ids.append(changed[0].claim_id)
     if not parts:
         return None
-    return SummarySentence(text="It has " + _join(parts) + ".", claim_ids=claim_ids)
+    return SummarySentence(text=" ".join(parts), claim_ids=claim_ids)
 
 
 def _sentence_group(envelope: Envelope) -> SummarySentence | None:
