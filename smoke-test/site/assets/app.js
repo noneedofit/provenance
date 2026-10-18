@@ -212,6 +212,8 @@
       ["Financial year", function (d) { return d.financial_year; }],
       ["Revenue", function (d) { return d.revenue != null ? fmtAmount(d.revenue, d.revenue_currency) : null; },
         function (d) { return d.revenue_source; }],
+      ["Group revenue (consolidated)", function (d) { return d.group_revenue != null ? fmtAmount(d.group_revenue, d.revenue_currency) : null; },
+        function (d) { return d.group_revenue_source; }],
       ["Annual result", function (d) { return d.result != null ? fmtAmount(d.result, d.revenue_currency) : null; },
         function (d) { return d.result_source; }],
       ["Website", function (d) {

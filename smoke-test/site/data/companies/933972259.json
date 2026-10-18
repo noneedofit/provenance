@@ -5,8 +5,8 @@
   "run": {
     "run_id": "smoke-A",
     "previous_run_id": null,
-    "started_at": "2026-10-17T07:28:38Z",
-    "completed_at": "2026-10-17T07:29:40Z",
+    "started_at": "2026-10-18T23:10:58Z",
+    "completed_at": "2026-10-18T23:13:41Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T1"
@@ -33,6 +33,7 @@
       "c_d256b16930b9d4a85bce",
       "c_051241b5fdc512167cba",
       "c_53598d3988dcaf9b3673",
+      "c_a3cb92cf3f81c3f76d68",
       "c_f423df8afff4fe4e1280"
     ],
     "leadership_and_workplaces": [
@@ -95,14 +96,15 @@
       "sources_checked": [
         "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/933972259/aar"
       ],
-      "claim_count": 1
+      "claim_count": 2
     },
     "group": {
       "family": "group",
       "availability": "not_available",
-      "reason": "no parent relationship or parent-company flag in registry data",
+      "reason": "not part of a registered group (register group structure) and no parent-company flag in the accounts",
       "sources_checked": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/933972259"
+        "https://data.brreg.no/enhetsregisteret/api/enheter/933972259",
+        "https://data.brreg.no/enhetsregisteret/api/konsernstruktur/933972259"
       ],
       "claim_count": 0
     },
@@ -180,8 +182,8 @@
       "evidence_ids": [
         "e_9a4977351c5dee5551cc"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -201,8 +203,8 @@
       "evidence_ids": [
         "e_9f75180a224f137f4018"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -225,8 +227,8 @@
       "evidence_ids": [
         "e_ea5dc28b30be3846b13f"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -246,8 +248,8 @@
       "evidence_ids": [
         "e_aba3343661226921f367"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -270,8 +272,8 @@
       "evidence_ids": [
         "e_30e35be0eed82dcf7172"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -291,8 +293,8 @@
       "evidence_ids": [
         "e_69db6afc0429f702a185"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -312,8 +314,8 @@
       "evidence_ids": [
         "e_134f4d3fbd0b6dd41d46"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -333,8 +335,8 @@
       "evidence_ids": [
         "e_c52d4845b7c2f76e9464"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -354,8 +356,8 @@
       "evidence_ids": [
         "e_c2ca7c20e6696277c6bc"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -375,8 +377,8 @@
       "evidence_ids": [
         "e_ba5b10f6044305850e07"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -402,8 +404,8 @@
       "evidence_ids": [
         "e_78a2a8d08b8de445c42d"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -429,8 +431,8 @@
       "evidence_ids": [
         "e_a3ff27968bc8ee82bf79"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -456,8 +458,8 @@
       "evidence_ids": [
         "e_253bb756ec70428e8987"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -483,8 +485,8 @@
       "evidence_ids": [
         "e_d03c8b895a49b3bd293e"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -510,8 +512,8 @@
       "evidence_ids": [
         "e_faf5b9e3ec4670d79959"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -537,8 +539,8 @@
       "evidence_ids": [
         "e_79ad04b3a5357e5ed8ad"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -564,8 +566,8 @@
       "evidence_ids": [
         "e_13be27d849108540c5be"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -591,8 +593,35 @@
       "evidence_ids": [
         "e_d3fb0678e8b164b24c43"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_a3cb92cf3f81c3f76d68",
+      "organisation_number": "933972259",
+      "family": "financial_history",
+      "field": "annual_accounts_copy",
+      "value": {
+        "year": "2025",
+        "url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/933972259/2025"
+      },
+      "value_key": "2025",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2025-01-01",
+        "end": "2025-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_4007c7b4668c9dd6229e"
+      ],
+      "first_observed_at": "2026-10-18T23:13:22Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -614,8 +643,8 @@
       "evidence_ids": [
         "e_f4991fbd928b79005458"
       ],
-      "first_observed_at": "2026-10-17T07:29:34Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:22Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -639,8 +668,8 @@
       "evidence_ids": [
         "e_7aa1683936ec45da4ec0"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -664,8 +693,8 @@
       "evidence_ids": [
         "e_14d20c2ab553950a1838"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -685,8 +714,8 @@
       "evidence_ids": [
         "e_1661e1af8958975bd016"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -712,8 +741,8 @@
       "evidence_ids": [
         "e_9a4977351c5dee5551cc"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -741,8 +770,8 @@
       "evidence_ids": [
         "e_10d304b9ff3cf749f199"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -762,8 +791,8 @@
       "evidence_ids": [
         "e_3f65811a0ea6bbd5fa04"
       ],
-      "first_observed_at": "2026-10-17T07:29:33Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:13:21Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -785,8 +814,8 @@
       "evidence_ids": [
         "e_9afb8209e77996447d16"
       ],
-      "first_observed_at": "2026-10-17T07:29:22Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:52Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     }
@@ -801,7 +830,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "15ec948024043c4a34c6dedf65936d5e6b042f9073156434f8a7f02c8904840a",
       "snapshot_ref": "15ec948024043c4a34c6dedf65936d5e6b042f9073156434f8a7f02c8904840a",
       "extraction_method": "brreg_subunits_v1",
@@ -820,7 +849,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -839,7 +868,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -858,7 +887,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "snapshot_ref": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "extraction_method": "brreg_roles_v1",
@@ -877,7 +906,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "snapshot_ref": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "extraction_method": "brreg_roles_v1",
@@ -896,7 +925,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -915,7 +944,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -934,7 +963,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -945,6 +974,25 @@
       "claim_span": "\"aktivitet\":[\"Undervisning innen folkedrakter. Søm av folkedrakter. Salg av\",\"kursmateriell.\"]"
     },
     {
+      "evidence_id": "e_4007c7b4668c9dd6229e",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/933972259/aar",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/933972259/aar",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/933972259/aar"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:13:22Z",
+      "content_sha256": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
+      "snapshot_ref": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
+      "extraction_method": "brreg_financial_history_v1",
+      "extractor_version": "1",
+      "span": "$[0]",
+      "access_policy": "NLOD-2.0",
+      "id": "e_4007c7b4668c9dd6229e",
+      "claim_span": "\"2025\""
+    },
+    {
       "evidence_id": "e_69db6afc0429f702a185",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933972259",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933972259",
@@ -953,7 +1001,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -972,7 +1020,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -991,7 +1039,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -1010,7 +1058,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "snapshot_ref": "8e016dc2f2a827093fa6909f25b092d82083ede1d269acb3f9356535ba71a765",
       "extraction_method": "brreg_roles_v1",
@@ -1029,7 +1077,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1048,8 +1096,8 @@
       ],
       "http_status": null,
       "source_class": "public_job_feed",
-      "retrieved_at": "2026-10-17T07:29:22Z",
-      "content_sha256": "2454ad97aecbaca6a05cb1fa2648a0832477e434ec86a78465e46f6c22afcd4c",
+      "retrieved_at": "2026-10-18T23:12:52Z",
+      "content_sha256": "829d541613778ec776ff00b55e61e69b61f4b1062c64337fa44fdede4d6450ae",
       "snapshot_ref": null,
       "extraction_method": "nav_feed_index_v1",
       "extractor_version": "1",
@@ -1067,7 +1115,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1086,7 +1134,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -1105,7 +1153,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1124,7 +1172,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1143,7 +1191,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1162,7 +1210,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1181,7 +1229,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -1200,7 +1248,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -1219,7 +1267,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:33Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "snapshot_ref": "96160baec654104b7985adb65e415a3e5b78644678a4b79639d3b56443902da2",
       "extraction_method": "brreg_entity_v1",
@@ -1238,7 +1286,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:22Z",
       "content_sha256": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
       "snapshot_ref": "4ef65c5c6a787fba52f4422cea215ef239f29d493e45ae1f8534dc39ebcca33b",
       "extraction_method": "brreg_financial_history_v1",
@@ -1257,7 +1305,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:34Z",
+      "retrieved_at": "2026-10-18T23:13:21Z",
       "content_sha256": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "snapshot_ref": "471243e2df6c71bb26ffaac0d88923e9aa5701213466c7baa2a5d3277cb7ccd6",
       "extraction_method": "brreg_financials_v1",
@@ -1272,6 +1320,15 @@
   "summary": {
     "language": "en",
     "sentences": [
+      {
+        "text": "In short: FOLKEDRAKTSAUM AS is a young company in \"annen undervisning ellers\" based in Notodden, loss-making in 2025 and with no open NAV job ads under its org number.",
+        "claim_ids": [
+          "c_e4fe89cd73f052f96e4f",
+          "c_464102976a75e4963665",
+          "c_37f3cad06cbaae296bfa",
+          "c_9235b4cb9e54f9a9190d"
+        ]
+      },
       {
         "text": "FOLKEDRAKTSAUM AS is registered in the industry \"Annen undervisning ellers\"; its registered activity is \"Undervisning innen folkedrakter. Søm av folkedrakter. Salg av kursmateriell.\".",
         "claim_ids": [
@@ -1295,9 +1352,26 @@
         ]
       },
       {
+        "text": "Its 2025 accounts show an operating margin of -58.9% and a thin equity ratio of -46% of total assets.",
+        "claim_ids": [
+          "c_d256b16930b9d4a85bce",
+          "c_bb6097eb793b9881e21a",
+          "c_d8c4c8d0336354ebfa6e",
+          "c_051241b5fdc512167cba"
+        ]
+      },
+      {
         "text": "FOLKEDRAKTSAUM AS is led by board chair Terje Lia.",
         "claim_ids": [
           "c_0525cd99891cf03c1f84"
+        ]
+      },
+      {
+        "text": "It has a board of 2. The register last recorded a change to its roles on 2025-05-27.",
+        "claim_ids": [
+          "c_0525cd99891cf03c1f84",
+          "c_4a8505359746a4e365a8",
+          "c_e6fd0cc6bb3600b02fb7"
         ]
       },
       {
@@ -1309,19 +1383,19 @@
     ],
     "unknowns": [
       "Public activity (news, posts, videos): no verified company website to derive activity from",
-      "Its group / ownership structure: no parent relationship or parent-company flag in registry data",
+      "Its group / ownership structure: not part of a registered group (register group structure) and no parent-company flag in the accounts",
       "Open job postings: checked NAV arbeidsplassen feed index: 0 name-matched active ad(s), 0 verified",
       "Public social or video profiles: no verified site to link profiles from",
       "Public reviews or ratings: checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)",
       "An official website: checked 1 candidates: none verified"
     ],
-    "method": "template_v1"
+    "method": "template_v2"
   },
   "errors": [],
   "operations": {
-    "requests": 11,
+    "requests": 12,
     "bytes": 0,
-    "runtime_ms": 61889,
+    "runtime_ms": 163379,
     "third_party_cost_usd": 0.0
   }
 }

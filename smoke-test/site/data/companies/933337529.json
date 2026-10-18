@@ -5,8 +5,8 @@
   "run": {
     "run_id": "smoke-A",
     "previous_run_id": null,
-    "started_at": "2026-10-17T07:28:38Z",
-    "completed_at": "2026-10-17T07:29:14Z",
+    "started_at": "2026-10-18T23:10:58Z",
+    "completed_at": "2026-10-18T23:12:49Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T0"
@@ -31,7 +31,12 @@
       "c_6eb2097589cb768a4705",
       "c_45544cbfc320edff4632",
       "c_2d372f5f9114ba5b45ab",
-      "c_98beaea2f1c2f4fe9262"
+      "c_690fed879c70dfbe63e8",
+      "c_02944aec72bd2a20206b",
+      "c_98beaea2f1c2f4fe9262",
+      "c_8ef4a6e38b8902faf944",
+      "c_ba0b59719f73c4bfe71f",
+      "c_ea1dadca7be3f6750ce2"
     ],
     "leadership_and_workplaces": [
       "c_2763b527586cb833df43",
@@ -42,7 +47,6 @@
       "c_7bbebc9c1ad3816b7092"
     ],
     "website_and_profiles": [
-      "c_ce654f6c43e73b8c28cf",
       "c_f34feffc163a529b280b"
     ],
     "hiring_and_activity": [],
@@ -98,25 +102,27 @@
     "group": {
       "family": "group",
       "availability": "not_available",
-      "reason": "no parent relationship or parent-company flag in registry data",
+      "reason": "not part of a registered group (register group structure) and no parent-company flag in the accounts",
       "sources_checked": [
-        "https://data.brreg.no/enhetsregisteret/api/enheter/933337529"
+        "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
+        "https://data.brreg.no/enhetsregisteret/api/konsernstruktur/933337529"
       ],
       "claim_count": 0
     },
     "website": {
       "family": "website",
-      "availability": "ambiguous",
-      "reason": "related site found (brand): site shows a different organisation number (950920556); treated as brand",
+      "availability": "not_available",
+      "reason": "checked 2 candidates: none verified",
       "sources_checked": [
-        "fossberg.no"
+        "fossberg.no",
+        "fossberg.com"
       ],
-      "claim_count": 1
+      "claim_count": 0
     },
     "profiles": {
       "family": "profiles",
       "availability": "not_available",
-      "reason": "no exact-verified site to link profiles from",
+      "reason": "no verified site to link profiles from",
       "sources_checked": [],
       "claim_count": 0
     },
@@ -176,8 +182,8 @@
       "evidence_ids": [
         "e_0198ba109802a796ad17"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -197,8 +203,8 @@
       "evidence_ids": [
         "e_f13b149f52df7665aded"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -221,8 +227,8 @@
       "evidence_ids": [
         "e_a5ec00cb3468b1fa6c36"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -242,8 +248,8 @@
       "evidence_ids": [
         "e_1f15fb1bd0f265830198"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -266,8 +272,8 @@
       "evidence_ids": [
         "e_dedae4f9b0d46572028c"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -287,8 +293,8 @@
       "evidence_ids": [
         "e_b584be9289a08fe6ffa8"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -308,8 +314,8 @@
       "evidence_ids": [
         "e_f0e9b2a80a67bbb3f51a"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -329,8 +335,8 @@
       "evidence_ids": [
         "e_d5b825e57b4762ef922a"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -356,8 +362,8 @@
       "evidence_ids": [
         "e_c4e1295a53c39a51107f"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -383,8 +389,8 @@
       "evidence_ids": [
         "e_74a8fb2d6ae8d3f363dc"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -410,8 +416,8 @@
       "evidence_ids": [
         "e_bbf2b783f5fa18314078"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -437,8 +443,8 @@
       "evidence_ids": [
         "e_b36d063458cd986bb403"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -464,8 +470,8 @@
       "evidence_ids": [
         "e_34804b52729ae6f47112"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -491,8 +497,8 @@
       "evidence_ids": [
         "e_2f947c886c498f0fdfdf"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -518,8 +524,8 @@
       "evidence_ids": [
         "e_f7ac2bd37acc7850b47d"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -545,8 +551,62 @@
       "evidence_ids": [
         "e_d6670cef50cf3388e218"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_690fed879c70dfbe63e8",
+      "organisation_number": "933337529",
+      "family": "financial_history",
+      "field": "annual_result",
+      "value": {
+        "amount": -1335.0,
+        "currency": "NOK"
+      },
+      "value_key": "annual_result|2024",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_05091c43f29fefd467f5"
+      ],
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_02944aec72bd2a20206b",
+      "organisation_number": "933337529",
+      "family": "financial_history",
+      "field": "equity",
+      "value": {
+        "amount": 22881.0,
+        "currency": "NOK"
+      },
+      "value_key": "equity|2024",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_50ae077cd1dfde508fd4"
+      ],
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -566,8 +626,89 @@
       "evidence_ids": [
         "e_3ead58340cb7379c7615"
       ],
-      "first_observed_at": "2026-10-17T07:27:53Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:09:08Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_8ef4a6e38b8902faf944",
+      "organisation_number": "933337529",
+      "family": "financial_history",
+      "field": "operating_result",
+      "value": {
+        "amount": -1335.0,
+        "currency": "NOK"
+      },
+      "value_key": "operating_result|2024",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_5027afc6dff440c8fdda"
+      ],
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_ba0b59719f73c4bfe71f",
+      "organisation_number": "933337529",
+      "family": "financial_history",
+      "field": "total_assets",
+      "value": {
+        "amount": 22881.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_assets|2024",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_e9692927c9f21b7b8484"
+      ],
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_ea1dadca7be3f6750ce2",
+      "organisation_number": "933337529",
+      "family": "financial_history",
+      "field": "total_debt",
+      "value": {
+        "amount": 0.0,
+        "currency": "NOK"
+      },
+      "value_key": "total_debt|2024",
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "effective_date": null,
+      "evidence_ids": [
+        "e_13e2b635ff2e564d3d0f"
+      ],
+      "first_observed_at": "2026-10-18T23:12:17Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -591,8 +732,8 @@
       "evidence_ids": [
         "e_0b419cc164fb072cbc99"
       ],
-      "first_observed_at": "2026-10-17T07:29:05Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:16Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -616,8 +757,8 @@
       "evidence_ids": [
         "e_4af2484ca9807d5a79bd"
       ],
-      "first_observed_at": "2026-10-17T07:29:05Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:16Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -637,8 +778,8 @@
       "evidence_ids": [
         "e_47e6454fbbbd68971468"
       ],
-      "first_observed_at": "2026-10-17T07:29:05Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:16Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -658,8 +799,8 @@
       "evidence_ids": [
         "e_4439b8106124a845be03"
       ],
-      "first_observed_at": "2026-10-17T07:29:05Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:16Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -685,8 +826,8 @@
       "evidence_ids": [
         "e_0198ba109802a796ad17"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     },
@@ -714,31 +855,10 @@
       "evidence_ids": [
         "e_8a557a214f2ef9842bb4"
       ],
-      "first_observed_at": "2026-10-17T07:29:06Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:16Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
-    },
-    {
-      "claim_id": "c_ce654f6c43e73b8c28cf",
-      "organisation_number": "933337529",
-      "family": "website",
-      "field": "official_website",
-      "value": "https://fossberg.no/",
-      "value_key": null,
-      "availability": "ambiguous",
-      "confidence": 0.4,
-      "identity_basis": null,
-      "relationship": "brand",
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_d4b116e01ec3ecc84c2b"
-      ],
-      "first_observed_at": "2026-10-17T07:29:10Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
-      "status": "current",
-      "note": "site shows a different organisation number (950920556); treated as brand"
     },
     {
       "claim_id": "c_f34feffc163a529b280b",
@@ -756,8 +876,8 @@
       "evidence_ids": [
         "e_e660090b3de2150fa673"
       ],
-      "first_observed_at": "2026-10-17T07:29:04Z",
-      "last_observed_at": "2026-10-17T07:28:38Z",
+      "first_observed_at": "2026-10-18T23:12:15Z",
+      "last_observed_at": "2026-10-18T23:10:58Z",
       "status": "current",
       "note": null
     }
@@ -772,7 +892,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -783,6 +903,25 @@
       "claim_span": "\"forretningsadresse\":{\"adresse\":[\"Hisøysvingen 72\"],\"kommune\":\"ARENDAL\",\"kommunenummer\":\"4203\",\"land\":\"Norge\",\"landkode\":\"NO\",\"postnummer\":\"4817\",\"poststed\":\"HIS\"}"
     },
     {
+      "evidence_id": "e_05091c43f29fefd467f5",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/933337529"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:12:17Z",
+      "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=5858749].resultatregnskapResultat.aarsresultat",
+      "access_policy": "NLOD-2.0",
+      "id": "e_05091c43f29fefd467f5",
+      "claim_span": "\"aarsresultat\":-1335.00"
+    },
+    {
       "evidence_id": "e_0b419cc164fb072cbc99",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529/roller",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529/roller",
@@ -791,7 +930,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:05Z",
+      "retrieved_at": "2026-10-18T23:12:16Z",
       "content_sha256": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "snapshot_ref": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "extraction_method": "brreg_roles_v1",
@@ -802,6 +941,25 @@
       "claim_span": "\"navn\":{\"etternavn\":\"Næss\",\"fornavn\":\"Eirin\",\"mellomnavn\":\"Fossberg\"}"
     },
     {
+      "evidence_id": "e_13e2b635ff2e564d3d0f",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/933337529"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:12:17Z",
+      "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=5858749].egenkapitalGjeld.gjeldOversikt.sumGjeld",
+      "access_policy": "NLOD-2.0",
+      "id": "e_13e2b635ff2e564d3d0f",
+      "claim_span": "\"sumGjeld\":0.00"
+    },
+    {
       "evidence_id": "e_1f15fb1bd0f265830198",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
@@ -810,7 +968,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -829,7 +987,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -848,7 +1006,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -865,7 +1023,7 @@
       "redirect_chain": [],
       "http_status": null,
       "source_class": "official_registry_bulk",
-      "retrieved_at": "2026-10-17T07:27:53Z",
+      "retrieved_at": "2026-10-18T23:09:08Z",
       "content_sha256": "cc09e0893b2a30fdffc176f8246a81baacf329770387376448a04cdaeff18b90",
       "snapshot_ref": null,
       "extraction_method": "brreg_bulk_row_v1",
@@ -884,7 +1042,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:05Z",
+      "retrieved_at": "2026-10-18T23:12:16Z",
       "content_sha256": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "snapshot_ref": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "extraction_method": "brreg_roles_v1",
@@ -903,7 +1061,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:05Z",
+      "retrieved_at": "2026-10-18T23:12:16Z",
       "content_sha256": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "snapshot_ref": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "extraction_method": "brreg_roles_v1",
@@ -922,7 +1080,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:05Z",
+      "retrieved_at": "2026-10-18T23:12:16Z",
       "content_sha256": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "snapshot_ref": "8265ef3737538945350ef999ce9d75e51fa1e6f4215843215f109affb140f919",
       "extraction_method": "brreg_roles_v1",
@@ -933,6 +1091,44 @@
       "claim_span": "\"navn\":{\"etternavn\":\"Næss\",\"fornavn\":\"Eirin\",\"mellomnavn\":\"Fossberg\"}"
     },
     {
+      "evidence_id": "e_5027afc6dff440c8fdda",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/933337529"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:12:17Z",
+      "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=5858749].resultatregnskapResultat.driftsresultat.driftsresultat",
+      "access_policy": "NLOD-2.0",
+      "id": "e_5027afc6dff440c8fdda",
+      "claim_span": "\"driftsresultat\":-1335.00"
+    },
+    {
+      "evidence_id": "e_50ae077cd1dfde508fd4",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/933337529"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:12:17Z",
+      "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=5858749].egenkapitalGjeld.egenkapital.sumEgenkapital",
+      "access_policy": "NLOD-2.0",
+      "id": "e_50ae077cd1dfde508fd4",
+      "claim_span": "\"sumEgenkapital\":22881.00"
+    },
+    {
       "evidence_id": "e_74a8fb2d6ae8d3f363dc",
       "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
       "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
@@ -941,7 +1137,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -960,7 +1156,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:16Z",
       "content_sha256": "7f0a2fc5b5cecb21c823f5058bb1f6e7748760bf231b214b7180391b52ccebf7",
       "snapshot_ref": "7f0a2fc5b5cecb21c823f5058bb1f6e7748760bf231b214b7180391b52ccebf7",
       "extraction_method": "brreg_subunits_v1",
@@ -979,7 +1175,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -998,7 +1194,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -1017,7 +1213,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1036,7 +1232,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -1055,7 +1251,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -1066,25 +1262,6 @@
       "claim_span": "\"regnskapstype\":\"SELSKAP\""
     },
     {
-      "evidence_id": "e_d4b116e01ec3ecc84c2b",
-      "source_url": "https://fossberg.no/",
-      "final_url": "https://fossberg.no/",
-      "redirect_chain": [
-        "https://fossberg.no/"
-      ],
-      "http_status": 200,
-      "source_class": "company_owned",
-      "retrieved_at": "2026-10-17T07:29:10Z",
-      "content_sha256": "97e21ad67d18d8707fa9c6e615889926324dbbaa8915791098c161ee1ddd8589",
-      "snapshot_ref": "97e21ad67d18d8707fa9c6e615889926324dbbaa8915791098c161ee1ddd8589",
-      "extraction_method": "web_related_site_v1",
-      "extractor_version": "1",
-      "span": "site shows a different organisation number (950920556); treated as brand",
-      "access_policy": null,
-      "id": "e_d4b116e01ec3ecc84c2b",
-      "claim_span": "site shows a different organisation number (950920556); treated as brand"
-    },
-    {
       "evidence_id": "e_d5b825e57b4762ef922a",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
@@ -1093,7 +1270,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1112,7 +1289,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -1131,7 +1308,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1150,7 +1327,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1161,6 +1338,25 @@
       "claim_span": "\"aktivitet\":[\"Holdingselskap.\"]"
     },
     {
+      "evidence_id": "e_e9692927c9f21b7b8484",
+      "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/933337529",
+      "redirect_chain": [
+        "https://data.brreg.no/regnskapsregisteret/regnskap/933337529"
+      ],
+      "http_status": 200,
+      "source_class": "official_filing",
+      "retrieved_at": "2026-10-18T23:12:17Z",
+      "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
+      "extraction_method": "brreg_financials_v1",
+      "extractor_version": "1",
+      "span": "$[id=5858749].eiendeler.sumEiendeler",
+      "access_policy": "NLOD-2.0",
+      "id": "e_e9692927c9f21b7b8484",
+      "claim_span": "\"sumEiendeler\":22881.00"
+    },
+    {
       "evidence_id": "e_f0e9b2a80a67bbb3f51a",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/933337529",
@@ -1169,7 +1365,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1188,7 +1384,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-10-17T07:29:04Z",
+      "retrieved_at": "2026-10-18T23:12:15Z",
       "content_sha256": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "snapshot_ref": "34bf11a2c0ad362f120c2fab306d7d990176100377b9e6aec799a167dd70b13c",
       "extraction_method": "brreg_entity_v1",
@@ -1207,7 +1403,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-10-17T07:29:06Z",
+      "retrieved_at": "2026-10-18T23:12:17Z",
       "content_sha256": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "snapshot_ref": "fb04312f06d9eebfdb831e2ee80806ab5ad7340911349f34dd35bb9cc0a5ad9a",
       "extraction_method": "brreg_financials_v1",
@@ -1223,9 +1419,16 @@
     "language": "en",
     "sentences": [
       {
-        "text": "FOSSBERG INVEST AS is registered in the industry \"Uoppgitt\"; its registered activity is \"Holdingselskap.\".",
+        "text": "In short: FOSSBERG INVEST AS is a young company based in Arendal, breaking even in 2025.",
         "claim_ids": [
-          "c_ed84cdd6bb694746c241",
+          "c_b0b27e7289dda5e1217a",
+          "c_cf00062947eb4f77459f",
+          "c_4736d5ead8ae3c0480e8"
+        ]
+      },
+      {
+        "text": "According to the register, the registered activity of FOSSBERG INVEST AS is \"Holdingselskap.\".",
+        "claim_ids": [
           "c_f34feffc163a529b280b"
         ]
       },
@@ -1245,10 +1448,30 @@
         ]
       },
       {
-        "text": "FOSSBERG INVEST AS is led by CEO Eirin Fossberg Næss and board chair Eirin Fossberg Næss.",
+        "text": "Its 2025 accounts show a strong equity ratio of 100% of total assets.",
+        "claim_ids": [
+          "c_6260cace3c404d522627",
+          "c_45544cbfc320edff4632"
+        ]
+      },
+      {
+        "text": "The annual result went from a loss in 2024 to break-even in 2025 (2024: -NOK 1,335, 2025: NOK 0).",
+        "claim_ids": [
+          "c_690fed879c70dfbe63e8",
+          "c_4736d5ead8ae3c0480e8"
+        ]
+      },
+      {
+        "text": "FOSSBERG INVEST AS is led by Eirin Fossberg Næss, who is both CEO and board chair.",
         "claim_ids": [
           "c_2763b527586cb833df43",
           "c_b46148510e610bba7f58"
+        ]
+      },
+      {
+        "text": "The register last recorded a change to its roles on 2024-04-22.",
+        "claim_ids": [
+          "c_87ed706d261948f3fa11"
         ]
       },
       {
@@ -1260,19 +1483,19 @@
     ],
     "unknowns": [
       "Public activity (news, posts, videos): no verified company website to derive activity from",
-      "Its group / ownership structure: no parent relationship or parent-company flag in registry data",
+      "Its group / ownership structure: not part of a registered group (register group structure) and no parent-company flag in the accounts",
       "Open job postings: not searched: no registered staff or web footprint",
-      "Public social or video profiles: no exact-verified site to link profiles from",
+      "Public social or video profiles: no verified site to link profiles from",
       "Public reviews or ratings: checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)",
-      "An official website: related site found (brand): site shows a different organisation number (950920556); treated as brand"
+      "An official website: checked 2 candidates: none verified"
     ],
-    "method": "template_v1"
+    "method": "template_v2"
   },
   "errors": [],
   "operations": {
-    "requests": 9,
+    "requests": 11,
     "bytes": 0,
-    "runtime_ms": 35886,
+    "runtime_ms": 111196,
     "third_party_cost_usd": 0.0
   }
 }
