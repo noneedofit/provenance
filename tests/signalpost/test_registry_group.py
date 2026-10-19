@@ -42,3 +42,34 @@ def test_grandchild_gets_ultimate_parent():
     fields = {c.field: c.value for c in builder.claims}
     assert fields["parent_company"]["name"] == "MIDDLE AS"
     assert fields["ultimate_parent"] == {"name": "TOP ASA", "organisation_number": "111111111"}
+
+
+def test_failed_group_call_is_reported_failed_not_absent():
+    from types import SimpleNamespace
+
+    from signalpost.registry import RegistryConnector
+
+    class Client:
+        def get(self, url, **kwargs):
+            ok = "konsernstruktur" not in url
+            return SimpleNamespace(ok=False, status=503 if not ok else 404, error=None, body=b"", url=url)
+
+    ctx = SimpleNamespace(org="222222222", now="2026-10-19T00:00:00Z", shared={}, client=Client(), tier="T0",
+                          bulk={}, registry={}, previous=None)
+    result = RegistryConnector().run(ctx)
+    assert result.families["group"].availability == "failed"
+    assert "unavailable this run" in result.families["group"].reason
+
+
+def test_duplicate_years_never_give_duplicate_claims():
+    from signalpost.registry import financial_history_claims
+
+    class R(Resp):
+        url = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/222222222/aar"
+        body = b'["2025","2024","2024"]'
+
+    builder = _ClaimBuilder("222222222", "2026-10-19T00:00:00Z")
+    financial_history_claims(builder, ["2025", "2024", "2024"], R(), legal_form="AS")
+    ids = [c.claim_id for c in builder.claims]
+    assert len(ids) == len(set(ids))
+    assert sorted(c.value["year"] for c in builder.claims if c.field == "annual_accounts_copy") == ["2024", "2025"]

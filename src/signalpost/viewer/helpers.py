@@ -180,6 +180,15 @@ def display_value(field: str, value: Any, *, _depth: int = 0) -> str:
     if isinstance(value, dict):
         if "amount" in value and "currency" in value:
             return fmt_money(value)
+        if "ownership" in value and value.get("name"):
+            # A group-structure link: "AF GRUPPEN ASA (org 938702675) · 100% · Konsern datter · since 2026-09-11"
+            bits = [f"{esc(value['name'])} (org {esc(value.get('organisation_number') or '?')})"]
+            bits += [esc(value[k]) for k in ("ownership", "relation") if value.get(k)]
+            if value.get("registered"):
+                bits.append(f"since {esc(value['registered'])}")
+            return " · ".join(bits)
+        if "year" in value and "url" in value and len(value) == 2:
+            return f'{esc(value["year"])}: <a href="{esc(value["url"])}" target="_blank" rel="noopener noreferrer">annual accounts (PDF)</a>'
         if _ADDRESS_KEYS & value.keys():
             addr = address_text(value)
             if value.get("name"):

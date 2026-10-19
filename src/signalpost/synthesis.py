@@ -683,8 +683,12 @@ def _sentence_group(envelope: Envelope) -> SummarySentence | None:
             claim_ids.append(top.claim_id)
     if subs:
         names = [str(c.value.get("name")) for c in subs[:3] if isinstance(c.value, dict) and c.value.get("name")]
-        more = f", including {_join(names)}" if names else ""
-        parts.append(f"has {_count(len(subs), 'registered subsidiary', 'registered subsidiaries')}{more}")
+        if len(subs) == 1:
+            parts.append(f"has 1 registered subsidiary{', ' + names[0] if names else ''}")
+        else:
+            count = f"at least {len(subs)}" if len(subs) >= 50 else str(len(subs))
+            more = f", including {_join(names)}" if names else ""
+            parts.append(f"has {count} registered subsidiaries{more}")
         claim_ids.extend(c.claim_id for c in subs)
     if not parts:
         return None

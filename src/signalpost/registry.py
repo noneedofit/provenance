@@ -552,10 +552,14 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
         )
     # Earlier filed years in the same response (the API returns up to three): published as financial history,
     # each figure with its own reporting period, so trends rest on filed numbers rather than on a guess.
+    seen_years: set[str] = set()
     for record in company_records[1:]:
         earlier_end = _get(record, "regnskapsperiode", "tilDato")
         if record.get("regnskapstype") != latest.get("regnskapstype") or not earlier_end or earlier_end >= (period_end or ""):
             continue
+        if earlier_end[:4] in seen_years:
+            continue  # a corrected re-filing of a year already published (newest first): keep one
+        seen_years.add(earlier_end[:4])
         earlier_period = {"start": _get(record, "regnskapsperiode", "fraDato"), "end": earlier_end}
         for field, path in _METRIC_PATHS.items():
             amount = _get(record, *path)
@@ -577,10 +581,13 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
     # `group_*` figures so the group's scale is never confused with the parent's own (often holding) accounts.
     group_records = [r for r in records if r.get("regnskapstype") == "KONSERN"]
     if latest.get("regnskapstype") != "KONSERN":
-        for index, record in enumerate(group_records):
+        group_years: set[str] = set()
+        for record in group_records:
             end = _get(record, "regnskapsperiode", "tilDato")
-            if not end:
+            if not end or end[:4] in group_years:
                 continue
+            index = len(group_years)
+            group_years.add(end[:4])
             group_period = {"start": _get(record, "regnskapsperiode", "fraDato"), "end": end}
             for field, path in _METRIC_PATHS.items():
                 amount = _get(record, *path)
@@ -663,10 +670,12 @@ def financial_history_claims(builder: _ClaimBuilder, body: Any, response: Any, *
     )
     builder.add_claim(family="financial_history", field="filed_years", value=years, evidence_ids=[eid])
     # One fact per filed year, with the register's official copy of that year's annual accounts.
+    published_years: set[str] = set()
     for index, raw_year in enumerate(body):
         year = str(raw_year)
-        if not year.isdigit():
+        if not year.isdigit() or year in published_years:
             continue
+        published_years.add(year)
         year_eid = builder.add_evidence(
             source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
             extraction_method="brreg_financial_history_v1", span=f"$[{index}]", content_sha256=response.content_sha256,
@@ -906,6 +915,7 @@ class RegistryConnector:
 
         # -------- group structure (konsernstruktur: 404 for a company outside any registered group) --------
         group_checked = False
+        group_failed: str | None = None
         if client is not None and not (ctx.shared or {}).get("registry_only"):
             resp = client.get(BRREG_GROUP.format(org=org), org=org, purpose="registry_group", accept="application/json", respect_robots=False)
             if resp.ok:
@@ -914,14 +924,20 @@ class RegistryConnector:
                     group_checked = True
                 except Exception as exc:
                     errors.append({"stage": "registry_group", "error": str(exc)})
+                    group_failed = "register group structure could not be parsed"
             elif resp.status in (404, 410):
                 group_checked = True
                 builder.note_checked("group", BRREG_GROUP.format(org=org))
+            else:
+                group_failed = f"register group structure unavailable this run ({resp.status or resp.error})"
 
         # -------- group --------
         group_claims = [c for c in builder.claims if c.family == "group"]
         group_sources = list(dict.fromkeys([BRREG_ENTITY.format(org=org)] + builder.sources_checked.get("group", [])))
-        if group_claims:
+        if group_failed and not group_claims:
+            # Not checked is not "no group": refresh keeps the stored group facts.
+            families["group"] = FamilyState(family="group", availability="failed", reason=group_failed, sources_checked=group_sources)
+        elif group_claims:
             families["group"] = FamilyState(family="group", availability="available", sources_checked=group_sources, claim_count=len(group_claims))
         elif families.get("financials") is not None and families["financials"].availability == "failed" and not group_checked:
             # The parent-company flag comes from the accounts; unread accounts mean "not checked".
@@ -949,8 +965,8 @@ def _group_node_quote(text: str, org: str) -> str | None:
         return None
     start = text.rfind('"dato":', 0, at)
     end_key = text.find('"parentOrganisasjonsnummer":"', at)
-    if start < 0 or end_key < 0:
-        return None
+    if start < 0 or end_key < 0 or any(k in text[start:at] for k in ('"children"', '"organisasjonsnummer"', "}]")):
+        return None  # the node has no "dato" of its own: never quote across into another node
     end = text.find('"', end_key + len('"parentOrganisasjonsnummer":"'))
     return text[start:end + 1] if end > 0 else None
 

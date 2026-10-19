@@ -235,6 +235,7 @@ def test_accounts_in_a_layout_the_api_does_not_serve_are_not_available_not_faile
     for module in ("entity", "roles", "subunits", "years"):
         data = _load(module)
         client.add_json(data["url"], data["status"], data["body"])
+    client.add_json(registry.BRREG_GROUP.format(org=ORG), 404, {"status": 404})  # not in a registered group
     client.add_json(registry.BRREG_ACCOUNTS.format(org=ORG), 500, {
         "status": "500", "error": "Internal Server Error",
         "message": "Regnskapet inneholder en oppstillingsplan som ikke er stottet (IDEELL)",

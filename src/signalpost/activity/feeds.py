@@ -26,6 +26,7 @@ Only dated items become claims. Undated items are dropped rather than fabricatin
 """
 from __future__ import annotations
 
+import html as html_lib
 import json
 import re
 import urllib.parse
@@ -147,8 +148,11 @@ def raw_feed_item_quote(text: str, item: dict) -> str | None:
         return None
     block = text[start:min(ends)]
     parts = []
-    title = re.search(r"<title\b[^>]*>.*?</title>", block, re.S)
+    title = re.search(r"<title\b[^>]*>(.*?)</title>", block, re.S)
     if title:
+        shown = html_lib.unescape(re.sub(r"^<!\[CDATA\[|\]\]>$", "", title.group(1).strip())).strip()
+        if " ".join(shown.split()) != " ".join(str(item.get("title") or "").split()):
+            return None  # the link was found inside another item: never quote that item's title
         parts.append(title.group(0))
     for tag in _DATE_TAGS:
         found = re.search(rf"<{tag}\b[^>]*>.*?</{tag}>", block, re.S)
