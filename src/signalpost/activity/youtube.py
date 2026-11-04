@@ -18,6 +18,7 @@ from .feeds import feed_item_quote, parse_feed
 MAX_CHANNELS = 2
 MAX_VIDEOS_PER_CHANNEL = 5
 
+FEED_PROBE_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC0000000000000000000000"
 CHANNEL_ID_URL_RE = re.compile(r"youtube\.com/channel/(UC[0-9A-Za-z_-]{10,})", re.I)
 
 
@@ -64,6 +65,11 @@ def collect(ctx) -> dict:
         return result
     links = _find_youtube_links(ctx)
     if not links:
+        return result
+    # YouTube's robots.txt disallows /feeds/videos.xml (Nov 2026): then resolving a channel id costs a
+    # request for a feed we may not read. Ask robots.txt (cached once per run) before spending anything.
+    robots_allows = getattr(ctx.client, "robots_allows", None)
+    if robots_allows is not None and not robots_allows(FEED_PROBE_URL, org=ctx.org):
         return result
 
     claims = []

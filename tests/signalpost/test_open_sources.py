@@ -127,3 +127,15 @@ def test_feed_and_phone_evidence_quote_the_source_as_written():
     assert item["published"] == "2026-02-04"
     assert feed_item_quote(item) == "Nytt verksted — Wed, 04 Feb 2026 10:00:00 +0000"
     assert phones_as_written("Ring oss på 38 26 61 11 i dag") == {"38266111": "38 26 61 11"}
+
+
+def test_smilefjes_subunit_town_word_is_not_a_name_match():
+    smilefjes.reset_for_tests()
+    index = {"lookup": [["/spisested/bergen/scandic_torget/", "Scandic Torget Bergen", "Torget 1", "", "5014", "Bergen", [["0", "2025-01-01"]]]]}
+    client = _PageClient({}, index)
+    ctx = SimpleNamespace(org="979543883", client=client, bulk={},
+                          registry={"subunits": [{"organisation_number": "912345678", "name": "DIPS AS AVD BERGEN", "postcode": "5014", "city": "BERGEN", "street": "Torget 1"}]},
+                          shared={"registry_facts": {"name": "DIPS AS", "postcode": "8003", "aliases": []}})
+    smilefjes._load_index(client)
+    assert smilefjes.candidates(ctx) == []
+    smilefjes.reset_for_tests()

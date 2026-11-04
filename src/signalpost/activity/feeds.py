@@ -180,6 +180,10 @@ def raw_news_page_quote(page_html: str, date_span: str | None) -> str | None:
         date_tag = re.search(r"<meta\b[^>]*article:published_time[^>]*>", page_html)
     elif date_span == "JSON-LD datePublished":
         date_tag = re.search(r'"datePublished"\s*:\s*"[^"]*"', page_html)
+    elif date_span and date_span.startswith("meta[") and date_span.endswith("]"):
+        date_tag = re.search(r"<meta\b[^>]*[\"']" + re.escape(date_span[5:-1]) + r"[\"'][^>]*>", page_html, re.I)
+    elif date_span == "labelled publication date":
+        date_tag = labelled_date_match(page_html)
     if date_tag:
         parts.append(date_tag.group(0))
     return " | ".join(parts)[:500] or None
@@ -220,6 +224,40 @@ _DATE_HINT = re.compile(r"publi|posted|post-date|entry-date|article-date|news-da
 # WordPress marks the one date of an unedited post "entry-date published updated": a publish marker wins.
 _MODIFIED_HINT = re.compile(r"modif|updated|oppdatert|endret|revid", re.I)
 _PUBLISH_HINT = re.compile(r"publi|posted|post-date|entry-date", re.I)
+# <meta name=...> spellings CMSs use for an article's publication date (haugesund-sparebank.no: name="publisheddate").
+_PUBLISH_META_NAMES = {"publisheddate", "publishdate", "publish_date", "publish-date", "pubdate", "article.published",
+                       "dc.date.issued", "dcterms.issued", "parsely-pub-date", "sailthru.date", "og:published_time"}
+_MONTHS_EN = {m: i for i, m in enumerate(("january", "february", "march", "april", "may", "june", "july", "august",
+                                           "september", "october", "november", "december"), 1)}
+# A date the page labels as its publication date in visible text: "Publisert 11.04.2025" (luftambulanse.no),
+# "Opprettet 16. januar 2018", "Published: March 3, 2026". Tags and &nbsp; may sit between label and date.
+_GAP = r"(?:\s|&nbsp;|&#160;|:|<[^>]{0,200}>){0,12}"
+_DATE_TEXT = (r"(\d{1,2}\.\s?\d{1,2}\.\s?\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\.?\s(?:" + "|".join(_NORWEGIAN_MONTHS)
+              + r"|" + "|".join(_MONTHS_EN) + r")\s\d{4}|(?:" + "|".join(_MONTHS_EN) + r")\s\d{1,2},?\s\d{4})")
+_LABELLED_DATE_RE = re.compile(r"\b(publisert|publisering|published|posted|opprettet|skrevet|postet)\b(?:\s+den)?" + _GAP + _DATE_TEXT, re.I)
+
+
+def labelled_date_match(page_html: str):
+    """The first "Publisert <date>"-style label in the raw HTML from the article heading on (menus and the
+    site header come before it), searched in the raw text so the quote is the page's own bytes."""
+    start = next((i for i in (page_html.find("<h1"), page_html.find("<main"), page_html.find("<article")) if i >= 0), 0)
+    return _LABELLED_DATE_RE.search(page_html, start, start + 60_000)
+
+
+def _parse_text_date(raw: str) -> str | None:
+    raw = " ".join(html_lib.unescape(raw).split()).rstrip(".,")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return normalize_iso_date(raw)
+    iso = parse_norwegian_date(raw)
+    if iso:
+        return iso
+    m = re.match(r"(\d{1,2})\.?\s([a-z]+)\s(\d{4})$", raw, re.I) or None
+    if m and m.group(2).lower() in _MONTHS_EN:
+        return f"{int(m.group(3)):04d}-{_MONTHS_EN[m.group(2).lower()]:02d}-{int(m.group(1)):02d}"
+    m = re.match(r"([a-z]+)\s(\d{1,2}),?\s(\d{4})$", raw, re.I)
+    if m and m.group(1).lower() in _MONTHS_EN:
+        return f"{int(m.group(3)):04d}-{_MONTHS_EN[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
+    return None
 
 
 def _jsonld_article_date(soup: BeautifulSoup) -> str | None:
@@ -267,6 +305,13 @@ def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
         if iso:
             return iso, "meta[property=article:published_time]"
 
+    for meta_tag in soup.find_all("meta"):
+        key = str(meta_tag.get("name") or meta_tag.get("property") or meta_tag.get("itemprop") or "").strip().lower()
+        if key in _PUBLISH_META_NAMES and meta_tag.get("content"):
+            iso = normalize_iso_date(str(meta_tag["content"]).strip())
+            if iso:
+                return iso, f"meta[{key}]"
+
     raw = _jsonld_article_date(soup)
     if raw:
         return normalize_iso_date(raw), "JSON-LD datePublished"
@@ -276,13 +321,19 @@ def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
         hints = " ".join(" ".join(el.get("class") or []) + " " + str(el.get("itemprop") or "") for el in near if hasattr(el, "get"))
         if _MODIFIED_HINT.search(hints) and not _PUBLISH_HINT.search(hints):
             continue  # an edit date, even inside <article>
-        marked = time_el.find_parent("article") is not None or str(time_el.get("itemprop") or "") == "datePublished" \
+        marked = time_el.find_parent("article") is not None or str(time_el.get("itemprop") or "") in ("datePublished", "dateCreated") \
             or _DATE_HINT.search(hints)
         if not marked:
             continue
         iso = normalize_iso_date(time_el["datetime"])
         if iso:
             return iso, f'<time datetime="{time_el["datetime"]}">'
+
+    labelled = labelled_date_match(html)
+    if labelled:
+        iso = _parse_text_date(labelled.group(2))
+        if iso:
+            return iso, "labelled publication date"
 
     if og == "article":
         text = soup.get_text(" ", strip=True)[:4000]

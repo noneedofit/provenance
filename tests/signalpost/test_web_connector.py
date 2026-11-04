@@ -556,7 +556,10 @@ def test_a_related_site_is_published_only_when_the_register_ties_it_to_us():
 
 def test_none_read_means_not_checked():
     from signalpost.web.connector import _none_read
-    assert _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "unreachable", "reason": "dns_error"}])
+    assert _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "unreachable", "reason": "timeout"}])
+    assert _none_read([{"source": "registry_website", "status": "unreachable", "reason": "timeout"}, {"status": "unreachable", "reason": "dns"}])
+    assert not _none_read([{"source": "name_guess", "status": "unreachable", "reason": "timeout"}, {"status": "unreachable", "reason": "dns"}])
+    assert not _none_read([{"source": "name_guess", "status": "unreachable", "reason": "timeout"}])
     assert _none_read([{"status": "skipped", "reason": "request_budget"}])
     assert not _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "rejected", "reason": "parked_or_placeholder"}])
     assert not _none_read([{"status": "unreachable", "reason": "dns_error"}])

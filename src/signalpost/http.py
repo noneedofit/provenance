@@ -356,6 +356,10 @@ class BudgetedHttpClient:
             elapsed_ms=elapsed_ms, requests_used=requests_used, error=error,
         )
 
+    def robots_allows(self, url: str, *, org: str | None, timeout: float = 10.0) -> bool:
+        """Whether robots.txt lets us fetch `url` (fetches and caches the host's robots.txt once)."""
+        return self._robots_allowed(url, org=org, timeout=timeout)[0]
+
     def _robots_allowed(self, url: str, *, org: str | None, timeout: float) -> tuple[bool, int]:
         """Returns (allowed, requests_charged_for_robots_fetch)."""
         parsed = urllib.parse.urlparse(url)

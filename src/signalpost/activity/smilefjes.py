@@ -79,25 +79,29 @@ def reset_for_tests() -> None:
         _state.update({"loaded": False, "by_postcode": {}, "error": None, "evidence": None})
 
 
-def _places_for(ctx: Any) -> list[tuple[str, list[str]]]:
-    """(postcode, name) pairs for the company and its subunits."""
-    out: list[tuple[str, list[str]]] = []
+def _places_for(ctx: Any) -> list[tuple[str, list[str], set[str]]]:
+    """(postcode, names, place words) for the company and its subunits. Place words are the town and street
+    of a subunit's address: "DIPS AS AVD BERGEN" shares "bergen" with every Bergen restaurant, which says
+    nothing (dips.com matched Scandic Torget Bergen and Backstube Bodø: 59 page fetches for 1 hit on ref100)."""
+    out: list[tuple[str, list[str], set[str]]] = []
     facts = (ctx.shared or {}).get("registry_facts") or {}
     bulk = ctx.bulk or {}
     names = [facts.get("name") or bulk.get("navn") or ""] + list(facts.get("aliases") or [])
     postcode = facts.get("postcode") or bulk.get("forretningsadresse.postnummer")
     if postcode:
-        out.append((str(postcode), names))
+        # The company's own name keeps its town word ("TJØME BAKERI AS" is matched by "tjome").
+        out.append((str(postcode), names, set()))
     for sub in (ctx.registry or {}).get("subunits") or []:
         if sub.get("postcode"):
-            out.append((str(sub["postcode"]), [sub.get("name") or ""] + names[:1]))
+            here = _tokens(" ".join(str(sub.get(k) or "") for k in ("city", "street")))
+            out.append((str(sub["postcode"]), [sub.get("name") or ""] + names[:1], here))
     return out
 
 
 def candidates(ctx: Any) -> list[list]:
     found: dict[str, list] = {}
-    for postcode, names in _places_for(ctx):
-        wanted = set().union(*(_tokens(n) for n in names if n)) if names else set()
+    for postcode, names, place_words in _places_for(ctx):
+        wanted = set().union(*(_tokens(n) for n in names if n)) - place_words if names else set()
         if not wanted:
             continue
         for row in _state["by_postcode"].get(postcode, []):
