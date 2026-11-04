@@ -404,7 +404,8 @@ def _is_section_url(url: str) -> bool:
 def _menu_links(ctx) -> set[str]:
     """Links found on two or more of the pages W3 fetched: the site's menus and footer, which repeat on
     every page. A menu item ("Implantatbehandling", "Helsenorge") is a standing page, not news, even when
-    the CMS stores it as a dated post. News teasers usually sit on the homepage only."""
+    the CMS stores it as a dated post. Many sites also show their latest posts in a footer on every page, so
+    a repeated link is dropped only when its title is a page name (one or two words), not a headline."""
     seen: dict[str, int] = {}
     for page in (ctx.shared or {}).get("site_pages") or []:
         for link in {str(x).rstrip("/") for x in page.get("links") or []}:
@@ -699,7 +700,8 @@ def collect(ctx) -> dict:
                 extra += 1
 
     menu = _menu_links(ctx)
-    candidates = [pair for pair in candidates if str(pair[0].get("url") or "").rstrip("/") not in menu]
+    candidates = [pair for pair in candidates
+                  if not (str(pair[0].get("url") or "").rstrip("/") in menu and len(str(pair[0].get("title") or "").split()) <= 2)]
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     claims = []
     evidence = []

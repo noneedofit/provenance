@@ -359,13 +359,15 @@ def test_section_pages_and_menu_items_are_not_news():
     client = FakeHttpClient()
     rest = "https://klinikk.no/" + feeds.WP_POSTS_QUERY
     body = ('[{"date":"2022-01-12T10:00:00","link":"https:\\/\\/klinikk.no\\/implantat\\/","title":{"rendered":"Implantatbehandling"}},'
-            '{"date":"2026-10-01T10:00:00","link":"https:\\/\\/klinikk.no\\/nye-apningstider\\/","title":{"rendered":"Nye \\u00e5pningstider fra november"}}]')
+            '{"date":"2026-10-01T10:00:00","link":"https:\\/\\/klinikk.no\\/nye-apningstider\\/","title":{"rendered":"Nye \\u00e5pningstider fra november"}},'
+            '{"date":"2026-09-01T10:00:00","link":"https:\\/\\/klinikk.no\\/ny-tannlege-ansatt\\/","title":{"rendered":"Ny tannlege ansatt i Sunndal"}}]')
     client.route(rest, body.encode())
-    menu = ["https://klinikk.no/implantat/", "https://klinikk.no/kontakt/"]
+    # The latest-posts footer repeats a headline on every page: still news. A repeated page name is not.
+    menu = ["https://klinikk.no/implantat/", "https://klinikk.no/kontakt/", "https://klinikk.no/ny-tannlege-ansatt/"]
     ctx = make_ctx(client=client, shared={
         "verified_site": {"url": "https://klinikk.no/", "domain": "klinikk.no"}, "wordpress": True,
         "site_pages": [{"url": "https://klinikk.no/", "final_url": "https://klinikk.no/", "links": menu},
                        {"url": "https://klinikk.no/kontakt/", "final_url": "https://klinikk.no/kontakt/", "links": menu}],
     })
     result = feeds.collect(ctx)
-    assert [c.value["title"] for c in result["claims"]] == ["Nye åpningstider fra november"]
+    assert [c.value["title"] for c in result["claims"]] == ["Nye åpningstider fra november", "Ny tannlege ansatt i Sunndal"]
