@@ -295,10 +295,10 @@ def _none_read(attempts: list[dict]) -> bool:
         return False
     budget = any(str(a.get("reason") or "") in ("budget_exhausted", "request_budget") for a in attempts)
     declared_down = any(a.get("source") in (_DECLARED_SOURCES | {"registry_email_domain"}) and _transient(a.get("reason")) for a in attempts)
-    # One guessed domain timing out says little (most guesses are not the company's), but every candidate
-    # failing at the connection level means this run could not reach websites at all.
-    all_down = len(attempts) >= 2 and all(_transient(a.get("reason")) for a in attempts)
-    return budget or declared_down or all_down
+    # Guessed domains timing out say nothing about the company: most guesses are not its site (j33: vian.no,
+    # norrona.com/in/en and norroena.com all failed at the connection level for two companies with no site of
+    # their own). A run that cannot reach websites at all still shows here through the declared sites.
+    return budget or declared_down
 
 
 def _transient(reason: Any) -> bool:
