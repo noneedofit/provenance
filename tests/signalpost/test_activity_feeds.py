@@ -239,3 +239,19 @@ def test_formal_replies_are_still_company_activity():
     from signalpost.activity.feeds import is_company_item
 
     assert is_company_item({"title": "Svar på høring om ny avfallsforskrift", "url": "https://x.no/nyheter/horing"})
+
+
+def test_shop_products_are_not_news():
+    item = {"url": "https://gullsmed.example/produkt/ring-gull/", "title": "Ring i gull", "published": "2026-10-01"}
+    assert not feeds.is_company_item(item, "https://gullsmed.example/feed/")
+    post = {"url": "https://gullsmed.example/2026/10/nye-ringer/", "title": "Nye ringer", "published": "2026-10-01"}
+    assert feeds.is_company_item(post, "https://gullsmed.example/feed/")
+    assert not feeds.is_company_item(post, "https://gullsmed.example/product/feed/")
+    assert not feeds.is_company_item(post, "https://gullsmed.example/feed/?post_type=product")
+    assert feeds.is_company_item(post, "https://gullsmed.example/kategori/nyheter/feed/")
+
+
+def test_a_feed_with_spam_posts_is_a_hacked_site():
+    assert feeds.feed_is_compromised([{"title": "Velkommen"}, {"title": "Cheap Birkin replica bags"}])
+    assert feeds.feed_is_compromised([{"title": "Best AliExpress deals 2026"}])
+    assert not feeds.feed_is_compromised([{"title": "Vi har åpnet ny klinikk i Skien"}])

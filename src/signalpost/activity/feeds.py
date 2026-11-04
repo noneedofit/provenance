@@ -351,12 +351,29 @@ _COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommenta
 _PLACEHOLDER_KEYS = {"hello world", "hei verden", "hallo verden", "sample page", "eksempelside"}
 
 
+# A web shop's product feed (WooCommerce /product/feed, ?post_type=product) or a product URL is a catalogue
+# entry, not news (gullsmedcamilla.no/produkt/...).
+_PRODUCT_PATH = re.compile(r"/(produkt|produkter|product|products|shop|butikk|nettbutikk|vare|varer)/", re.I)
+# Titles that only appear on a hacked or spam-filled site (replica-bag and casino posts on a clinic's blog).
+_SPAM_TITLE = re.compile(
+    r"\b(replica|replicas|birkin|aliexpress|louis vuitton|counterfeit|knockoff|casino|viagra|cialis|"
+    r"payday loan|essay writing)\b", re.I)
+
+
+def feed_is_compromised(items: list[dict]) -> bool:
+    """A feed with spam posts is a hacked site: none of its items can be trusted as the company's news."""
+    return any(_SPAM_TITLE.search(str(i.get("title") or "")) for i in items)
+
+
 def is_company_item(item: dict, feed_url: str = "") -> bool:
     """False for items that are not the company's own publication: blog comments (a comments feed,
-    '#comment-' links, 'Comment on ...' titles) and CMS placeholder posts ('Hello world!')."""
+    '#comment-' links, 'Comment on ...' titles), CMS placeholder posts ('Hello world!'), and shop products."""
     url = str(item.get("url") or "")
     title = str(item.get("title") or "").strip()
     if "/comments/feed" in feed_url or "/comments/" in url or "#comment" in url or "replytocom=" in url:
+        return False
+    if "post_type=product" in feed_url or _PRODUCT_PATH.search(urllib.parse.urlsplit(feed_url).path + "/") \
+            or _PRODUCT_PATH.search(urllib.parse.urlsplit(url).path):
         return False
     if _COMMENT_TITLE.search(title) or re.sub(r"[^\w ]", "", title.lower()).strip() in _PLACEHOLDER_KEYS:
         return False
@@ -385,6 +402,8 @@ def _process_feed_url(ctx, feed_url: str, seen_urls: set[str], result: dict, *, 
     )
     out = []
     raw_text = resp.text()
+    if feed_is_compromised(parsed):
+        return []  # read fine, but a hacked site: nothing in it is the company's news (not a fetch error)
     for item in parsed:
         url = item.get("url")
         if not url or not item.get("published") or url in seen_urls or not is_company_item(item, feed_url):

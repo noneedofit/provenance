@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import re
 import urllib.parse
 
 SOCIAL_HOSTS = {
@@ -72,6 +73,10 @@ def normalize_social_url(url: str) -> dict[str, str] | None:
         return None
     if platform == "facebook" and lowered[0] == "profile.php":
         return None
+    if platform == "facebook" and re.fullmatch(r"\d+_\d+", parts[0]):
+        return None  # <page id>_<post id>: one post, not the account
+    if platform == "facebook" and len(parts) > 1 and lowered[1] in {"posts", "photos", "videos", "events", "reviews", "about"}:
+        parts = parts[:1]  # a page's sub-page: the profile is the page itself
     if platform == "linkedin" and (lowered[0] != "company" or len(parts) < 2):
         return None
     if platform == "youtube" and lowered[0] not in {"channel", "user", "c"} and not parts[0].startswith("@"):
