@@ -749,6 +749,13 @@ def financial_history_claims(builder: _ClaimBuilder, body: Any, response: Any, *
         final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
         snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
     )
+    if not years:
+        # The register lists no filed annual accounts (a new company, or no such organisation): a checked
+        # "none", never an available fact with an empty value.
+        builder.add_claim(family="financial_history", field="filed_years", value=None, availability="not_available",
+                          evidence_ids=[eid], note="no filed annual accounts in the register")
+        builder.note_checked("financial_history", response.url)
+        return
     builder.add_claim(family="financial_history", field="filed_years", value=years, evidence_ids=[eid])
     # One fact per filed year, with the register's official copy of that year's annual accounts.
     published_years: set[str] = set()
