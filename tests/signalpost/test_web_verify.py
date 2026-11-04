@@ -537,6 +537,28 @@ def test_name_guess_with_one_strong_signal_still_reaches_exact():
 
 
 
+def test_full_legal_name_in_footer_plus_registered_address_verifies_a_name_guess():
+    # LAPSEN & CO AS: title "Hjem", footer "Lapsen & Co AS Holtet 45 1368 Stabek". The full registered name
+    # with its legal form is a name signal; the registered address is an independent registry fact.
+    facts = {**REGISTRY_FACTS, "name": "LAPSEN & CO AS", "street": "Holtet 45", "postcode": "1368", "role_holders": [], "phones": [], "email": None}
+    html = "<html><body><p>Lapsen &amp; Co AS Holtet 45 1368 Stabek</p></body></html>"
+    p = page("Hjem", html=html, url="https://www.lapsen.no/")
+    verdict = assess(OUR_ORG, [p], facts, cand(domain="lapsen.no", source="name_guess"))
+    assert verdict.status == "exact"
+    sig = next(s for s in verdict.signals if s.kind == "legal_name_in_text")
+    assert sig.span == "Lapsen & Co AS"
+
+
+def test_full_legal_name_in_text_alone_is_one_signal():
+    # A name on its own (a namesake, a customer list) never verifies a site: same dimension as the title match.
+    facts = {**REGISTRY_FACTS, "name": "LAPSEN & CO AS", "street": "Holtet 45", "postcode": "1368", "role_holders": [], "phones": [], "email": None}
+    p = page("Hjem", html="<html><body><p>Levert til Lapsen &amp; Co AS i Oslo.</p></body></html>", url="https://www.lapsen.no/")
+    assert assess(OUR_ORG, [p], facts, cand(domain="lapsen.no", source="name_guess")).status == "ambiguous"
+    # Without the legal form, or with only generic words, there is no name phrase at all.
+    from signalpost.web.verify import _full_legal_name_phrase
+    assert _full_legal_name_phrase("STIFTELSEN HAMMAREN") is None and _full_legal_name_phrase("BYGG AS") is None
+    assert _full_legal_name_phrase("LAPSEN & CO AS").search("lapsen&co as") is not None
+
 def test_namesake_company_resolved_by_org_number_match():
     site_text = f"Oen Kuldeteknikk AS. Org.nr {OUR_ORG[:3]} {OUR_ORG[3:6]} {OUR_ORG[6:]}. Kontakt oss i Bergen."
     p = page(site_text, url="https://oenkuldeteknikk.no/")

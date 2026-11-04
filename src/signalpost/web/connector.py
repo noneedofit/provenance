@@ -191,7 +191,7 @@ def _worth_confirming(verdict: Any) -> bool:
     if verdict.status != "ambiguous":
         return False
     kinds = {s.kind for s in verdict.signals}
-    return bool(kinds & {"legal_name_match", "domain_name_match"})
+    return bool(kinds & {"legal_name_match", "legal_name_in_text", "domain_name_match"})
 
 
 def _domain_is_our_name(ctx: Any, cand: Candidate) -> bool:
@@ -366,7 +366,7 @@ def _source_class_for(page: PageFetch) -> str:
 _SIGNAL_RANK = {
     kind: i for i, kind in enumerate((
         "org_number_on_source", "jsonld_org_number", "wikidata", "osm_orgnr", "nav_employer_homepage",
-        "registry_declared", "registry_email", "legal_name_match", "domain_name_match", "email_domain_match",
+        "registry_declared", "registry_email", "legal_name_match", "legal_name_in_text", "domain_name_match", "email_domain_match",
         "registry_email_domain", "open_places_contact_named", "registry_phone", "registered_address",
         "role_name", "open_places_contact",
     ))
@@ -375,7 +375,7 @@ _SIGNAL_RANK = {
 
 # Signals that are facts about the page (quoted from the page that showed them).
 _PAGE_SIGNALS = {
-    "org_number_on_source", "jsonld_org_number", "legal_name_match", "domain_name_match", "registry_email",
+    "org_number_on_source", "jsonld_org_number", "legal_name_match", "legal_name_in_text", "domain_name_match", "registry_email",
     "registry_phone", "registered_address", "role_name",
 }
 

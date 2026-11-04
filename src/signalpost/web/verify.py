@@ -264,7 +264,8 @@ def _infer_relationship(our_name: str, site_text: str) -> Relationship:
 
 
 # Signals read from the page's own content (not from the domain name or the register alone).
-_CONTENT_SIGNAL_KINDS = frozenset({"registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match"})
+_CONTENT_SIGNAL_KINDS = frozenset({"registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match",
+                                   "legal_name_in_text"})
 # Words too common to show that a page is about one particular company.
 _COMMON_NAME_WORDS = frozenset({"norway", "norge", "norsk", "norske", "norwegian", "nordic", "nord", "group", "gruppen"})
 
@@ -292,6 +293,22 @@ def _legal_name_core(name: str) -> set[str]:
     text = _normalize(str(name or ""))
     suffixes = {"as", "asa", "ans", "da", "enk", "iks", "sa", "sam", "sti", "stiftelsen", "nuf"}
     return {tok for tok in re.findall(r"[a-z0-9]+", text) if tok not in suffixes and len(tok) > 1}
+
+
+_LEGAL_FORMS = {"as", "asa", "ans", "da", "sa", "nuf", "iks", "ba"}
+
+
+def _full_legal_name_phrase(name: str) -> re.Pattern[str] | None:
+    """The registered name as written, ending in its legal form ("Lapsen & Co AS"), matched case-insensitively
+    on the page's own text (so the quote is verbatim), with any short punctuation between words. None when
+    the name has no legal form or only generic words ("Bygg AS")."""
+    tokens = re.findall(r"\w+", str(name or ""))
+    if len(tokens) < 2 or tokens[-1].lower() not in _LEGAL_FORMS:
+        return None
+    core = [_normalize(t) for t in tokens[:-1] if len(t) > 1]
+    if not core or all(t in GENERIC_NAME_WORDS for t in core):
+        return None
+    return re.compile(r"(?<!\w)" + r"[^\w\n]{1,3}".join(re.escape(t) for t in tokens) + r"(?!\w)", re.I)
 
 
 def _page_all_text(page: PageFetch) -> str:
@@ -565,6 +582,14 @@ def assess(
         title_tokens = set(re.findall(r"[a-z0-9]+", _normalize(homepage.title)))
         if legal_core and legal_core.issubset(title_tokens):
             signals.append(Signal("legal_name_match", "exact legal name (minus suffix) found in <title>", homepage.final_url, homepage.title))
+        elif (phrase := _full_legal_name_phrase(registry_facts.get("name") or "")) is not None:
+            # The full registered name, legal form included ("Lapsen & Co AS"), in the visible text: how a
+            # company's own footer or contact block names it. Same dimension as the <title> match (a name),
+            # so it still needs an independent registry fact (address, phone, e-mail, role holder) beside it.
+            hit = next(((p, m.group(0)) for p, t in page_texts if (m := phrase.search(t))), None)
+            if hit is not None:
+                where, text_hit = hit[0].final_url, hit[1]
+                signals.append(Signal("legal_name_in_text", "full registered name (with legal form) found in page text", where, text_hit))
 
         # An open places dataset lists this site for a place that carries our registry phone or e-mail. Strong
         # only when that place also bears our name core (phone/e-mail alone can be a property manager's or an
@@ -607,7 +632,7 @@ def assess(
             signals.append(Signal("email_domain_match", "registered e-mail domain matches this site's domain", homepage.final_url, email_domain))
 
     corroborating_kinds = {
-        "registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match",
+        "registered_address", "registry_phone", "registry_email", "role_name", "legal_name_match", "legal_name_in_text",
         "email_domain_match", "open_places_contact", "open_places_contact_named", "domain_name_match",
         "registry_email_domain",
     }
@@ -619,13 +644,14 @@ def assess(
     # match on a page that isn't entity-specific -- a shared office after an acquisition, a former
     # tenant's address, a person who moved employer. See the name_guess guard below.
     STRONG_CORROBORATING_KINDS = {
-        "legal_name_match", "registry_email", "email_domain_match", "open_places_contact_named", "domain_name_match",
+        "legal_name_match", "legal_name_in_text", "registry_email", "email_domain_match", "open_places_contact_named",
+        "domain_name_match",
     }
     # The name in the <title> and the name as the domain are one fact (the company's name), not two: a
     # namesake (ottokoch.com, a German chef; activepartner.no, a same-named company) shows both. Count them
     # as one dimension, so a name always needs an independent registry fact (address, phone, e-mail, role
     # holder, open places contact) next to it.
-    NAME_KINDS = {"legal_name_match", "domain_name_match"}
+    NAME_KINDS = {"legal_name_match", "legal_name_in_text", "domain_name_match"}
     distinct_corroborating = {("name" if k in NAME_KINDS else k) for k in distinct_corroborating}
     distinct_corroborating_raw = {s.kind for s in corroborating}
 
