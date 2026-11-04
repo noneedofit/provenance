@@ -18,7 +18,9 @@ Built on the Builderr Signalpost starter kit (its SSRF guard and social-URL norm
 
 Every `signalpost run` also writes a browsable, offline site to `<output-dir>/site/`. Open
 `<output-dir>/site/index.html` in any browser (a plain `file://` URL works; no server, no internet).
-The 100-company smoke test's copy is in [`smoke-test/site/`](smoke-test/site/index.html).
+The 100-company smoke test's copy is in [`smoke-test/site/`](smoke-test/site/index.html), hosted at
+<https://noneedofit.github.io/provenance/smoke-test/site/>. [`jbox/`](jbox/) holds the same 100 profiles as one
+compact JSON file (every fact with its source URL, retrieval time and exact source text) for the site built with JBOX.
 
 - **Find:** type a name, org number, municipality or industry in the search box on the directory page;
   filter by legal form, size, website, hiring or recent activity. `directory.csv` has every row.
