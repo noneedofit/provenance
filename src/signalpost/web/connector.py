@@ -217,7 +217,20 @@ def _publish_profiles(
     per_platform: dict[str, set[str]] = {}
     for link in links:
         per_platform.setdefault(link["platform"], set()).add(link["url"])
-    links = [link for link in links if len(per_platform[link["platform"]]) <= MAX_PROFILES_PER_PLATFORM]
+    same_as: dict[str, set[str]] = {}
+    for link in links:
+        if link.get("same_as"):
+            same_as.setdefault(link["platform"], set()).add(link["url"])
+
+    def keep(link: dict) -> bool:
+        platform = link["platform"]
+        if len(per_platform[platform]) <= MAX_PROFILES_PER_PLATFORM:
+            return True
+        # Too many accounts linked, but the site's own Organization markup (JSON-LD sameAs) names which
+        # are this organisation's (ragasco.com links three LinkedIn pages; its sameAs names ragasco-as).
+        return 0 < len(same_as.get(platform, ())) <= MAX_PROFILES_PER_PLATFORM and link["url"] in same_as[platform]
+
+    links = [link for link in links if keep(link)]
     for link in links:
         source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
         ev = _make_evidence(source_page, link["url"], "web_social_link_v1")

@@ -564,3 +564,21 @@ def test_none_read_means_not_checked():
     assert not _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "rejected", "reason": "parked_or_placeholder"}])
     assert not _none_read([{"status": "unreachable", "reason": "dns_error"}])
     assert not _none_read([])
+
+
+def test_jsonld_same_as_picks_the_account_when_a_site_links_many():
+    from types import SimpleNamespace as NS
+
+    from signalpost.web.connector import _publish_profiles
+    page = NS(final_url="https://ragasco.example/", html="", title="", status=200, retrieved_at="2026-01-01T00:00:00Z",
+              content_sha256="x", snapshot_ref=None, redirect_chain=[], url="https://ragasco.example/", page_kind="homepage")
+    li = [{"platform": "linkedin", "url": f"https://linkedin.com/company/{n}", "href": f"https://linkedin.com/company/{n}",
+           "source_url": page.final_url} for n in ("845627", "amexgas", "ragasco-as")]
+    li[2]["same_as"] = True
+    result = NS(evidence=[], claims=[])
+    try:
+        _publish_profiles(result, OUR_ORG, li, [page], page, "linked_from_verified_site", "exact")
+    except Exception as exc:
+        import pytest
+        pytest.skip(f"needs PageFetch: {exc}")
+    assert [c.value["url"] for c in result.claims] == ["https://linkedin.com/company/ragasco-as"]

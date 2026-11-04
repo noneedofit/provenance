@@ -322,6 +322,7 @@ def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
                     key = (normalized["platform"], normalized["url"])
                     if key not in found:
                         found[key] = {**normalized, "source_url": page.final_url, "href": raw}
+                    found[key]["same_as"] = True  # the site's own Organization markup names this account
     return sorted(found.values(), key=lambda item: (item["platform"], item["url"]))
 
 

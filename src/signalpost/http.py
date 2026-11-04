@@ -356,6 +356,17 @@ class BudgetedHttpClient:
             elapsed_ms=elapsed_ms, requests_used=requests_used, error=error,
         )
 
+    def robots_sitemaps(self, url: str, *, org: str | None, timeout: float = 10.0) -> list[str]:
+        """The `Sitemap:` lines of the host's robots.txt (fetched and cached once per host)."""
+        self._robots_allowed(url, org=org, timeout=timeout)
+        parsed = urllib.parse.urlparse(url)
+        with self._robots_lock:
+            parser = self._robots_cache.get((parsed.scheme, parsed.hostname or ""))
+        try:
+            return list(parser.site_maps() or []) if parser is not None else []
+        except Exception:
+            return []
+
     def robots_allows(self, url: str, *, org: str | None, timeout: float = 10.0) -> bool:
         """Whether robots.txt lets us fetch `url` (fetches and caches the host's robots.txt once)."""
         return self._robots_allowed(url, org=org, timeout=timeout)[0]

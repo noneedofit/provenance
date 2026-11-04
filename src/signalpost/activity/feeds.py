@@ -47,7 +47,7 @@ MAX_ACTIVITY_ITEMS = 10
 # ARTICLE_DISCOVERY_BUDGET requests: the WordPress post list (one request, up to 10 dated posts), then
 # up to ARTICLE_FOLLOW_MAX article links from a news listing page. Only ~1 in 5 companies has a verified
 # site, so this adds well under 100 requests per 100 companies.
-ARTICLE_DISCOVERY_BUDGET = 3
+ARTICLE_DISCOVERY_BUDGET = 4
 ARTICLE_FOLLOW_MAX = 2
 WP_POSTS_QUERY = "wp-json/wp/v2/posts?per_page=10&_fields=date,link,title"
 
@@ -389,6 +389,56 @@ def _homepage_url(ctx) -> str | None:
     return f"https://{domain}/" if domain else None
 
 
+_SITEMAP_NEWS = re.compile(r"post|news|nyhet|artik|article|blog|aktuelt|presse", re.I)
+_SITEMAP_NOT_NEWS = re.compile(r"page|side|product|produkt|categor|kategori|tag|author|forfatter|attachment|media|image", re.I)
+_LOC_RE = re.compile(r"<url>(.*?)</url>", re.S)
+
+
+def _sitemap_article_links(ctx, homepage: str, max_requests: int) -> tuple[list[str], int]:
+    """(newest news/blog URLs from the site's sitemap, requests used). The sitemap comes from robots.txt's
+    Sitemap: lines, else /sitemap.xml; a sitemap index is followed into its post/news child. A URL counts
+    when it sits in a post/news sitemap or its path has a news word; newest by <lastmod> first. The
+    lastmod is only used to order: each article's date is read from the article itself."""
+    used = 0
+    host = urllib.parse.urlsplit(homepage).netloc.lower().removeprefix("www.")
+    lister = getattr(ctx.client, "robots_sitemaps", None)
+    maps = [u for u in (lister(homepage, org=ctx.org) if lister else []) if urllib.parse.urlsplit(u).netloc.lower().removeprefix("www.") == host]
+    url = maps[0] if maps else urllib.parse.urljoin(homepage, "/sitemap.xml")
+    in_news_map = False
+    for _ in range(2):
+        if used >= max_requests:
+            return [], used
+        resp = ctx.client.get(url, org=ctx.org, purpose="site_sitemap", accept="application/xml, text/xml", respect_robots=True)
+        used += 1
+        if not resp.ok:
+            return [], used
+        text = resp.text()
+        if "<sitemapindex" in text[:2000]:
+            children = [c for c in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", text) if _SITEMAP_NEWS.search(c.rsplit("/", 1)[-1])
+                        and not _SITEMAP_NOT_NEWS.search(c.rsplit("/", 1)[-1])]
+            if not children:
+                return [], used
+            url, in_news_map = html_lib.unescape(children[0]), True
+            continue
+        rows = []
+        for block in _LOC_RE.findall(text):
+            loc = re.search(r"<loc>\s*([^<\s]+)\s*</loc>", block)
+            if not loc:
+                continue
+            link = html_lib.unescape(loc.group(1))
+            path = urllib.parse.urlsplit(link).path
+            if urllib.parse.urlsplit(link).netloc.lower().removeprefix("www.") != host or _NOT_ARTICLE_PATH.search(path) \
+                    or _PRODUCT_PATH.search(path) or path.strip("/").count("/") < (0 if in_news_map else 1):
+                continue
+            if not in_news_map and not any(term in path.casefold() for term in _NEWS_LINK_TERMS):
+                continue
+            lastmod = re.search(r"<lastmod>\s*([^<\s]+)", block)
+            rows.append((lastmod.group(1) if lastmod else "", link))
+        rows.sort(reverse=True)
+        return [link for _, link in rows[:ARTICLE_FOLLOW_MAX]], used
+    return [], used
+
+
 def _homepage_links(ctx) -> list[str]:
     """Links on the homepage W3 fetched: the site's menus, shown on every page."""
     pages = (ctx.shared or {}).get("site_pages") or []
@@ -550,7 +600,7 @@ def raw_wp_post_quote(text: str, url: str) -> str | None:
 # Paths that are sections, filters or assets, never one article.
 _NOT_ARTICLE_PATH = re.compile(
     r"/(page|side|kategori|category|categories|tag|tags|stikkord|author|forfatter|feed|wp-content|wp-json|"
-    r"arkiv|archive|search|sok|søk)(/|$)|\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?)$", re.I)
+    r"arkiv|archive|search|sok|søk|nyhetsbrev|newsletter|abonner|subscribe|login|logg-inn)(/|$)|\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?)$", re.I)
 
 
 def article_links_from_listing(listing_url: str, listing_html: str, nav_links: set[str]) -> list[str]:
@@ -665,12 +715,26 @@ def collect(ctx) -> dict:
                     followed += 1
                     if item:
                         candidates.append(item)
-        # 4. WordPress /feed/ guess (also works where the REST list is switched off).
-        if not candidates and extra < ARTICLE_DISCOVERY_BUDGET and homepage:
+        # 4. WordPress /feed/ (also works where the REST list is switched off). Only on WordPress: on other
+        # sites the guess 404s (7 of 7 non-WordPress sites checked on ref100).
+        if not candidates and extra < ARTICLE_DISCOVERY_BUDGET and homepage and shared.get("wordpress"):
             wp_feed_url = f"{homepage.rstrip('/')}/feed/"
             if wp_feed_url not in feed_urls:
                 candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result, guessed=True))
                 extra += 1
+        # 5. The sitemap's newest news/blog URLs, each read for its own publication date.
+        if not candidates and extra < ARTICLE_DISCOVERY_BUDGET - 1 and homepage:
+            links, used = _sitemap_article_links(ctx, homepage, ARTICLE_DISCOVERY_BUDGET - extra - 1)
+            extra += used
+            for link in links:
+                if extra >= ARTICLE_DISCOVERY_BUDGET:
+                    break
+                if link in seen_urls:
+                    continue
+                item = _process_news_url(ctx, link, seen_urls, result, purpose="site_news_article")
+                extra += 1
+                if item:
+                    candidates.append(item)
 
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     claims = []
