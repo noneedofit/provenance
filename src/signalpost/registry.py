@@ -763,6 +763,7 @@ class RegistryConnector:
                     families["locations"] = FamilyState(family="locations", availability="failed", reason="live registry unavailable; previous profile kept")
                     _carry_previous_claim(builder, ctx.previous, "description", "registry_activity")
 
+        entity_resp = resp if entity_ok else None
         if entity_ok and entity_body is not None:
             identity_claims_from_live(builder, entity_body, resp)
             ctx.registry["entity"] = entity_body
@@ -902,20 +903,38 @@ class RegistryConnector:
         if client is not None and (ctx.shared or {}).get("registry_only"):
             # Time budget is short for the rest of the batch; this endpoint is rate-limited to 1/s.
             families["financial_history"] = FamilyState(family="financial_history", availability="failed", reason="time_budget: registry-only pass")
-        elif client is not None and tier == "T0" and str(bulk_row.get("sisteInnsendteAarsregnskap") or "").strip().isdigit():
+        elif client is not None and tier == "T0" and (
+            str((entity_body or {}).get("sisteInnsendteAarsregnskap") or "").strip().isdigit()
+            or str(bulk_row.get("sisteInnsendteAarsregnskap") or "").strip().isdigit()
+        ):
             # Shell-tier companies: the filed-years endpoint is throttled (about one call a second across the
-            # run), so the latest filed year comes from the same-day bulk row instead of a live call.
-            year = int(str(bulk_row["sisteInnsendteAarsregnskap"]).strip())
-            eid = builder.add_evidence(
-                source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.bulk_retrieved_at or builder.now,
-                extraction_method="brreg_bulk_row_v1", span="$.sisteInnsendteAarsregnskap",
-                content_sha256=bulk_row_sha256(bulk_row),
-            )
+            # run), so the latest filed year comes from the live entity record already fetched (the same field
+            # the bulk file carries), or from the same-day bulk row when the live record lacks it. Either way
+            # the published fact is the same, with or without the bulk file.
+            live_year = str((entity_body or {}).get("sisteInnsendteAarsregnskap") or "").strip()
+            if live_year.isdigit() and entity_resp is not None:
+                year = int(live_year)
+                source = entity_resp.url
+                eid = builder.add_evidence(
+                    source_url=entity_resp.url, source_class="official_registry", retrieved_at=entity_resp.retrieved_at,
+                    extraction_method="brreg_entity_v1", span="$.sisteInnsendteAarsregnskap",
+                    content_sha256=entity_resp.content_sha256, final_url=entity_resp.final_url,
+                    redirect_chain=entity_resp.redirect_chain, http_status=entity_resp.status,
+                    snapshot_ref=entity_resp.snapshot_ref, raw=getattr(entity_resp, "body", None),
+                )
+            else:
+                year = int(str(bulk_row["sisteInnsendteAarsregnskap"]).strip())
+                source = BULK_DOWNLOAD_URL
+                eid = builder.add_evidence(
+                    source_url=BULK_DOWNLOAD_URL, source_class="official_registry_bulk", retrieved_at=builder.bulk_retrieved_at or builder.now,
+                    extraction_method="brreg_bulk_row_v1", span="$.sisteInnsendteAarsregnskap",
+                    content_sha256=bulk_row_sha256(bulk_row),
+                )
             builder.add_claim(family="financial_history", field="latest_filed_year", value=year, evidence_ids=[eid])
-            builder.note_checked("financial_history", BULK_DOWNLOAD_URL)
+            builder.note_checked("financial_history", source)
             families["financial_history"] = FamilyState(
                 family="financial_history", availability="available", reason=None,
-                sources_checked=[BULK_DOWNLOAD_URL], claim_count=1,
+                sources_checked=[source], claim_count=1,
             )
         elif client is not None:
             _history_slot()

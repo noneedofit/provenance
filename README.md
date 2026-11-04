@@ -83,7 +83,7 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 
 `signalpost run` looks for `./data/brreg-enheter.csv.gz` or `./data/brreg-enheter.csv` by default (or
 pass `--bulk <path>` explicitly). If neither is found, or the copy is more than 20 hours old (the register
-publishes it nightly), it downloads the file itself, up to 3 attempts within at most 10 minutes in all (the register serves
+publishes it nightly), it downloads the file itself, up to 3 attempts within at most 5 minutes in all, abandoning an attempt early when its speed shows it cannot finish in time (the register serves
 it without resume, and on a slow day at a few hundred KB/s), each counted as a setup request; a failed
 download falls back to the older copy, or to the live registry API alone. Without a bulk row for a company, its
 search tier is planned from the live registry entry instead (staff, legal form, NACE, registered site), so a

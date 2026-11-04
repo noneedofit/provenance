@@ -43,8 +43,12 @@ def _read_organisation_inputs(path: str) -> list[str]:
 BULK_DOWNLOAD_ATTEMPTS = 3
 # The register serves the 155 MB bulk file without resume support, and on a slow day at a few hundred
 # KB/s. All attempts together get at most this long (or a quarter of the run deadline, if smaller); past
-# it the run goes on with the live registry API alone rather than spend the evaluator's time waiting.
-BULK_DOWNLOAD_MAX_S = 600
+# it the run goes on with the live registry API alone rather than spend the evaluator's time waiting. The
+# file only speeds up planning (each company's tier is otherwise planned from its live registry entry), so
+# an attempt that is clearly too slow to finish in time is abandoned early (see BULK_PROJECTION_AFTER_S).
+BULK_DOWNLOAD_MAX_S = 300
+BULK_PROJECTION_AFTER_S = 30
+BULK_EXPECTED_BYTES = 160_000_000  # used when the server sends no Content-Length
 BULK_READ_TIMEOUT_S = 60
 
 
@@ -112,13 +116,27 @@ def _resolve_bulk_path(explicit: str | None, time_budget_s: float = BULK_DOWNLOA
         try:
             request = urllib.request.Request(BULK_DOWNLOAD_URL, headers={"User-Agent": "SignalpostResearchAgent/0.1 (+https://github.com/noneedofit/provenance)"})
             with urllib.request.urlopen(request, timeout=min(BULK_READ_TIMEOUT_S, left)) as resp, open(tmp, "wb") as f:
+                attempt_started = time.monotonic()
+                try:
+                    expected = int(resp.headers.get("Content-Length") or 0) or BULK_EXPECTED_BYTES
+                except (TypeError, ValueError):
+                    expected = BULK_EXPECTED_BYTES
+                received = 0
                 while True:
                     chunk = resp.read(1 << 20)
                     if not chunk:
                         break
                     f.write(chunk)
-                    if time.monotonic() - started > time_budget_s:
+                    received += len(chunk)
+                    now = time.monotonic()
+                    if now - started > time_budget_s:
                         raise TimeoutError(f"download time budget ({time_budget_s:.0f} s) used up")
+                    spent = now - attempt_started
+                    if spent >= BULK_PROJECTION_AFTER_S and received < expected:
+                        projected = spent * expected / max(received, 1)
+                        if attempt_started + projected - started > time_budget_s:
+                            raise TimeoutError(
+                                f"too slow to finish within {time_budget_s:.0f} s ({received / spent / 1e6:.2f} MB/s)")
             if _bulk_file_ok(tmp):
                 tmp.replace(dest)
                 tmp.with_name(tmp.name + ".ok").replace(dest.with_name(dest.name + ".ok"))
