@@ -167,3 +167,11 @@ def test_description_rejects_name_only_hours_and_dead_page_text():
     assert extract_description([page(encoded)])[0] is None
     keywords = '<html><head><meta name="description" content="Tidsystemer - uranlegg - resultattavler"></head><body>x</body></html>'
     assert extract_description([page(keywords)])[0] == "Tidsystemer - uranlegg - resultattavler"
+
+
+def test_dated_notices_event_banners_and_continuations_are_not_descriptions():
+    from signalpost.web.extract import _usable_description
+    assert not _usable_description("Fra Onsdag 20.Mai og til Fredag 22.Mai har vi sterkt redusert bemanning grunnet kurs.", set())
+    assert not _usable_description("JUBILEUMSKONFERANSE Gode liv i krevende tider 22-23. oktober 2026, Oslo Kongressenter", set())
+    assert not _usable_description("Gemma A/S driver i tillegg Aseco Gull & Sølv butikker på Thon Senter Åsane", set())
+    assert _usable_description("Heller Entreprenør AS er et byggefirma i Askim med over 40 års erfaring.", set())

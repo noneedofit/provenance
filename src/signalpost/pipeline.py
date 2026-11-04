@@ -468,7 +468,11 @@ def run_batch(
     def process_and_record(index: int, org: str, retry: bool = False) -> _CompanyOutcome:
         outcome = process(index, org, retry)
         if outcome.envelope is not None:
-            text = outcome.envelope.model_dump_json()
+            try:  # a checkpoint must never stop the batch: the final write still has this company
+                text = outcome.envelope.model_dump_json()
+            except Exception as exc:
+                print(f"checkpoint skipped {org}: {type(exc).__name__}: {exc}", file=sys.stderr)
+                return outcome
             with record_lock:
                 written[index] = text
             checkpoint()

@@ -388,6 +388,33 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
     nace = body.get("naeringskode1")
     if nace:
         builder.add_claim(family="identity", field="nace", value={"code": nace.get("kode"), "label": nace.get("beskrivelse")}, evidence_ids=[ev(f"{span_prefix}.naeringskode1")])
+    # Secondary industry codes, the statistical sector and the register entries are in the same response:
+    # free facts, each quoted from its own key.
+    for key in ("naeringskode2", "naeringskode3"):
+        extra = body.get(key)
+        if isinstance(extra, dict) and extra.get("kode"):
+            builder.add_claim(family="identity", field="secondary_nace", value={"code": extra.get("kode"), "label": extra.get("beskrivelse")},
+                              value_key=str(extra.get("kode")), evidence_ids=[ev(f"{span_prefix}.{key}")])
+    sector = body.get("institusjonellSektorkode")
+    if isinstance(sector, dict) and sector.get("kode"):
+        builder.add_claim(family="identity", field="institutional_sector", value={"code": sector.get("kode"), "label": sector.get("beskrivelse")},
+                          evidence_ids=[ev(f"{span_prefix}.institusjonellSektorkode")])
+    if body.get("registreringsdatoEnhetsregisteret"):
+        builder.add_claim(family="identity", field="registration_date", value=body["registreringsdatoEnhetsregisteret"],
+                          evidence_ids=[ev(f"{span_prefix}.registreringsdatoEnhetsregisteret")])
+    registers = [label for key, label in (
+        ("registrertIForetaksregisteret", "Foretaksregisteret"), ("registrertIFrivillighetsregisteret", "Frivillighetsregisteret"),
+        ("registrertIStiftelsesregisteret", "Stiftelsesregisteret"), ("registrertIPartiregisteret", "Partiregisteret"),
+    ) if body.get(key) is True]
+    if registers:
+        builder.add_claim(family="identity", field="registered_in", value=registers, evidence_ids=[ev(
+            f"{span_prefix}.registrertIForetaksregisteret",
+            " | ".join(q for q in (
+                raw_json_quote(getattr(response, "body", None), f"$.{key}")
+                for key in ("registrertIForetaksregisteret", "registrertIFrivillighetsregisteret",
+                            "registrertIStiftelsesregisteret", "registrertIPartiregisteret") if body.get(key) is True
+            ) if q) or None,
+        )])
     if body.get("harRegistrertAntallAnsatte") and body.get("antallAnsatte") is not None:
         builder.add_claim(family="identity", field="registered_employees", value={
             "count": body.get("antallAnsatte"), "registered_at": body.get("registreringsdatoAntallAnsatteEnhetsregisteret"),
@@ -444,6 +471,9 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
     if not groups:
         builder.note_checked("leadership", response.url)
         return
+    # One "last changed" fact per distinct date, backed by every role group that carries it (the board and
+    # the auditor are often changed on the same day): never the same date published twice.
+    changed: dict[str, list[str]] = {}
     for group in groups:
         group_code = _get(group, "type", "kode")
         last_changed = group.get("sistEndret")
@@ -454,7 +484,11 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
                 content_sha256=response.content_sha256, final_url=response.final_url,
                 redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             )
-            builder.add_claim(family="leadership", field="roles_last_changed", value=last_changed, value_key=group_code, evidence_ids=[eid])
+            changed.setdefault(str(last_changed), []).append(eid)
+    for last_changed, eids in changed.items():
+        builder.add_claim(family="leadership", field="roles_last_changed", value=last_changed, value_key=last_changed, evidence_ids=eids)
+    for group in groups:
+        group_code = _get(group, "type", "kode")
         for role_index, role in enumerate(group.get("roller", [])):
             role_code = _get(role, "type", "kode")
             role_label = _get(role, "type", "beskrivelse")
@@ -476,13 +510,23 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
                 final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
                 snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             )
+            evidence_ids = [eid]
+            if person:
+                # A person's quote narrows to their name (never the birth date beside it), so the role itself
+                # gets its own verbatim quote from the same entry: '"type":{"kode":"LEDE",...}'.
+                evidence_ids.append(builder.add_evidence(
+                    source_url=response.url, source_class="official_registry", retrieved_at=response.retrieved_at,
+                    extraction_method="brreg_roles_v1", span=span + ".type", content_sha256=response.content_sha256,
+                    final_url=response.final_url, redirect_chain=response.redirect_chain, http_status=response.status,
+                    snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
+                ))
             value = {"role_code": role_code, "role_label": role_label, "name": display_name}
             if entity_name and entity.get("organisasjonsnummer"):
                 value["entity_name"] = entity_name
                 value["entity_organisation_number"] = entity.get("organisasjonsnummer")
             builder.add_claim(
                 family="leadership", field="role", value=value,
-                value_key=f"{role_code}|{display_name.strip().casefold()}", evidence_ids=[eid],
+                value_key=f"{role_code}|{display_name.strip().casefold()}", evidence_ids=evidence_ids,
                 status="withdrawn" if resigned else "current",
                 note="resigned/deregistered" if resigned else None,
             )

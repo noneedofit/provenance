@@ -193,10 +193,19 @@ def _domain_is_our_name(ctx: Any, cand: Candidate) -> bool:
     return bool(slug) and label == slug and len(slug) >= 8 and slug not in verify_mod.GENERIC_NAME_WORDS
 
 
+MAX_PROFILES_PER_PLATFORM = 2
+
+
 def _publish_profiles(
     result: ConnectorResult, org: str, links: list[dict], pages: list[PageFetch], homepage: PageFetch,
     identity_basis: str, relationship: str, note: str | None = None,
 ) -> None:
+    # A site linking to more than two accounts on one platform (a school chain listing every campus's
+    # Facebook page) cannot tell us which one is this organisation's: that platform is left out.
+    per_platform: dict[str, set[str]] = {}
+    for link in links:
+        per_platform.setdefault(link["platform"], set()).add(link["url"])
+    links = [link for link in links if len(per_platform[link["platform"]]) <= MAX_PROFILES_PER_PLATFORM]
     for link in links:
         source_page = next((p for p in pages if p.final_url == link.get("source_url")), homepage)
         ev = _make_evidence(source_page, link["url"], "web_social_link_v1")

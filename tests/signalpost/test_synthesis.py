@@ -134,3 +134,11 @@ def test_news_without_a_title_still_makes_a_whole_sentence() -> None:
         texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=claims, evidence=[ev])).sentences]
         assert not [t for t in texts if t.endswith("has .")]
         assert any(expected in t for t in texts), texts
+
+
+def test_an_operating_loss_alone_reads_as_a_sentence() -> None:
+    ev = make_evidence("https://data.brreg.no/regnskapsregisteret/regnskap/" + ORG)
+    loss = make_claim(family="financials", field="operating_result", value={"amount": -2333, "currency": "NOK"},
+                      evidence_ids=[ev.evidence_id], reporting_period=("2025-01-01", "2025-12-31"))
+    texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=[loss], evidence=[ev])).sentences]
+    assert any(t.startswith("It had an operating loss of NOK 2,333") for t in texts), texts

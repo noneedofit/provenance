@@ -130,7 +130,8 @@ def _collect_live(ctx, shared: dict) -> dict:
         # The fact is the verified count only: name-match totals depend on feed timing and the check time
         # belongs to the evidence (retrieved_at), so neither may vary the value between identical runs.
         value={"verified": len(nav_ads)},
-        value_key=None, availability="available" if count_evidence_ids else "not_available",
+        # Zero verified ads is a checked "none found", like the family state: never an available fact.
+        value_key=None, availability="available" if count_evidence_ids and nav_ads else "not_available",
         identity_basis="job_feed_org_number" if count_evidence_ids else None,
         evidence_ids=count_evidence_ids,
     )

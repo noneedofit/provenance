@@ -297,10 +297,11 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
             loss = float(_scalar(op_result.value)) < 0
         except (TypeError, ValueError):
             loss = False
+        lead = "had " if not parts else ""  # "It had an operating loss ...", never "It an operating loss"
         if loss:
-            parts.append(f"an operating loss of {format_money(abs(float(_scalar(op_result.value))), op_result.value.get('currency', 'NOK') if isinstance(op_result.value, dict) else 'NOK')} ({period})")
+            parts.append(lead + f"an operating loss of {format_money(abs(float(_scalar(op_result.value))), op_result.value.get('currency', 'NOK') if isinstance(op_result.value, dict) else 'NOK')} ({period})")
         else:
-            parts.append(f"an operating result of {format_money(op_result.value)} ({period})")
+            parts.append(lead + f"an operating result of {format_money(op_result.value)} ({period})")
         claim_ids.append(op_result.claim_id)
     own = " in its own (parent-company) accounts" if _single(envelope, "financials", "group_revenue") else ""
     text = "It " + _join(parts) + own + "."

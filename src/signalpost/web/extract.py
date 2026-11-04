@@ -190,7 +190,19 @@ def _usable_description(text: str, names: set[str]) -> bool:
         return False
     if any(marker in folded for marker in _DEAD_PAGE_MARKERS):
         return False
+    if _DATED_NOTICE_RE.search(folded) or _CONTINUATION_RE.match(folded):
+        return False
     return not _is_boilerplate_paragraph(text)
+
+
+# A dated notice or event banner ("Fra onsdag 20. mai ... redusert bemanning", "Konferanse 22-23. oktober
+# 2026") says what is happening this week, not what the company is; a sentence that continues another
+# ("Gemma A/S driver i tillegg ...") is not a description on its own.
+_MONTHS = r"(januar|februar|mars|april|mai|juni|juli|august|september|oktober|november|desember|jan|feb|mar|apr|jun|jul|aug|sep|sept|okt|nov|des)"
+_DATED_NOTICE_RE = re.compile(
+    r"\b\d{1,2}\.?\s*(-|–|og|til)?\s*\d{0,2}\.?\s*" + _MONTHS + r"\b|\b(mandag|tirsdag|onsdag|torsdag|fredag|lordag|sondag)\b"
+    r"|\b(konferanse|jubileumskonferanse|webinar|pamelding|pameldingsfrist)\b")
+_CONTINUATION_RE = re.compile(r"^(\S+\s+){0,5}(driver|tilbyr|har|er)\s+(i tillegg|ogsa|dessuten)\b")
 
 
 # Text of a 404 / empty-archive / server or hosting default page, which a live site can still serve.

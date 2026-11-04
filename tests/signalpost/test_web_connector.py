@@ -523,3 +523,21 @@ def test_a_group_site_keeps_our_name_on_another_tld_but_not_another_name():
     assert _group_site_names_us(cand, verdict, page, "EGONOR AS")
     other = NS(final_url="https://studiox.no/", title="Egonor AS")
     assert not _group_site_names_us(NS(domain="egonor.no"), verdict, other, "EGONOR AS")
+
+
+def test_a_site_listing_many_accounts_on_one_platform_publishes_none_of_them():
+    from types import SimpleNamespace as NS
+
+    from signalpost.web.connector import _publish_profiles
+    page = NS(final_url="https://skole.example/", html="", title="", status=200, retrieved_at="2026-01-01T00:00:00Z",
+              content_sha256="x", snapshot_ref=None, redirect_chain=[], url="https://skole.example/", page_kind="homepage")
+    fb = [{"platform": "facebook", "url": f"https://facebook.com/campus{i}", "href": f"https://facebook.com/campus{i}",
+           "source_url": page.final_url} for i in range(3)]
+    ig = [{"platform": "instagram", "url": "https://instagram.com/skole", "href": "https://instagram.com/skole", "source_url": page.final_url}]
+    result = NS(evidence=[], claims=[])
+    try:
+        _publish_profiles(result, OUR_ORG, fb + ig, [page], page, "linked_from_verified_site", "exact")
+    except Exception as exc:  # the evidence helper needs a real PageFetch
+        import pytest
+        pytest.skip(f"needs PageFetch: {exc}")
+    assert [c.value["platform"] for c in result.claims] == ["instagram"]

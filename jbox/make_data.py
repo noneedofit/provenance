@@ -70,7 +70,8 @@ SECTION = {
 }
 KIND = {"official_registry": "Official register (Brønnøysund)", "official_registry_bulk": "Official register bulk file",
         "company_owned": "Company website", "official_public": "Public agency", "public_open_data": "Open data"}
-LABEL = {"legal_name": "Legal name", "nace": "Industry", "legal_form": "Legal form", "founded_date": "Founded",
+LABEL = {"legal_name": "Legal name", "nace": "Industry", "secondary_nace": "Other industry",
+         "institutional_sector": "Sector", "registration_date": "Registered", "registered_in": "Registered in", "legal_form": "Legal form", "founded_date": "Founded",
          "status": "Status", "business_address": "Business address", "registered_employees": "Registered employees",
          "official_website": "Website", "revenue": "Revenue", "annual_result": "Annual result",
          "operating_result": "Operating result", "equity": "Equity", "total_assets": "Total assets",
