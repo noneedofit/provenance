@@ -267,7 +267,8 @@ class BudgetedHttpClient:
 
         self._dns_cache: dict[str, bool] = {}
         self._dns_lock = threading.Lock()
-        self._dns_executor = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="signalpost-dns")
+        # Wide enough that a few stuck lookups (getaddrinfo cannot be cancelled) do not make queued ones time out.
+        self._dns_executor = concurrent.futures.ThreadPoolExecutor(max_workers=32, thread_name_prefix="signalpost-dns")
 
     # -- public API (context.HttpClient protocol) -------------------------------------------------
 
@@ -279,15 +280,24 @@ class BudgetedHttpClient:
             cached = self._dns_cache.get(hostname)
             if cached is not None:
                 return cached
-        ok = False
-        try:
+        # A slow answer is not "no such domain": under load a lookup can take longer than dns_timeout, and
+        # caching that as False dropped a company's real site for the whole run (ref100, strommentannlegesenter.no).
+        # A timeout gets one longer retry; only a definite answer (resolved, or the resolver said no) is cached.
+        ok, definite = False, False
+        for wait in (self.dns_timeout, self.dns_timeout * 2):
             future = self._dns_executor.submit(socket.getaddrinfo, hostname, None)
-            future.result(timeout=self.dns_timeout)
-            ok = True
-        except Exception:
-            ok = False
-        with self._dns_lock:
-            self._dns_cache[hostname] = ok
+            try:
+                future.result(timeout=wait)
+                ok, definite = True, True
+                break
+            except concurrent.futures.TimeoutError:
+                continue
+            except Exception:
+                ok, definite = False, True
+                break
+        if definite:
+            with self._dns_lock:
+                self._dns_cache[hostname] = ok
         return ok
 
     def get(
@@ -355,17 +365,6 @@ class BudgetedHttpClient:
             status=status, headers={}, body=b"", retrieved_at=_utc_now(), content_sha256="",
             elapsed_ms=elapsed_ms, requests_used=requests_used, error=error,
         )
-
-    def robots_sitemaps(self, url: str, *, org: str | None, timeout: float = 10.0) -> list[str]:
-        """The `Sitemap:` lines of the host's robots.txt (fetched and cached once per host)."""
-        self._robots_allowed(url, org=org, timeout=timeout)
-        parsed = urllib.parse.urlparse(url)
-        with self._robots_lock:
-            parser = self._robots_cache.get((parsed.scheme, parsed.hostname or ""))
-        try:
-            return list(parser.site_maps() or []) if parser is not None else []
-        except Exception:
-            return []
 
     def robots_allows(self, url: str, *, org: str | None, timeout: float = 10.0) -> bool:
         """Whether robots.txt lets us fetch `url` (fetches and caches the host's robots.txt once)."""

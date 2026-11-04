@@ -162,6 +162,39 @@ def test_dns_resolves_caches_result():
     assert "localhost" in client._dns_cache
 
 
+def test_a_slow_dns_answer_is_retried_and_not_cached_as_missing(monkeypatch):
+    import socket
+    import time as time_mod
+
+    from signalpost import http as http_mod
+    calls = {"n": 0}
+
+    def slow_then_fast(host, port):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            time_mod.sleep(0.3)
+        return [("addr",)]
+
+    monkeypatch.setattr(http_mod.socket, "getaddrinfo", slow_then_fast)
+    client = BudgetedHttpClient(Budget(hard_cap=10), dns_timeout=0.1)
+    assert client.dns_resolves("slow.example") is True
+    assert client._dns_cache["slow.example"] is True
+
+    def never(host, port):
+        time_mod.sleep(0.5)
+        return [("addr",)]
+
+    monkeypatch.setattr(http_mod.socket, "getaddrinfo", never)
+    assert client.dns_resolves("stuck.example") is False
+    assert "stuck.example" not in client._dns_cache  # a timeout is not an answer
+
+    def nx(host, port):
+        raise socket.gaierror("nodename nor servname provided")
+
+    monkeypatch.setattr(http_mod.socket, "getaddrinfo", nx)
+    assert client.dns_resolves("gone.example") is False and client._dns_cache["gone.example"] is False
+
+
 def test_registry_reserve_cannot_be_spent_by_optional_sources():
     from signalpost.http import Budget
 
