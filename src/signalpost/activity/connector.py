@@ -156,7 +156,7 @@ class ActivityConnector:
         if not has_verified_site and (ctx.shared or {}).get("website_unchecked"):
             families["activity"] = FamilyState(
                 family="activity", availability="failed",
-                reason="previously verified site unreachable this run; previous profile kept", sources_checked=[],
+                reason="company website could not be read this run; not checked", sources_checked=[],
             )
         elif not has_verified_site:
             families["activity"] = FamilyState(
