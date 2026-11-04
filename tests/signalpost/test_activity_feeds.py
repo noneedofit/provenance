@@ -146,7 +146,7 @@ def test_collect_falls_back_to_wordpress_feed_when_w3_found_nothing():
     # site is a WordPress site with a working /feed/.
     client = FakeHttpClient()
     client.route("https://eksempel.no/feed/", load_fixture("generic_news.rss.xml"))
-    ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}})
+    ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True})
 
     result = feeds.collect(ctx)
 
@@ -183,7 +183,7 @@ def test_collect_falls_back_to_wordpress_feed_when_link_scan_finds_nothing():
     client = FakeHttpClient()
     client.route("https://eksempel.no/feed/", load_fixture("generic_news.rss.xml"))
     ctx = make_ctx(client=client, shared={
-        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True,
         "site_pages": [{"url": "https://eksempel.no/", "links": ["https://eksempel.no/kontakt"]}],
     })
 
@@ -350,3 +350,23 @@ def test_wordpress_rest_404_is_not_an_error():
     ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True})
     result = feeds.collect(ctx)
     assert result["errors"] == [] and len(client.calls) <= feeds.ARTICLE_DISCOVERY_BUDGET
+
+
+def test_collect_reads_the_newest_news_url_from_the_sitemap():
+    client = FakeHttpClient()
+    sitemap = ('<?xml version="1.0"?><urlset>'
+               '<url><loc>https://eksempel.no/om-oss</loc><lastmod>2026-10-30</lastmod></url>'
+               '<url><loc>https://eksempel.no/nyheter/gammel-sak</loc><lastmod>2024-01-01</lastmod></url>'
+               '<url><loc>https://eksempel.no/nyheter/ny-avtale-signert</loc><lastmod>2026-10-01</lastmod></url>'
+               '</urlset>')
+    article = ('<html><body><main><h1>Ny avtale signert</h1><p>Publisert 01.10.2026</p></main></body></html>')
+    client.route("https://eksempel.no/sitemap.xml", sitemap.encode())
+    client.route("https://eksempel.no/nyheter/ny-avtale-signert", article.encode())
+    client.route("https://eksempel.no/nyheter/gammel-sak", b"<html><h1>Gammel sak</h1></html>")
+    ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+                                          "site_pages": [{"url": "https://eksempel.no/", "final_url": "https://eksempel.no/", "links": []}]})
+    result = feeds.collect(ctx)
+    assert [(c.value["title"], c.value["published"]) for c in result["claims"]] == [("Ny avtale signert", "2026-10-01")]
+    assert "Publisert 01.10.2026" in result["evidence"][0].claim_span
+    assert [c["url"] for c in client.calls][:2] == ["https://eksempel.no/sitemap.xml", "https://eksempel.no/nyheter/ny-avtale-signert"]
+    assert "https://eksempel.no/feed/" not in [c["url"] for c in client.calls]  # not WordPress: no /feed/ guess

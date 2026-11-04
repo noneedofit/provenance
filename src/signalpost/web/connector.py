@@ -655,8 +655,10 @@ class WebConnector:
             # a fact we never saw, and would wipe a stored site on refresh.
             result.shared["website_unchecked"] = True
             reason = f"{len(attempts)} candidates could not be read this run (network errors or request budget); not checked"
-            for fam in ("website", "profiles", "description"):
+            for fam in ("website", "profiles"):
                 result.families[fam] = FamilyState(family=fam, availability="failed", reason=reason, sources_checked=[a["domain"] for a in attempts])
+            # The register's own activity text still describes the company; only the site's text is missing.
+            result.families["description"] = FamilyState(family="description", availability="not_available", reason="no verified site to extract description from")
         else:
             reason = f"checked {len(attempts)} candidates: none verified" if attempts else "no candidates"
             result.families["website"] = FamilyState(family="website", availability="not_available", reason=reason, sources_checked=[a["domain"] for a in attempts])
