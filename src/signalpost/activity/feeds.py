@@ -128,7 +128,7 @@ def parse_norwegian_date(text: str) -> str | None:
 
 
 _SECTION_TITLE = re.compile(
-    r"^(siste\s+)?(nyheter|news|presse(meldinger)?|press|aktuelt|blogg?|artikler|articles|arkiv|archive)"
+    r"^(siste\s+)?(nyheter|news|presse(meldinger)?|press|aktuelt|blogg?|artikler|articles|arkiv|archive|nyhetsarkiv|artikkelarkiv)"
     r"(\s*(/|og|&|and)\s*\w+)?(\s+(fra|from|i|hos)\s+.{1,40})?$",
     re.IGNORECASE,
 )
@@ -391,6 +391,27 @@ def _homepage_url(ctx) -> str | None:
     return f"https://{domain}/" if domain else None
 
 
+_SECTION_SEGMENT = re.compile(
+    r"^(nyheter|nyhet|news|aktuelt|aktuelle?-saker|presse(rom|meldinger)?|press(room)?|newsroom|blogg?|artikler|articles|"
+    r"nyhetsarkiv|arkiv|archive|siste-nytt|innlegg|posts?)$", re.I)
+
+
+def _is_section_url(url: str) -> bool:
+    segments = [seg for seg in urllib.parse.urlsplit(url).path.split("/") if seg]
+    return not segments or bool(_SECTION_SEGMENT.match(segments[-1]))
+
+
+def _menu_links(ctx) -> set[str]:
+    """Links found on two or more of the pages W3 fetched: the site's menus and footer, which repeat on
+    every page. A menu item ("Implantatbehandling", "Helsenorge") is a standing page, not news, even when
+    the CMS stores it as a dated post. News teasers usually sit on the homepage only."""
+    seen: dict[str, int] = {}
+    for page in (ctx.shared or {}).get("site_pages") or []:
+        for link in {str(x).rstrip("/") for x in page.get("links") or []}:
+            seen[link] = seen.get(link, 0) + 1
+    return {link for link, n in seen.items() if n >= 2}
+
+
 def _homepage_links(ctx) -> list[str]:
     """Links on the homepage W3 fetched: the site's menus, shown on every page."""
     pages = (ctx.shared or {}).get("site_pages") or []
@@ -592,6 +613,8 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
         return None
     html = resp.text()
     result.setdefault("listings", {})[resp.final_url or news_url] = html
+    if _is_section_url(resp.final_url or news_url):
+        return None  # /aktuelt/, /nyheter, /blogg: the section's listing page, never one dated item
     iso, span = extract_date_from_html(html)
     if not iso or news_url in seen_urls:
         return None
@@ -675,6 +698,8 @@ def collect(ctx) -> dict:
                 candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result, guessed=True))
                 extra += 1
 
+    menu = _menu_links(ctx)
+    candidates = [pair for pair in candidates if str(pair[0].get("url") or "").rstrip("/") not in menu]
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     claims = []
     evidence = []

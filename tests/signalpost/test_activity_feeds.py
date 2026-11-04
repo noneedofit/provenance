@@ -162,17 +162,17 @@ def test_collect_discovers_news_link_from_already_fetched_page():
     # fetched /blogg itself (crowded out by kontakt/om-oss in the tier's secondary-page budget). The
     # link-scan step runs BEFORE the WordPress guess, so /feed/ should never even be called here.
     client = FakeHttpClient()
-    client.route("https://eksempel.no/blogg", load_fixture("news_article.html"))
+    client.route("https://eksempel.no/blogg/var-forste-sak", load_fixture("news_article.html"))
     ctx = make_ctx(client=client, shared={
         "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
-        "site_pages": [{"url": "https://eksempel.no/", "links": ["https://eksempel.no/blogg", "https://eksempel.no/kontakt"]}],
+        "site_pages": [{"url": "https://eksempel.no/", "links": ["https://eksempel.no/blogg/var-forste-sak", "https://eksempel.no/kontakt"]}],
     })
 
     result = feeds.collect(ctx)
 
     assert result["checked"] is True
     assert len(result["claims"]) == 1
-    assert result["claims"][0].value["url"] == "https://eksempel.no/blogg"
+    assert result["claims"][0].value["url"] == "https://eksempel.no/blogg/var-forste-sak"
     called_urls = {c["url"] for c in client.calls}
     assert "https://eksempel.no/feed/" not in called_urls
 
@@ -350,3 +350,22 @@ def test_wordpress_rest_404_is_not_an_error():
     ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True})
     result = feeds.collect(ctx)
     assert result["errors"] == [] and len(client.calls) <= feeds.ARTICLE_DISCOVERY_BUDGET
+
+
+
+def test_section_pages_and_menu_items_are_not_news():
+    assert feeds._is_section_url("https://avitell.no/aktuelt/") and feeds._is_section_url("https://x.no/nyhetsarkiv")
+    assert not feeds._is_section_url("https://x.no/aktuelt/ny-avtale-signert")
+    client = FakeHttpClient()
+    rest = "https://klinikk.no/" + feeds.WP_POSTS_QUERY
+    body = ('[{"date":"2022-01-12T10:00:00","link":"https:\\/\\/klinikk.no\\/implantat\\/","title":{"rendered":"Implantatbehandling"}},'
+            '{"date":"2026-10-01T10:00:00","link":"https:\\/\\/klinikk.no\\/nye-apningstider\\/","title":{"rendered":"Nye \\u00e5pningstider fra november"}}]')
+    client.route(rest, body.encode())
+    menu = ["https://klinikk.no/implantat/", "https://klinikk.no/kontakt/"]
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://klinikk.no/", "domain": "klinikk.no"}, "wordpress": True,
+        "site_pages": [{"url": "https://klinikk.no/", "final_url": "https://klinikk.no/", "links": menu},
+                       {"url": "https://klinikk.no/kontakt/", "final_url": "https://klinikk.no/kontakt/", "links": menu}],
+    })
+    result = feeds.collect(ctx)
+    assert [c.value["title"] for c in result["claims"]] == ["Nye åpningstider fra november"]
