@@ -2,12 +2,60 @@
 
 Usage (from the repository root): uv run python jbox/make_data.py smoke-test/envelopes.jsonl jbox/companies.json
 Every fact keeps its source URL, retrieval time and the verbatim source text. Contact details (register
-e-mail/phone, site contact e-mail) are left out."""
+e-mail/phone, site contact e-mail) are left out, and a register quote that carries one is cut down to
+the verbatim fields that hold the fact."""
 import json
+import re
 import sys
 
 from signalpost.evidence_text import value_text
 from signalpost.models import Claim
+
+_CONTACT = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|\"(epostadresse|telefon|mobil)\"")
+_CONTACT_ONLY = re.compile(r"\s*([\w.+-]+@[\w-]+\.[\w.]+|\+?[\d ]{8,15})\s*")
+
+
+def drop_contact_sources(sources: list[dict]) -> list[dict]:
+    """Sources whose whole quote is an e-mail address or phone number (a register contact matched on the
+    site) are left out, as long as another source still backs the fact."""
+    kept = [s for s in sources if not _CONTACT_ONLY.fullmatch(s["quote"] or "")]
+    return kept or sources
+
+
+def top_level_pieces(text: str) -> list[str]:
+    """The complete '"key":value' pieces at the top level of a JSON object text, verbatim; a piece cut
+    off at the end of a truncated quote is dropped."""
+    pieces, depth, in_str, esc, begin = [], 0, False, False, None
+    for i, ch in enumerate(text):
+        if in_str:
+            esc, in_str = (not esc and ch == "\\"), (in_str if esc or ch != '"' else False)
+            continue
+        if ch == '"':
+            in_str = True
+            if depth == 1 and begin is None:
+                begin = i
+        elif ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth == 0 and begin is not None:
+                pieces.append(text[begin:i])
+                begin = None
+        elif ch == "," and depth == 1 and begin is not None:
+            pieces.append(text[begin:i])
+            begin = None
+    return pieces
+
+
+def lean_quote(quote: str, value: str) -> str:
+    """The quote, or for a register JSON body that carries contact details, only its top-level
+    '"key":value' pieces (verbatim substrings) that share a word with the fact's value."""
+    if not _CONTACT.search(quote) or not quote.lstrip().startswith("{"):
+        return quote
+    words = set(re.findall(r"\w{3,}", value.casefold()))
+    pieces = [p for p in top_level_pieces(quote)
+              if not _CONTACT.search(p) and words & set(re.findall(r"\w{3,}", p.casefold()))]
+    return " ... ".join(pieces)
 
 SKIP = {("identity", "registry_email"), ("identity", "registry_phone"), ("website", "site_contact_email")}
 SECTION = {
@@ -54,7 +102,8 @@ def main(src, out):
                 if x:
                     sources.append({"url": x.get("final_url") or x.get("source_url"), "retrieved_at": x.get("retrieved_at"),
                                     "kind": KIND.get(x.get("source_class"), x.get("source_class")),
-                                    "quote": (x.get("claim_span") or "")[:600]})
+                                    "quote": lean_quote(x.get("claim_span") or "", text)[:600]})
+            sources = drop_contact_sources(sources)
             fact = {"id": c["claim_id"], "section": SECTION.get(c["family"], c["family"]),
                     "label": LABEL.get(c["field"], c["field"].replace("_", " ").capitalize()), "value": text,
                     "year": year_of(c) if c["family"] in ("financials", "financial_history") else None, "sources": sources}
