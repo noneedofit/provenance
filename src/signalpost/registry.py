@@ -772,7 +772,8 @@ class RegistryConnector:
                 ctx.bulk = row_from_live_entity(entity_body)
                 from .planner import classify
 
-                ctx.tier = classify(ctx.bulk, caches=getattr(ctx, "caches", None)).tier
+                ctx.live_tier = classify(ctx.bulk, caches=getattr(ctx, "caches", None))
+                ctx.tier = ctx.live_tier.tier
                 tier = ctx.tier.upper()
         elif "identity" not in families:
             if bulk_row:

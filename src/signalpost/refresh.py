@@ -340,8 +340,13 @@ def apply_refresh(envelope: Envelope, state_dir: Path, *, now: str | None = None
                 (evidence_retrieved[eid] for eid in claim.evidence_ids if eid in evidence_retrieved),
                 default=None,
             )
+            latest = max(
+                (evidence_retrieved[eid] for eid in claim.evidence_ids if eid in evidence_retrieved),
+                default=None,
+            )
             claim.first_observed_at = claim.first_observed_at or earliest or resolved_now
-            claim.last_observed_at = resolved_now
+            # Last seen is never before first seen: the company's start time precedes its own fetches.
+            claim.last_observed_at = max(t for t in (resolved_now, latest, claim.first_observed_at) if t)
         working.changes = []
         _save_profile(path, {
             "organisation_number": org,

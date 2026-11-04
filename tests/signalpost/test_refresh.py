@@ -24,6 +24,15 @@ def test_first_run_sets_observed_timestamps_and_no_changes(tmp_path: Path) -> No
     assert (tmp_path / "profiles" / f"{ORG}.json").exists()
 
 
+def test_first_run_never_has_last_observed_before_first_observed(tmp_path: Path) -> None:
+    # The company's start time comes a few seconds before its own fetches.
+    ev = make_evidence("https://data.brreg.no/enhetsregisteret/api/enheter/" + ORG, retrieved_at="2026-01-01T00:00:13Z")
+    claim = make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])
+    result = apply_refresh(make_envelope(run_id="run-1", claims=[claim], evidence=[ev]), tmp_path, now="2026-01-01T00:00:00Z")
+    out = result.claims[0]
+    assert out.first_observed_at == "2026-01-01T00:00:13Z" and out.last_observed_at >= out.first_observed_at
+
+
 def test_rerun_unchanged_produces_zero_changes_and_is_idempotent(tmp_path: Path) -> None:
     ev = make_evidence("https://example.no")
     claim = make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])

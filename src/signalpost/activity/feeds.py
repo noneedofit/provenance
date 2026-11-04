@@ -27,6 +27,7 @@ Only dated items become claims. Undated items are dropped rather than fabricatin
 from __future__ import annotations
 
 import html as html_lib
+import itertools
 import json
 import re
 import urllib.parse
@@ -213,6 +214,10 @@ def parse_feed(text: str) -> list[dict]:
 _ARTICLE_TYPES = {"article", "newsarticle", "blogposting", "report", "pressrelease", "analysisnewsarticle"}
 _NOT_ARTICLE_OG = {"product", "restaurant.menu", "restaurant.restaurant", "place", "business.business", "profile"}
 _DATE_HINT = re.compile(r"publi|posted|post-date|entry-date|article-date|news-date|dato", re.I)
+# "Last modified" markers: a date marked only like this is when a page was edited, not when it was published.
+# WordPress marks the one date of an unedited post "entry-date published updated": a publish marker wins.
+_MODIFIED_HINT = re.compile(r"modif|updated|oppdatert|endret|revid", re.I)
+_PUBLISH_HINT = re.compile(r"publi|posted|post-date|entry-date", re.I)
 
 
 def _jsonld_article_date(soup: BeautifulSoup) -> str | None:
@@ -265,9 +270,12 @@ def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
         return normalize_iso_date(raw), "JSON-LD datePublished"
 
     for time_el in soup.find_all("time", attrs={"datetime": True}):
+        near = [time_el, *itertools.islice(time_el.parents, 2)]
+        hints = " ".join(" ".join(el.get("class") or []) + " " + str(el.get("itemprop") or "") for el in near if hasattr(el, "get"))
+        if _MODIFIED_HINT.search(hints) and not _PUBLISH_HINT.search(hints):
+            continue  # an edit date, even inside <article>
         marked = time_el.find_parent("article") is not None or str(time_el.get("itemprop") or "") == "datePublished" \
-            or _DATE_HINT.search(" ".join(time_el.get("class") or []) + " " + " ".join(
-                " ".join(p.get("class") or []) for p in list(time_el.parents)[:2] if hasattr(p, "get")))
+            or _DATE_HINT.search(hints)
         if not marked:
             continue
         iso = normalize_iso_date(time_el["datetime"])
@@ -349,20 +357,27 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
 
 _COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på)\b", re.I)
 _PLACEHOLDER_KEYS = {"hello world", "hei verden", "hallo verden", "sample page", "eksempelside"}
+# Page-builder drafts and test posts ("Elementor #2569", "Test", "Untitled"): never published news.
+_DRAFT_TITLE = re.compile(
+    r"^\s*(elementor\s*#?\s*\d+|test(ing)?( ?\d+)?|untitled|uten tittel|draft|kladd|ny side|new page|#\d+)\s*$", re.I)
 
 
 # A web shop's product feed (WooCommerce /product/feed, ?post_type=product) or a product URL is a catalogue
 # entry, not news (gullsmedcamilla.no/produkt/...).
 _PRODUCT_PATH = re.compile(r"/(produkt|produkter|product|products|shop|butikk|nettbutikk|vare|varer)/", re.I)
-# Titles that only appear on a hacked or spam-filled site (replica-bag and casino posts on a clinic's blog).
-_SPAM_TITLE = re.compile(
-    r"\b(replica|replicas|birkin|aliexpress|louis vuitton|counterfeit|knockoff|casino|viagra|cialis|"
-    r"payday loan|essay writing)\b", re.I)
+# Titles that only appear on a hacked or spam-filled site (replica-bag and AliExpress posts on a clinic's
+# blog). One strong title condemns the feed; words a real company can use ("Casino" as a venue, a replica
+# boat) only count when two different items carry them.
+_SPAM_STRONG = re.compile(
+    r"\b(birkin|aliexpress|louis vuitton|viagra|cialis|payday loans?|essay writing|"
+    r"replica (bags?|handbags?|watch(es)?|rolex)|cheap (jerseys|handbags))\b", re.I)
+_SPAM_WEAK = re.compile(r"\b(replicas?|counterfeit|knockoffs?|casino|handbags?)\b", re.I)
 
 
 def feed_is_compromised(items: list[dict]) -> bool:
     """A feed with spam posts is a hacked site: none of its items can be trusted as the company's news."""
-    return any(_SPAM_TITLE.search(str(i.get("title") or "")) for i in items)
+    titles = [str(i.get("title") or "") for i in items]
+    return any(_SPAM_STRONG.search(t) for t in titles) or sum(1 for t in titles if _SPAM_WEAK.search(t)) >= 2
 
 
 def is_company_item(item: dict, feed_url: str = "") -> bool:
@@ -375,7 +390,8 @@ def is_company_item(item: dict, feed_url: str = "") -> bool:
     if "post_type=product" in feed_url or _PRODUCT_PATH.search(urllib.parse.urlsplit(feed_url).path + "/") \
             or _PRODUCT_PATH.search(urllib.parse.urlsplit(url).path):
         return False
-    if _COMMENT_TITLE.search(title) or re.sub(r"[^\w ]", "", title.lower()).strip() in _PLACEHOLDER_KEYS:
+    if _COMMENT_TITLE.search(title) or _DRAFT_TITLE.match(title) \
+            or re.sub(r"[^\w ]", "", title.lower()).strip() in _PLACEHOLDER_KEYS:
         return False
     return True
 
@@ -425,6 +441,8 @@ def _process_wp_rest_url(ctx, rest_url: str, seen_urls: set[str], result: dict) 
         result["errors"].append({"stage": "wp_rest", "url": rest_url, "error": resp.error or f"http_{resp.status}"})
         return []
     parsed = parse_wp_rest_posts(resp.text())
+    if feed_is_compromised(parsed):
+        return []  # the same hacked WordPress as its RSS feed: nothing in it is the company's news
     ev = make_evidence(
         source_url=rest_url, final_url=resp.final_url, redirect_chain=resp.redirect_chain,
         http_status=resp.status, source_class="company_owned", retrieved_at=resp.retrieved_at,

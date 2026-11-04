@@ -200,3 +200,12 @@ def test_a_registry_listed_site_must_show_something_of_the_company():
     assert v.status == "exact" and v.identity_basis == "registry_declared"
     short = page("Velkommen til Dintur.no", url="https://dintur.no/")
     assert assess(ORG, [short], facts("DIN TUR AS", street=None, postcode=None), cand("dintur.no", source="registry_website")).status == "exact"
+
+
+def test_a_name_domain_that_forwards_to_another_name_is_not_a_name_match():
+    # NEPTUNE BOLIG 4 AS: neptunebolig.no forwards to the developer's gjelstenbolig.no.
+    p = page("Gjelsten Bolig, Tingstadvegen 133, 7608 Levanger", title="Gjelsten Bolig", url="https://gjelstenbolig.no/")
+    v = assess(ORG, [p], facts("NEPTUNE BOLIG AS"), cand("neptunebolig.no"))
+    assert "domain_name_match" not in {s.kind for s in v.signals}
+    same = page("Neptune Bolig", title="Velkommen", url="https://www.neptunebolig.com/")
+    assert "domain_name_match" in {s.kind for s in assess(ORG, [same], facts("NEPTUNE BOLIG AS"), cand("neptunebolig.no")).signals}

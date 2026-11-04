@@ -358,8 +358,9 @@ class _CheckpointSpy(_StubConnector):
         return super().run(ctx)
 
 
-def test_run_batch_checkpoints_one_envelope_per_company_while_running(tmp_path: Path, monkeypatch):
-    # If the evaluator stops the process early, envelopes.jsonl must still hold one envelope per company.
+def test_run_batch_checkpoints_finished_companies_while_running(tmp_path: Path, monkeypatch):
+    # If the evaluator stops the process early, envelopes.jsonl must still hold every finished company, and
+    # nothing for the companies not reached (a missing result is not scored; an empty one would be).
     monkeypatch.setattr(pipeline, "CHECKPOINT_EVERY_S", 0)
     orgs = ["111111111", "222222222", "333333333"]
     spy = _CheckpointSpy(tmp_path / "out")
@@ -367,9 +368,8 @@ def test_run_batch_checkpoints_one_envelope_per_company_while_running(tmp_path: 
         orgs, output_dir=str(tmp_path / "out"), state_dir=str(tmp_path / "state"), run_id="cp",
         bulk_rows={o: {} for o in orgs}, connectors=[spy], workers=1,
     )
-    assert [e["organisation_number"] for e in spy.seen] == orgs
+    assert [e["organisation_number"] for e in spy.seen] == ["111111111"]
     assert spy.seen[0]["families"]["identity"]["availability"] == "available"
-    assert spy.seen[1]["run"]["terminal_status"] == "failed"
-    assert spy.seen[2]["families"]["identity"]["reason"].startswith("not reached")
     final = [json.loads(line) for line in (tmp_path / "out" / "envelopes.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [e["organisation_number"] for e in final] == orgs
     assert all(e["families"]["identity"]["availability"] == "available" for e in final)

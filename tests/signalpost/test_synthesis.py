@@ -122,3 +122,15 @@ def test_parent_company_summary_uses_group_accounts() -> None:
     assert "own (parent-company) accounts" in joined
     assert "the group reported revenue of NOK 31.99B" in joined
     assert "Group revenue rose 4.4% from 2024 to 2025" in joined
+
+
+def test_news_without_a_title_still_makes_a_whole_sentence() -> None:
+    ev = make_evidence("https://example.no/feed/")
+    untitled = make_claim(family="activity", field="activity_item", value={"title": None, "url": "https://example.no/a"},
+                          value_key="https://example.no/a", evidence_ids=[ev.evidence_id], effective_date="2026-03-01")
+    older = make_claim(family="activity", field="activity_item", value={"title": "Ny avdeling", "url": "https://example.no/b"},
+                       value_key="https://example.no/b", evidence_ids=[ev.evidence_id], effective_date="2026-01-01")
+    for claims, expected in (([untitled, older], '"Ny avdeling" (2026-01-01)'), ([untitled], "most recently on 2026-03-01")):
+        texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=claims, evidence=[ev])).sentences]
+        assert not [t for t in texts if t.endswith("has .")]
+        assert any(expected in t for t in texts), texts

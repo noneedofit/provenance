@@ -419,11 +419,15 @@ def _sentence_hiring(envelope: Envelope) -> SummarySentence | None:
             parts.append(f"{_count(len(jobs), 'active job posting')} on NAV")
         claim_ids.extend(c.claim_id for c in jobs)
     if activity:
-        latest = activity[0]
+        # The newest item with a title (a feed item can lack one); without any, just the date.
+        titled = [c for c in activity if isinstance(c.value, dict) and c.value.get("title")]
+        latest = titled[0] if titled else activity[0]
         title = latest.value.get("title") if isinstance(latest.value, dict) else latest.value
         when = latest.effective_date or "an unspecified date"
         if title:
             parts.append(f"recent public activity, most recently \"{title}\" ({when})")
+        else:
+            parts.append(f"recent public activity, most recently on {when}")
         claim_ids.append(latest.claim_id)
     name = envelope.legal_name or "The company"
     return SummarySentence(text=f"{name} has " + _join(parts) + ".", claim_ids=claim_ids)

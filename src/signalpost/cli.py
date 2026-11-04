@@ -46,8 +46,10 @@ BULK_DOWNLOAD_ATTEMPTS = 3
 # it the run goes on with the live registry API alone rather than spend the evaluator's time waiting. The
 # file only speeds up planning (each company's tier is otherwise planned from its live registry entry), so
 # an attempt that is clearly too slow to finish in time is abandoned early (see BULK_PROJECTION_AFTER_S).
-BULK_DOWNLOAD_MAX_S = 300
-BULK_PROJECTION_AFTER_S = 30
+# The published facts are the same with or without the file, so the download never gets more than 90 s of
+# the evaluator's time: a fast link (10 MB/s) finishes in about 16 s, a slow one is dropped after 15 s.
+BULK_DOWNLOAD_MAX_S = 90
+BULK_PROJECTION_AFTER_S = 15
 BULK_EXPECTED_BYTES = 160_000_000  # used when the server sends no Content-Length
 BULK_READ_TIMEOUT_S = 60
 

@@ -138,11 +138,12 @@ def _is_group_site(ctx: Any, cand: Candidate, verdict: Any, pages: list[PageFetc
 
 def _group_site_names_us(cand: Candidate, verdict: Any, homepage: PageFetch, name: str) -> bool:
     """A group site counts as this company's website only when it shows the company: our legal name in the
-    page title (or our org number), and it stays on the declared domain instead of forwarding elsewhere
-    (appelx.no -> studiox.no). A sister company's org number in the footer of a site that carries our own
-    name on our own domain (haikjeften.no) does not disqualify it."""
-    if registered_domain(homepage.final_url or "") != cand.domain:
-        return False
+    page title (or our org number), and it stays on the declared domain name instead of forwarding elsewhere
+    (appelx.no -> studiox.no; egonor.no -> egonor.com keeps the name). A sister company's org number in the
+    footer of a site that carries our own name on our own domain (haikjeften.no) does not disqualify it."""
+    final_domain = registered_domain(homepage.final_url or "")
+    if final_domain != cand.domain and final_domain.split(".", 1)[0] != cand.domain.split(".", 1)[0]:
+        return False  # forwards to another name (appelx.no -> studiox.no); the same name on another TLD is fine
     if any(s.kind in ("legal_name_match", "org_number_on_source", "jsonld_org_number") for s in verdict.signals):
         return True
     # With another organisation number on the page the verifier stops before its name check: read the title.

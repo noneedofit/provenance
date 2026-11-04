@@ -512,3 +512,14 @@ def test_previous_related_site_with_a_failed_subpage_is_kept_not_dropped():
     assert _previous_site_unreachable(ctx, attempts=[])
     other = SimpleNamespace(org="933337529", previous=previous, client=SimpleNamespace(request_log=[]))
     assert not _previous_site_unreachable(other, attempts=[])
+
+
+def test_a_group_site_keeps_our_name_on_another_tld_but_not_another_name():
+    from types import SimpleNamespace as NS
+
+    from signalpost.web.connector import _group_site_names_us
+    cand, verdict = NS(domain="egonor.no"), NS(signals=[])
+    page = NS(final_url="https://egonor.com/", title="Egonor AS - batteridrevne maskiner")
+    assert _group_site_names_us(cand, verdict, page, "EGONOR AS")
+    other = NS(final_url="https://studiox.no/", title="Egonor AS")
+    assert not _group_site_names_us(NS(domain="egonor.no"), verdict, other, "EGONOR AS")

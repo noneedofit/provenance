@@ -580,7 +580,10 @@ def assess(
         ordered_core = [t for t in re.findall(r"[a-z0-9]+", _normalize(registry_facts.get("name") or "")) if t in legal_core_tokens]
         slug = "".join(ordered_core)
         label = (candidate.domain or "").rsplit(".", 1)[0].replace("-", "")
-        if slug and label == slug and len(slug) >= 8 and slug not in GENERIC_NAME_WORDS:
+        # The name must still be the site's own after redirects: neptunebolig.no forwarding to the parent
+        # developer's gjelstenbolig.no says nothing about whose site gjelstenbolig.no is.
+        final_label = registered_domain(homepage.final_url or "").rsplit(".", 1)[0].replace("-", "")
+        if slug and label == slug and final_label == label and len(slug) >= 8 and slug not in GENERIC_NAME_WORDS:
             signals.append(Signal("domain_name_match", "site domain is the company's full legal name", homepage.final_url, candidate.domain))
 
         # The registry's own e-mail address for this company is at this domain (domain not shared by other

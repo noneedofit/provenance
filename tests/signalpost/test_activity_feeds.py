@@ -255,3 +255,42 @@ def test_a_feed_with_spam_posts_is_a_hacked_site():
     assert feeds.feed_is_compromised([{"title": "Velkommen"}, {"title": "Cheap Birkin replica bags"}])
     assert feeds.feed_is_compromised([{"title": "Best AliExpress deals 2026"}])
     assert not feeds.feed_is_compromised([{"title": "Vi har åpnet ny klinikk i Skien"}])
+
+
+def test_spam_words_a_company_can_use_need_two_items():
+    assert not feeds.feed_is_compromised([{"title": "Julebord på Casino Steinkjer"}, {"title": "Nye åpningstider"}])
+    assert feeds.feed_is_compromised([{"title": "Best online casino bonus"}, {"title": "Replica watches for sale"}])
+
+
+def test_a_hacked_wordpress_rest_api_is_not_news():
+    import json as _json
+    body = _json.dumps([
+        {"link": "https://klinikk.example/2026/10/aapnet/", "date": "2026-10-01T10:00:00", "title": {"rendered": "Vi har åpnet"}},
+        {"link": "https://klinikk.example/2026/10/bags/", "date": "2026-10-02T10:00:00", "title": {"rendered": "Cheap Birkin bags"}},
+    ])
+    rest = "https://klinikk.example/wp-json/wp/v2/posts"
+    client = FakeHttpClient()
+    client.route(rest, body.encode())
+    ctx = make_ctx(client=client)
+    result = {"checked": False, "errors": []}
+    assert feeds._process_wp_rest_url(ctx, rest, set(), result) == [] and result["errors"] == []
+
+
+def test_an_edit_date_is_not_a_publication_date():
+    html = ('<html><head><meta property="og:type" content="article"></head><body><article>'
+            '<span class="endret-dato"><time datetime="2026-10-30">30. okt</time></span></article></body></html>')
+    assert feeds.extract_date_from_html(html) == (None, None)
+    html2 = html.replace('class="endret-dato"', 'class="artikkel-dato"')
+    assert feeds.extract_date_from_html(html2)[0] == "2026-10-30"
+
+
+def test_a_wordpress_entry_date_marked_published_and_updated_is_the_publication_date():
+    html = ('<html><body><article><time class="entry-date published updated" datetime="2026-09-12T08:00:00+02:00">'
+            '12. september</time></article></body></html>')
+    assert feeds.extract_date_from_html(html)[0] == "2026-09-12"
+
+
+def test_page_builder_drafts_and_test_posts_are_not_news():
+    for title in ("Elementor #2569", "Test", "Untitled", "Kladd"):
+        assert not feeds.is_company_item({"url": "https://x.example/a/", "title": title}), title
+    assert feeds.is_company_item({"url": "https://x.example/a/", "title": "Testing av nye maskiner"})

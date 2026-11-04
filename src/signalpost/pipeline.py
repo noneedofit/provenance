@@ -304,7 +304,8 @@ def run_batch(
                         # No bulk row: the register connector planned from the live entity instead. Give the
                         # company the allowance of its real tier, so a failed bulk download does not reduce
                         # every company to the shell tier.
-                        live_tier = classify(ctx.bulk, caches=caches)
+                        # The registry connector already classified the live row (ctx.live_tier).
+                        live_tier = getattr(ctx, "live_tier", None) or classify(ctx.bulk, caches=caches)
                         if live_tier.allowance > tier_result.allowance:
                             budget.allocate(org, live_tier.allowance - tier_result.allowance)
                         tier_result = live_tier
@@ -442,28 +443,23 @@ def run_batch(
 
     envelopes_path = output_path / "envelopes.jsonl"
     # Checkpoints: if the evaluator stops the process before the batch ends (a time limit shorter than ours),
-    # envelopes.jsonl still holds exactly one envelope per company: the finished ones, and a "not reached"
-    # placeholder for the rest. The final write below replaces it with the complete batch.
+    # envelopes.jsonl still holds every company finished so far, in input order. Companies not reached are
+    # left out rather than written as failed (a missing result is not scored; an empty one would be). The
+    # final write below replaces it with the complete batch.
     written: dict[int, str] = {}
     last_checkpoint = [time.monotonic()]
-
-    def placeholder(org: str) -> str:
-        return Envelope(
-            organisation_number=org,
-            run=RunInfo(run_id=run_id, started_at=started_at, completed_at=utc_now(), terminal_status="failed"),
-            families={fam: FamilyState(family=fam, availability="failed", reason="not reached: run stopped before this company finished") for fam in FAMILIES},
-            errors=[{"stage": "pipeline", "error": "run stopped before this company finished"}],
-            sections={section: [] for section in SECTIONS},
-        ).model_dump_json()
-
-    checkpoint_lock = threading.Lock()
+    record_lock = threading.Lock()  # guards `written` and `last_checkpoint`
+    write_lock = threading.Lock()  # one checkpoint write at a time
 
     def checkpoint(force: bool = False) -> None:
-        with checkpoint_lock:
-            if not force and time.monotonic() - last_checkpoint[0] < CHECKPOINT_EVERY_S:
-                return
-            last_checkpoint[0] = time.monotonic()
-            lines = [written.get(i) or placeholder(org) for i, org in enumerate(org_list)]
+        # The snapshot is taken under the write lock, so checkpoints land in order (a later one is never
+        # overwritten by an earlier one); workers only wait on the short record lock.
+        with write_lock:
+            with record_lock:
+                if not force and time.monotonic() - last_checkpoint[0] < CHECKPOINT_EVERY_S:
+                    return
+                last_checkpoint[0] = time.monotonic()
+                lines = [written[i] for i in sorted(written)]
             try:
                 _atomic_write(envelopes_path, "\n".join(lines) + ("\n" if lines else ""))
             except OSError as exc:  # a checkpoint must never stop the batch
@@ -473,7 +469,7 @@ def run_batch(
         outcome = process(index, org, retry)
         if outcome.envelope is not None:
             text = outcome.envelope.model_dump_json()
-            with checkpoint_lock:
+            with record_lock:
                 written[index] = text
             checkpoint()
         return outcome

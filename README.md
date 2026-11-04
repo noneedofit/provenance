@@ -85,7 +85,7 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 
 `signalpost run` looks for `./data/brreg-enheter.csv.gz` or `./data/brreg-enheter.csv` by default (or
 pass `--bulk <path>` explicitly). If neither is found, or the copy is more than 20 hours old (the register
-publishes it nightly), it downloads the file itself, up to 3 attempts within at most 5 minutes in all, abandoning an attempt early when its speed shows it cannot finish in time (the register serves
+publishes it nightly), it downloads the file itself, up to 3 attempts within at most 90 seconds in all, abandoning an attempt after 15 seconds when its speed shows it cannot finish in time (the register serves
 it without resume, and on a slow day at a few hundred KB/s), each counted as a setup request; a failed
 download falls back to the older copy, or to the live registry API alone. Without a bulk row for a company, its
 search tier is planned from the live registry entry instead (staff, legal form, NACE, registered site), so a
@@ -260,9 +260,10 @@ through an SSRF guard (`assert_public_url`) that resolves DNS and rejects privat
 addresses before connecting. The one-time setup downloads (bulk file, and Wikidata only when run live) go to
 fixed official URLs and are counted separately as `setup_requests` in `run-report.json`.
 
-While the batch runs, `envelopes.jsonl` is rewritten about every 30 seconds with exactly one envelope per input
-company: the finished ones, and a `failed` placeholder ("not reached") for the rest. If the evaluator stops the
-process before our own deadline, the companies already researched are kept; the final write replaces the file.
+While the batch runs, `envelopes.jsonl` is rewritten about every 30 seconds with every company finished so
+far, in input order; companies not yet reached are left out rather than written as empty failures. If the
+evaluator stops the process before our own deadline, the companies already researched are kept; the final
+write replaces the file with one envelope per input company.
 
 ## Expected cost per run
 

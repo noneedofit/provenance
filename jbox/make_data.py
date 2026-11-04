@@ -15,10 +15,13 @@ _CONTACT = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|\"(epostadresse|telefon|mobil)\"
 _CONTACT_ONLY = re.compile(r"\s*([\w.+-]+@[\w-]+\.[\w.]+|\+?[\d ]{8,15})\s*")
 
 
-def drop_contact_sources(sources: list[dict]) -> list[dict]:
+def drop_contact_sources(sources: list[dict], org: str) -> list[dict]:
     """Sources whose whole quote is an e-mail address or phone number (a register contact matched on the
-    site) are left out, as long as another source still backs the fact."""
-    kept = [s for s in sources if not _CONTACT_ONLY.fullmatch(s["quote"] or "")]
+    site) are left out, as long as another source still backs the fact. The org number written alone
+    ('911 739 410') is identity evidence, not a phone number, and stays."""
+    def contact_only(quote: str) -> bool:
+        return bool(_CONTACT_ONLY.fullmatch(quote)) and re.sub(r"\D", "", quote) != org
+    kept = [s for s in sources if not contact_only(s["quote"] or "")]
     return kept or sources
 
 
@@ -53,8 +56,10 @@ def lean_quote(quote: str, value: str) -> str:
     if not _CONTACT.search(quote) or not quote.lstrip().startswith("{"):
         return quote
     words = set(re.findall(r"\w{3,}", value.casefold()))
-    pieces = [p for p in top_level_pieces(quote)
-              if not _CONTACT.search(p) and words & set(re.findall(r"\w{3,}", p.casefold()))]
+    clean = [p for p in top_level_pieces(quote) if not _CONTACT.search(p)]
+    pieces = [p for p in clean if words & set(re.findall(r"\w{3,}", p.casefold()))]
+    # Nothing shares a word with the value: keep the record's own number and name, never an empty quote.
+    pieces = pieces or [p for p in clean if p.startswith(('"organisasjonsnummer"', '"navn"'))]
     return " ... ".join(pieces)
 
 SKIP = {("identity", "registry_email"), ("identity", "registry_phone"), ("website", "site_contact_email")}
@@ -103,7 +108,7 @@ def main(src, out):
                     sources.append({"url": x.get("final_url") or x.get("source_url"), "retrieved_at": x.get("retrieved_at"),
                                     "kind": KIND.get(x.get("source_class"), x.get("source_class")),
                                     "quote": lean_quote(x.get("claim_span") or "", text)[:600]})
-            sources = drop_contact_sources(sources)
+            sources = drop_contact_sources(sources, e["organisation_number"])
             fact = {"id": c["claim_id"], "section": SECTION.get(c["family"], c["family"]),
                     "label": LABEL.get(c["field"], c["field"].replace("_", " ").capitalize()), "value": text,
                     "year": year_of(c) if c["family"] in ("financials", "financial_history") else None, "sources": sources}

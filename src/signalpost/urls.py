@@ -33,9 +33,19 @@ _CANONICAL_HOST = {
 }
 
 _REJECTED_FIRST_SEGMENT = {
-    "facebook": {"sharer", "sharer.php", "share.php", "dialog", "policy.php", "privacy", "events", "groups", "plugins"},
+    "facebook": {"sharer", "sharer.php", "share.php", "share", "dialog", "policy.php", "privacy", "events", "groups",
+                 "plugins", "photo.php", "photo", "photos", "permalink.php", "story.php", "watch", "hashtag", "media",
+                 "reel", "login", "login.php", "l.php", "home.php", "search", "marketplace", "help", "tr"},
     "instagram": {"p", "reel", "reels", "stories", "explore"},
     "x": {"intent", "share", "home", "search", "i"},
+}
+
+# Website builders' and theme vendors' own accounts, left in a template's footer (a Wix site linking to
+# facebook.com/WixStudio and instagram.com/wix): never the company's profile.
+_PLATFORM_ACCOUNTS = {
+    "wix", "wixstudio", "wix-com", "wixcom", "wix.com", "squarespace", "shopify", "wordpress", "wordpressdotcom",
+    "automattic", "godaddy", "jimdo", "weebly", "webnode", "mailchimp", "hubspot", "elementor", "wpengine",
+    "envato", "themeforest", "mystore", "mystore.no", "21st-digital", "facebook", "instagram", "meta",
 }
 
 
@@ -91,4 +101,6 @@ def normalize_social_url(url: str) -> dict[str, str] | None:
         parts = parts[:2]
     elif platform == "youtube":
         parts = parts[:1] if parts[0].startswith("@") else parts[:2]
+    if parts[-1].lstrip("@").casefold() in _PLATFORM_ACCOUNTS:
+        return None
     return {"platform": platform, "url": f"https://{_CANONICAL_HOST[platform]}/{'/'.join(parts)}"}
