@@ -199,7 +199,8 @@ MAX_PROFILES_PER_PLATFORM = 2
 def _publish_profiles(
     result: ConnectorResult, org: str, links: list[dict], pages: list[PageFetch], homepage: PageFetch,
     identity_basis: str, relationship: str, note: str | None = None,
-) -> None:
+) -> int:
+    """Publishes the profile claims; returns how many were published."""
     # A site linking to more than two accounts on one platform (a school chain listing every campus's
     # Facebook page) cannot tell us which one is this organisation's: that platform is left out.
     per_platform: dict[str, set[str]] = {}
@@ -217,6 +218,10 @@ def _publish_profiles(
             value_key=link["url"], availability="available", identity_basis=identity_basis,
             relationship=relationship, evidence_ids=[ev.evidence_id], note=note,
         ))
+    return len(links)
+
+
+_TOO_MANY_PROFILES = "checked: the site links several accounts per platform, none clearly this organisation's"
 
 
 def _debug_log(org: str, attempts: list[dict]) -> None:
@@ -676,9 +681,12 @@ class WebConnector:
         result.families["website"].claim_count += contact_claims
 
         # profiles
-        if extraction.social_links:
-            _publish_profiles(result, org, extraction.social_links, pages, homepage, "linked_from_verified_site", "exact")
-            result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=len(extraction.social_links), sources_checked=[cand.domain])
+        published = _publish_profiles(result, org, extraction.social_links, pages, homepage, "linked_from_verified_site", "exact") \
+            if extraction.social_links else 0
+        if published:
+            result.families["profiles"] = FamilyState(family="profiles", availability="available", claim_count=published, sources_checked=[cand.domain])
+        elif extraction.social_links:
+            result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason=_TOO_MANY_PROFILES, sources_checked=[cand.domain])
         else:
             result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="checked: none found", sources_checked=[cand.domain])
 
@@ -753,12 +761,12 @@ class WebConnector:
             links = extract_mod.extract_all(pages).social_links
             if links:
                 basis = {"wikidata_website": "wikidata_org_number", "osm_orgnr_website": "open_map_org_number"}.get(cand.source, "registry_declared")
-                _publish_profiles(result, org, links, pages, homepage, basis, verdict.relationship,
-                                  note=f"linked from the group site {cand.domain}, whose domain is this organisation's name")
+                published = _publish_profiles(result, org, links, pages, homepage, basis, verdict.relationship,
+                                              note=f"linked from the group site {cand.domain}, whose domain is this organisation's name")
                 result.families["profiles"] = FamilyState(
-                    family="profiles", availability="available", claim_count=len(links), sources_checked=[cand.domain],
+                    family="profiles", availability="available", claim_count=published, sources_checked=[cand.domain],
                     reason="linked from the group site that carries this organisation's name",
-                )
+                ) if published else FamilyState(family="profiles", availability="not_available", reason=_TOO_MANY_PROFILES, sources_checked=[cand.domain])
         result.families["description"] = FamilyState(family="description", availability="not_available", reason="website is a group site; its text describes the group")
         result.shared["web_related_site"] = {"url": homepage.final_url, "domain": cand.domain, "relationship": verdict.relationship}
 

@@ -225,6 +225,7 @@ _BOILERPLATE_MARKERS = (
     "vi bruker cookies", "we use cookies", "accept all cookies", "aksepter alle",
     "denne nettsiden bruker", "this website uses",
     "kontakt oss her", "kontakte oss", "komme i kontakt med oss", "contact us here",
+    "din bestilling", "handlekurv", "fri frakt", "gratis frakt", "your order", "free shipping",
 )
 _WELCOME_ONLY_RE = re.compile(
     r"^(velkommen til|welcome to)\s+[^.!?]{0,80}[.!?]?$", re.IGNORECASE
