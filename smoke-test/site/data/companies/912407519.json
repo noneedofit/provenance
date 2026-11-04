@@ -5,8 +5,8 @@
   "run": {
     "run_id": "smoke-A",
     "previous_run_id": null,
-    "started_at": "2026-11-04T14:05:00Z",
-    "completed_at": "2026-11-04T14:06:29Z",
+    "started_at": "2026-11-04T17:18:15Z",
+    "completed_at": "2026-11-04T17:19:57Z",
     "terminal_status": "completed",
     "agent_version": "0.1.0",
     "tier": "T0"
@@ -15,9 +15,12 @@
     "legal_identity_and_brand": [
       "c_a141c6db832789eae9df",
       "c_b65ff7468eb3c6a124f5",
+      "c_2d570e00b2a8c8a32e95",
       "c_5b8e570aaa13eb55f672",
       "c_1aa3900782db35d4ef14",
       "c_fa11288ab32ef23e1bc9",
+      "c_afa6f909d33b06dac12f",
+      "c_d31892d6bb9500caa818",
       "c_24f3a2eb28b19842eda1",
       "c_3c332b87a6d25d360eb1",
       "c_be13360d76d6323b4913"
@@ -50,9 +53,8 @@
       "c_78d316a5c60d67e650e7",
       "c_077058a7f1f23739ebff",
       "c_1df4683f41b3e8793d04",
-      "c_055f537107bbfce68e9e",
-      "c_ae157d51b731285a6388",
-      "c_fb5356c49f0ce2d00b5c",
+      "c_2c8ef3948380608a3eca",
+      "c_4d5018d2c1596491dc9d",
       "c_456f60e894ba2901cee9",
       "c_b4ef46393d46dc41e2ad"
     ],
@@ -71,7 +73,7 @@
       "sources_checked": [
         "https://data.brreg.no/enhetsregisteret/api/enheter/912407519"
       ],
-      "claim_count": 8
+      "claim_count": 11
     },
     "leadership": {
       "family": "leadership",
@@ -80,7 +82,7 @@
       "sources_checked": [
         "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller"
       ],
-      "claim_count": 7
+      "claim_count": 6
     },
     "locations": {
       "family": "locations",
@@ -189,8 +191,8 @@
       "evidence_ids": [
         "e_67e842de3c1c18a6e0dd"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -210,8 +212,32 @@
       "evidence_ids": [
         "e_258854be1a967d07da20"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_2d570e00b2a8c8a32e95",
+      "organisation_number": "912407519",
+      "family": "identity",
+      "field": "institutional_sector",
+      "value": {
+        "code": "2100",
+        "label": "Private aksjeselskaper mv."
+      },
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_76fe4c7195ca4342c36c"
+      ],
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -234,8 +260,8 @@
       "evidence_ids": [
         "e_6ffc69f4679eeb06e848"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -255,8 +281,8 @@
       "evidence_ids": [
         "e_7551c81e53ba4000d53b"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -279,8 +305,52 @@
       "evidence_ids": [
         "e_67da7380ffa24ee3b4d0"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_afa6f909d33b06dac12f",
+      "organisation_number": "912407519",
+      "family": "identity",
+      "field": "registered_in",
+      "value": [
+        "Foretaksregisteret"
+      ],
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_392ff9c236b80e5e1eb6"
+      ],
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
+      "status": "current",
+      "note": null
+    },
+    {
+      "claim_id": "c_d31892d6bb9500caa818",
+      "organisation_number": "912407519",
+      "family": "identity",
+      "field": "registration_date",
+      "value": "2013-09-07",
+      "value_key": null,
+      "availability": "available",
+      "confidence": 1.0,
+      "identity_basis": "registry_record",
+      "relationship": null,
+      "reporting_period": null,
+      "effective_date": null,
+      "evidence_ids": [
+        "e_9c7a046fce28db85510a"
+      ],
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -300,8 +370,8 @@
       "evidence_ids": [
         "e_70ca5b3b4a8c390a86a2"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -321,8 +391,8 @@
       "evidence_ids": [
         "e_c41f1caa8b7bba51565e"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -342,8 +412,8 @@
       "evidence_ids": [
         "e_f9c6518d90dd24d489a9"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -369,8 +439,8 @@
       "evidence_ids": [
         "e_5743280873e3256eddde"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -396,8 +466,8 @@
       "evidence_ids": [
         "e_9c3f462c550cdf0ae161"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -423,8 +493,8 @@
       "evidence_ids": [
         "e_e4e49f481bfc926e2f4b"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -450,8 +520,8 @@
       "evidence_ids": [
         "e_4b19e11b969eece51f49"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -477,8 +547,8 @@
       "evidence_ids": [
         "e_a773884ee3ffd1e956f1"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -504,8 +574,8 @@
       "evidence_ids": [
         "e_874e653a859287134b23"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -531,8 +601,8 @@
       "evidence_ids": [
         "e_00f3a3b7cba672744c88"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -558,8 +628,8 @@
       "evidence_ids": [
         "e_5a9f7bd77c94d49644dc"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -585,8 +655,8 @@
       "evidence_ids": [
         "e_84aa9404f133d29dd91d"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -612,8 +682,8 @@
       "evidence_ids": [
         "e_74f6dccdf2fcd8ca5524"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -639,8 +709,8 @@
       "evidence_ids": [
         "e_516712c56fdc9d1b1f8e"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -666,8 +736,8 @@
       "evidence_ids": [
         "e_4401dea75aa2e506d098"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -687,8 +757,8 @@
       "evidence_ids": [
         "e_b716da3c245c7876b930"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -714,8 +784,8 @@
       "evidence_ids": [
         "e_fc1207ae9fb9749d5993"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -741,8 +811,8 @@
       "evidence_ids": [
         "e_5048449d54061c223a91"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -768,8 +838,8 @@
       "evidence_ids": [
         "e_b9aa3cac1d3f92e8414f"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -795,8 +865,8 @@
       "evidence_ids": [
         "e_c344f0ca5ac75df28c44"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -822,8 +892,8 @@
       "evidence_ids": [
         "e_ea6608e606f39af85250"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -849,8 +919,8 @@
       "evidence_ids": [
         "e_d019fa436ac471c6de0c"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -876,8 +946,8 @@
       "evidence_ids": [
         "e_afa4eb3490dbe5e13d5a"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -903,8 +973,8 @@
       "evidence_ids": [
         "e_fcf15bcd32f9d7db86c7"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -926,10 +996,11 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_79ad281b1de69d023397"
+        "e_79ad281b1de69d023397",
+        "e_11fa37dba6c9118c61e8"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -951,10 +1022,11 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_0131eb9c1b904c968ab2"
+        "e_0131eb9c1b904c968ab2",
+        "e_9f296ab9be46cca6956c"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -980,8 +1052,8 @@
       "evidence_ids": [
         "e_58dbaeffaa48e6f20b4e"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -1003,20 +1075,21 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_cc48a2a72f8ab3f7ba1a"
+        "e_cc48a2a72f8ab3f7ba1a",
+        "e_711d74d1a7d7ae76c9db"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_055f537107bbfce68e9e",
+      "claim_id": "c_2c8ef3948380608a3eca",
       "organisation_number": "912407519",
       "family": "leadership",
       "field": "roles_last_changed",
       "value": "2013-09-07",
-      "value_key": "DAGL",
+      "value_key": "2013-09-07",
       "availability": "available",
       "confidence": 1.0,
       "identity_basis": "registry_record",
@@ -1024,20 +1097,21 @@
       "reporting_period": null,
       "effective_date": null,
       "evidence_ids": [
-        "e_0ae3496739404086f35e"
+        "e_0ae3496739404086f35e",
+        "e_eb75293ef3f46e98f2eb"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
     {
-      "claim_id": "c_ae157d51b731285a6388",
+      "claim_id": "c_4d5018d2c1596491dc9d",
       "organisation_number": "912407519",
       "family": "leadership",
       "field": "roles_last_changed",
       "value": "2019-06-05",
-      "value_key": "REGN",
+      "value_key": "2019-06-05",
       "availability": "available",
       "confidence": 1.0,
       "identity_basis": "registry_record",
@@ -1047,29 +1121,8 @@
       "evidence_ids": [
         "e_e575595fe35b1fbbcc3d"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
-      "status": "current",
-      "note": null
-    },
-    {
-      "claim_id": "c_fb5356c49f0ce2d00b5c",
-      "organisation_number": "912407519",
-      "family": "leadership",
-      "field": "roles_last_changed",
-      "value": "2013-09-07",
-      "value_key": "STYR",
-      "availability": "available",
-      "confidence": 1.0,
-      "identity_basis": "registry_record",
-      "relationship": null,
-      "reporting_period": null,
-      "effective_date": null,
-      "evidence_ids": [
-        "e_eb75293ef3f46e98f2eb"
-      ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -1095,8 +1148,8 @@
       "evidence_ids": [
         "e_67e842de3c1c18a6e0dd"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     },
@@ -1124,8 +1177,8 @@
       "evidence_ids": [
         "e_eb0362d4078a5494ae00"
       ],
-      "first_observed_at": "2026-11-04T14:06:28Z",
-      "last_observed_at": "2026-11-04T14:06:28Z",
+      "first_observed_at": "2026-11-04T17:19:56Z",
+      "last_observed_at": "2026-11-04T17:19:56Z",
       "status": "current",
       "note": null
     },
@@ -1145,8 +1198,8 @@
       "evidence_ids": [
         "e_d30efb7db6ecf3be711e"
       ],
-      "first_observed_at": "2026-11-04T14:06:27Z",
-      "last_observed_at": "2026-11-04T14:06:27Z",
+      "first_observed_at": "2026-11-04T17:19:55Z",
+      "last_observed_at": "2026-11-04T17:19:55Z",
       "status": "current",
       "note": null
     }
@@ -1161,7 +1214,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1180,7 +1233,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1199,7 +1252,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1210,6 +1263,25 @@
       "claim_span": "\"sistEndret\":\"2013-09-07\""
     },
     {
+      "evidence_id": "e_11fa37dba6c9118c61e8",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=DAGL].roller[0].type",
+      "access_policy": "NLOD-2.0",
+      "id": "e_11fa37dba6c9118c61e8",
+      "claim_span": "\"type\":{\"_links\":{\"self\":{\"href\":\"https://data.brreg.no/enhetsregisteret/api/roller/rolletyper/DAGL\"}},\"beskrivelse\":\"Daglig leder\",\"kode\":\"DAGL\"}"
+    },
+    {
       "evidence_id": "e_258854be1a967d07da20",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
@@ -1218,7 +1290,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1229,6 +1301,25 @@
       "claim_span": "\"stiftelsesdato\":\"2013-08-02\""
     },
     {
+      "evidence_id": "e_392ff9c236b80e5e1eb6",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.registrertIForetaksregisteret",
+      "access_policy": "NLOD-2.0",
+      "id": "e_392ff9c236b80e5e1eb6",
+      "claim_span": "\"registrertIForetaksregisteret\":true"
+    },
+    {
       "evidence_id": "e_4401dea75aa2e506d098",
       "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
       "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
@@ -1237,7 +1328,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1256,7 +1347,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1275,7 +1366,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1294,7 +1385,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1313,7 +1404,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1332,7 +1423,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1351,7 +1442,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1370,7 +1461,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1389,7 +1480,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1408,7 +1499,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1427,7 +1518,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1438,6 +1529,25 @@
       "claim_span": "\"konkurs\":false | \"underAvvikling\":false | \"underTvangsavviklingEllerTvangsopplosning\":false"
     },
     {
+      "evidence_id": "e_711d74d1a7d7ae76c9db",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[1].type",
+      "access_policy": "NLOD-2.0",
+      "id": "e_711d74d1a7d7ae76c9db",
+      "claim_span": "\"type\":{\"_links\":{\"self\":{\"href\":\"https://data.brreg.no/enhetsregisteret/api/roller/rolletyper/VARA\"}},\"beskrivelse\":\"Varamedlem\",\"kode\":\"VARA\"}"
+    },
+    {
       "evidence_id": "e_74f6dccdf2fcd8ca5524",
       "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
       "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
@@ -1446,7 +1556,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1465,7 +1575,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1476,6 +1586,25 @@
       "claim_span": "\"navn\":\"FINNMARK MANUELLTERAPI AS\""
     },
     {
+      "evidence_id": "e_76fe4c7195ca4342c36c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.institusjonellSektorkode",
+      "access_policy": "NLOD-2.0",
+      "id": "e_76fe4c7195ca4342c36c",
+      "claim_span": "\"institusjonellSektorkode\":{\"beskrivelse\":\"Private aksjeselskaper mv.\",\"kode\":\"2100\"}"
+    },
+    {
       "evidence_id": "e_79ad281b1de69d023397",
       "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
       "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
@@ -1484,7 +1613,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1503,7 +1632,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1522,7 +1651,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1541,7 +1670,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1552,6 +1681,44 @@
       "claim_span": "\"aarsresultat\":309974.00"
     },
     {
+      "evidence_id": "e_9c7a046fce28db85510a",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
+      "extraction_method": "brreg_entity_v1",
+      "extractor_version": "1",
+      "span": "$.registreringsdatoEnhetsregisteret",
+      "access_policy": "NLOD-2.0",
+      "id": "e_9c7a046fce28db85510a",
+      "claim_span": "\"registreringsdatoEnhetsregisteret\":\"2013-09-07\""
+    },
+    {
+      "evidence_id": "e_9f296ab9be46cca6956c",
+      "source_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "final_url": "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller",
+      "redirect_chain": [
+        "https://data.brreg.no/enhetsregisteret/api/enheter/912407519/roller"
+      ],
+      "http_status": 200,
+      "source_class": "official_registry",
+      "retrieved_at": "2026-11-04T17:19:55Z",
+      "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
+      "extraction_method": "brreg_roles_v1",
+      "extractor_version": "1",
+      "span": "$.rollegrupper[type.kode=STYR].roller[0].type",
+      "access_policy": "NLOD-2.0",
+      "id": "e_9f296ab9be46cca6956c",
+      "claim_span": "\"type\":{\"_links\":{\"self\":{\"href\":\"https://data.brreg.no/enhetsregisteret/api/roller/rolletyper/LEDE\"}},\"beskrivelse\":\"Styrets leder\",\"kode\":\"LEDE\"}"
+    },
+    {
       "evidence_id": "e_a773884ee3ffd1e956f1",
       "source_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
       "final_url": "https://data.brreg.no/regnskapsregisteret/regnskap/912407519",
@@ -1560,7 +1727,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1579,7 +1746,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1598,7 +1765,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1617,7 +1784,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1636,7 +1803,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1655,7 +1822,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1674,7 +1841,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1693,7 +1860,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1712,7 +1879,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1731,7 +1898,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1750,7 +1917,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1769,7 +1936,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1788,7 +1955,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "7b65bcfe9522dfa0ac8979ebe6f399ef9db7b80876919736c88368e22125a60c",
       "snapshot_ref": "7b65bcfe9522dfa0ac8979ebe6f399ef9db7b80876919736c88368e22125a60c",
       "extraction_method": "brreg_subunits_v1",
@@ -1807,7 +1974,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "snapshot_ref": "131c7129c82c1cb58d73355231e427ac90018528892c66af19b388b595de3018",
       "extraction_method": "brreg_roles_v1",
@@ -1826,7 +1993,7 @@
       ],
       "http_status": 200,
       "source_class": "official_registry",
-      "retrieved_at": "2026-11-04T14:06:27Z",
+      "retrieved_at": "2026-11-04T17:19:55Z",
       "content_sha256": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "snapshot_ref": "32a5c21b0d25521506113fb8867956ca5a945fe1ad5439531409c40b8cffe9d9",
       "extraction_method": "brreg_entity_v1",
@@ -1845,7 +2012,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1864,7 +2031,7 @@
       ],
       "http_status": 200,
       "source_class": "official_filing",
-      "retrieved_at": "2026-11-04T14:06:28Z",
+      "retrieved_at": "2026-11-04T17:19:56Z",
       "content_sha256": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "snapshot_ref": "ae984d4d5d398ac12b9b19a16af3fba6f18b5c766b64d026af39b1e4856f62ec",
       "extraction_method": "brreg_financials_v1",
@@ -1940,7 +2107,7 @@
       {
         "text": "The register last recorded a change to its roles on 2019-06-05.",
         "claim_ids": [
-          "c_ae157d51b731285a6388"
+          "c_4d5018d2c1596491dc9d"
         ]
       },
       {
@@ -1964,7 +2131,7 @@
   "operations": {
     "requests": 5,
     "bytes": 0,
-    "runtime_ms": 88863,
+    "runtime_ms": 101524,
     "third_party_cost_usd": 0.0
   }
 }
