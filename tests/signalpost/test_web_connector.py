@@ -541,3 +541,14 @@ def test_a_site_listing_many_accounts_on_one_platform_publishes_none_of_them():
         import pytest
         pytest.skip(f"needs PageFetch: {exc}")
     assert [c.value["platform"] for c in result.claims] == ["instagram"]
+
+
+def test_a_related_site_is_published_only_when_the_register_ties_it_to_us():
+    from types import SimpleNamespace as NS
+
+    from signalpost.web.connector import _related_site_is_tied
+    ctx = NS(shared={"registry_facts": {"name": "X AS", "linked_orgs": ["922222222"]}}, bulk={})
+    shows = lambda org: NS(conflicts=[NS(org_number=org)])  # noqa: E731
+    assert _related_site_is_tied(ctx, NS(source="name_guess"), shows("922222222"))  # e.g. the co-op's manager
+    assert not _related_site_is_tied(ctx, NS(source="name_guess"), shows("933333333"))  # a namesake's site
+    assert _related_site_is_tied(ctx, NS(source="registry_website"), shows("933333333"))  # the register lists it

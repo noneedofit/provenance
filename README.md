@@ -260,7 +260,7 @@ through an SSRF guard (`assert_public_url`) that resolves DNS and rejects privat
 addresses before connecting. The one-time setup downloads (bulk file, and Wikidata only when run live) go to
 fixed official URLs and are counted separately as `setup_requests` in `run-report.json`.
 
-While the batch runs, `envelopes.jsonl` is rewritten about every 30 seconds with every company finished so
+While the batch runs, `envelopes.jsonl` is rewritten about every 10 seconds with every company finished so
 far, in input order; companies not yet reached are left out rather than written as empty failures. If the
 evaluator stops the process before our own deadline, the companies already researched are kept; the final
 write replaces the file with one envelope per input company.

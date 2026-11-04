@@ -166,6 +166,17 @@ def _related_site_quote(page: PageFetch, verdict: Any) -> str | None:
     return verdict.note
 
 
+def _related_site_is_tied(ctx: Any, cand: Candidate, verdict: Any) -> bool:
+    """A related site is published only when the register ties it to this organisation: the register
+    lists it as our homepage, or the organisation number it shows is our parent, subsidiary or a
+    role-holding entity (a housing co-op's manager, the accountant)."""
+    if cand.source == "registry_website":
+        return True
+    linked = set(_registry_facts(ctx).get("linked_orgs") or [])
+    shown = {str(getattr(c, "org_number", "") or "") for c in (getattr(verdict, "conflicts", None) or [])}
+    return bool(linked & shown)
+
+
 def _worth_confirming(verdict: Any) -> bool:
     """One more look at the pages that name the business behind a site (privacy, terms, contact) can settle it
     either way. Worth it for:
@@ -775,6 +786,16 @@ class WebConnector:
     ) -> None:
         org = ctx.org
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
+        if not _related_site_is_tied(ctx, cand, verdict):
+            # Another organisation's site that nothing in the register ties to us (fossberg.no, a hotel, for
+            # FOSSBERG INVEST; an IT firm's site for a shopping centre): not published at all.
+            result.families["website"] = FamilyState(
+                family="website", availability="not_available", sources_checked=[cand.domain],
+                reason=f"checked: {cand.domain} belongs to another organisation not tied to this one in the register",
+            )
+            result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no exact-verified site to link profiles from")
+            result.families["description"] = FamilyState(family="description", availability="not_available", reason="no exact-verified site to extract description from")
+            return
         ev = _make_evidence(homepage, _related_site_quote(homepage, verdict), "web_related_site_v1")
         result.evidence.append(ev)
         value = _without_default_port(homepage.final_url)

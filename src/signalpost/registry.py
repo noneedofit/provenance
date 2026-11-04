@@ -378,13 +378,11 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
             "code": form, "label": _get(body, "organisasjonsform", "beskrivelse"),
         }, evidence_ids=[ev(f"{span_prefix}.organisasjonsform")])
     status = "bankrupt" if body.get("konkurs") else "liquidating" if body.get("underAvvikling") else "active"
-    builder.add_claim(family="identity", field="status", value=status, evidence_ids=[ev(
-        f"{span_prefix}.konkurs/underAvvikling",
-        " | ".join(q for q in (
-            raw_json_quote(getattr(response, "body", None), f"$.{key}")
-            for key in ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")
-        ) if q) or json_quote(body, ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning")),
-    )])
+    # One evidence record per register flag, each quoting its own key verbatim ('"konkurs":false').
+    status_keys = [k for k in ("konkurs", "underAvvikling", "underTvangsavviklingEllerTvangsopplosning") if k in body]
+    builder.add_claim(family="identity", field="status", value=status, evidence_ids=[
+        ev(f"{span_prefix}.{key}") for key in status_keys
+    ] or [ev(f"{span_prefix}.konkurs/underAvvikling", json_quote(body, ("konkurs", "underAvvikling")))])
     nace = body.get("naeringskode1")
     if nace:
         builder.add_claim(family="identity", field="nace", value={"code": nace.get("kode"), "label": nace.get("beskrivelse")}, evidence_ids=[ev(f"{span_prefix}.naeringskode1")])
@@ -407,14 +405,11 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
         ("registrertIStiftelsesregisteret", "Stiftelsesregisteret"), ("registrertIPartiregisteret", "Partiregisteret"),
     ) if body.get(key) is True]
     if registers:
-        builder.add_claim(family="identity", field="registered_in", value=registers, evidence_ids=[ev(
-            f"{span_prefix}.registrertIForetaksregisteret",
-            " | ".join(q for q in (
-                raw_json_quote(getattr(response, "body", None), f"$.{key}")
-                for key in ("registrertIForetaksregisteret", "registrertIFrivillighetsregisteret",
-                            "registrertIStiftelsesregisteret", "registrertIPartiregisteret") if body.get(key) is True
-            ) if q) or None,
-        )])
+        builder.add_claim(family="identity", field="registered_in", value=registers, evidence_ids=[
+            ev(f"{span_prefix}.{key}") for key in ("registrertIForetaksregisteret", "registrertIFrivillighetsregisteret",
+                                                  "registrertIStiftelsesregisteret", "registrertIPartiregisteret")
+            if body.get(key) is True
+        ])
     if body.get("harRegistrertAntallAnsatte") and body.get("antallAnsatte") is not None:
         builder.add_claim(family="identity", field="registered_employees", value={
             "count": body.get("antallAnsatte"), "registered_at": body.get("registreringsdatoAntallAnsatteEnhetsregisteret"),
@@ -485,8 +480,10 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
                 redirect_chain=response.redirect_chain, http_status=response.status, snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
             )
             changed.setdefault(str(last_changed), []).append(eid)
-    for last_changed, eids in changed.items():
-        builder.add_claim(family="leadership", field="roles_last_changed", value=last_changed, value_key=last_changed, evidence_ids=eids)
+    if changed:
+        # The latest change across all role groups, backed by every group changed on that day.
+        latest = max(changed)
+        builder.add_claim(family="leadership", field="roles_last_changed", value=latest, evidence_ids=changed[latest])
     for group in groups:
         group_code = _get(group, "type", "kode")
         for role_index, role in enumerate(group.get("roller", [])):
@@ -496,8 +493,8 @@ def leadership_claims(builder: _ClaimBuilder, body: dict[str, Any], response: An
             entity = role.get("enhet") or {}
             name = _person_name(person) if person else None
             entity_name = entity.get("navn")
-            if isinstance(entity_name, list):
-                entity_name = entity_name[0] if entity_name else None
+            if isinstance(entity_name, list):  # the register splits long names over lines
+                entity_name = " ".join(str(part).strip() for part in entity_name if str(part).strip()) or None
             display_name = name or entity_name
             if not display_name or not role_code:
                 continue
@@ -606,6 +603,18 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
     currency = latest.get("valuta") or "NOK"
     record_id = latest.get("id")
     period = {"start": period_start, "end": period_end}
+
+    def period_evidence(record: dict) -> str:
+        # The filing's own period, quoted verbatim, so every figure shows which year it is for.
+        return builder.add_evidence(
+            source_url=response.url, source_class="official_filing", retrieved_at=response.retrieved_at,
+            extraction_method="brreg_financials_v1", span=f"$[id={record.get('id')}].regnskapsperiode",
+            content_sha256=response.content_sha256, final_url=response.final_url,
+            redirect_chain=response.redirect_chain, http_status=response.status,
+            snapshot_ref=response.snapshot_ref, raw=getattr(response, "body", None),
+        )
+
+    latest_period_eid = period_evidence(latest) if latest.get("regnskapsperiode") else None
     for field, path in _METRIC_PATHS.items():
         amount = _get(latest, *path)
         if amount is None:
@@ -619,7 +628,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
         )
         builder.add_claim(
             family="financials", field=field, value={"amount": amount, "currency": currency}, value_key=field,
-            reporting_period=period, evidence_ids=[eid],
+            reporting_period=period, evidence_ids=[eid] + ([latest_period_eid] if latest_period_eid else []),
         )
     # Earlier filed years in the same response (the API returns up to three): published as financial history,
     # each figure with its own reporting period, so trends rest on filed numbers rather than on a guess.
@@ -632,6 +641,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             continue  # a corrected re-filing of a year already published (newest first): keep one
         seen_years.add(earlier_end[:4])
         earlier_period = {"start": _get(record, "regnskapsperiode", "fraDato"), "end": earlier_end}
+        earlier_period_eid = period_evidence(record)
         for field, path in _METRIC_PATHS.items():
             amount = _get(record, *path)
             if amount is None:
@@ -646,7 +656,7 @@ def financials_claims(builder: _ClaimBuilder, body: list[Any], response: Any) ->
             builder.add_claim(
                 family="financial_history", field=field,
                 value={"amount": amount, "currency": record.get("valuta") or currency},
-                value_key=f"{field}|{earlier_end[:4]}", reporting_period=earlier_period, evidence_ids=[eid],
+                value_key=f"{field}|{earlier_end[:4]}", reporting_period=earlier_period, evidence_ids=[eid, earlier_period_eid],
             )
     # A parent company also files consolidated group accounts (regnskapstype KONSERN): published as separate
     # `group_*` figures so the group's scale is never confused with the parent's own (often holding) accounts.
@@ -1183,12 +1193,20 @@ def registry_facts(
         phone_values += [entity_body.get("telefon"), entity_body.get("mobil")]
     phones = sorted({normalize_digits(p) for p in phone_values if p and normalize_digits(p)})
     role_holders: list[str] = []
+    # Organisations the register ties to this one: role-holding entities (accountant, auditor, a housing
+    # co-op's manager), parent, subsidiaries. A site showing one of their org numbers is related to us.
+    linked_orgs: set[str] = set()
     if builder is not None:
         for claim in builder.claims:
+            value = claim.value if isinstance(claim.value, dict) else {}
             if claim.family == "leadership" and claim.field == "role" and claim.status == "current":
-                holder_name = (claim.value or {}).get("name")
+                holder_name = value.get("name")
                 if holder_name:
                     role_holders.append(holder_name)
+                if value.get("entity_organisation_number"):
+                    linked_orgs.add(str(value["entity_organisation_number"]))
+            elif claim.family == "group" and value.get("organisation_number"):
+                linked_orgs.add(str(value["organisation_number"]))
 
     email_domain = None
     if email and "@" in email:
@@ -1208,5 +1226,6 @@ def registry_facts(
         "email_domain": email_domain,
         "website": website,
         "role_holders": role_holders,
+        "linked_orgs": sorted(linked_orgs),
         "subunits": subunit_facts,
     }

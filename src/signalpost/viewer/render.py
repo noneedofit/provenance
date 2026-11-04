@@ -603,25 +603,41 @@ def _render_financials_section(by_family: dict, ev_by_id: dict) -> str:
     # may instead (or additionally) report which years have filings via a single "filed_years" list claim.
     revenue_history = [c for c in history_all if c.get("field") == "revenue" and c.get("value_key")]
     other_history = [c for c in history_all if c not in revenue_history]
-    spark = _sparkline(revenue_history)
+    # The latest filed year sits in "financials", not in the history: the trend includes it.
+    latest_revenue = [c for c in by_family.get("financials", []) if c.get("field") == "revenue"
+                      and c.get("status", "current") == "current" and _history_year(c)]
+    spark = _sparkline(revenue_history + [c for c in latest_revenue
+                                          if _history_year(c) not in {_history_year(h) for h in revenue_history}])
     hist_rows = []
-    for c in sorted(revenue_history, key=lambda c: c.get("value_key") or "", reverse=True):
+    for c in sorted(revenue_history, key=_history_year, reverse=True):
         value_html = fmt_value(c["field"], c["value"])
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        hist_rows.append(fact_row(c["claim_id"], f"Revenue {esc(c.get('value_key') or '')}", value_html, src))
-    for c in other_history:
+        hist_rows.append(fact_row(c["claim_id"], f"Revenue {esc(_history_year(c))}", value_html, src))
+    for c in sorted(other_history, key=lambda c: (c.get("field") or "", _history_year(c)), reverse=False):
         value_html = fmt_value(c["field"], c["value"]) if c.get("availability") == "available" else \
             f'<span class="badge {AVAILABILITY_CLASS[c["availability"]]}">{esc(AVAILABILITY_LABELS[c["availability"]])}</span>'
         src = evidence_drawer(c, ev_by_id, f"src-{c['claim_id']}")
-        hist_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]), value_html, src))
+        year = _history_year(c)
+        hist_rows.append(fact_row(c["claim_id"], label_from_field(c["field"]) + (f" {esc(year)}" if year else ""), value_html, src))
     hist_html = "".join(hist_rows) or '<p class="muted">No earlier filed years available.</p>'
     return f'<div class="section">{latest_block}<h3>History &amp; trend</h3>{spark}{hist_html}</div>'
 
 
+def _history_year(c: dict) -> str:
+    """The accounts year of a history claim: from its value_key ("revenue|2023") or its reporting period."""
+    key = str(c.get("value_key") or "")
+    tail = key.rsplit("|", 1)[-1]
+    if tail.isdigit() and len(tail) == 4:
+        return tail
+    period = c.get("reporting_period") or {}
+    end = period.get("end") if isinstance(period, dict) else (period[1] if isinstance(period, (list, tuple)) and len(period) > 1 else None)
+    return str(end)[:4] if end else ""
+
+
 def _sparkline(history: list[dict]) -> str:
     points = []
-    for c in history:
-        year = c.get("value_key")
+    for c in sorted(history, key=_history_year):
+        year = _history_year(c)
         val = c.get("value")
         amt = val.get("amount") if isinstance(val, dict) else None
         if year and amt is not None:

@@ -175,3 +175,12 @@ def test_dated_notices_event_banners_and_continuations_are_not_descriptions():
     assert not _usable_description("JUBILEUMSKONFERANSE Gode liv i krevende tider 22-23. oktober 2026, Oslo Kongressenter", set())
     assert not _usable_description("Gemma A/S driver i tillegg Aseco Gull & Sølv butikker på Thon Senter Åsane", set())
     assert _usable_description("Heller Entreprenør AS er et byggefirma i Askim med over 40 års erfaring.", set())
+
+
+def test_a_long_description_is_cut_at_a_sentence_or_word_end():
+    from signalpost.web.extract import _cut
+    text = "Vi bygger hus. " * 20 + "Og mer tekst her uten slutt"
+    out = _cut(text, 100)
+    assert len(out) <= 100 and out.endswith(".") and text.startswith(out)
+    words = "ord " * 60
+    assert _cut(words, 50).endswith("ord") and words.startswith(_cut(words, 50))

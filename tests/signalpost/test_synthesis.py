@@ -142,3 +142,11 @@ def test_an_operating_loss_alone_reads_as_a_sentence() -> None:
                       evidence_ids=[ev.evidence_id], reporting_period=("2025-01-01", "2025-12-31"))
     texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=[loss], evidence=[ev])).sentences]
     assert any(t.startswith("It had an operating loss of NOK 2,333") for t in texts), texts
+
+
+def test_a_quoted_register_activity_ends_with_one_full_stop() -> None:
+    ev = make_evidence("https://data.brreg.no/enhetsregisteret/api/enheter/" + ORG)
+    act = make_claim(family="description", field="registry_activity", value="Utleie av fast eiendom.", evidence_ids=[ev.evidence_id])
+    texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=[act], evidence=[ev])).sentences]
+    assert any(t.endswith('"Utleie av fast eiendom".') for t in texts), texts
+    assert not [t for t in texts if '."' in t]

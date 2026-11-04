@@ -104,7 +104,7 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
     names = _site_names(pages)
     org, org_url = _first_org(pages)
     if org and isinstance(org.get("description"), str):
-        text = _trim(org["description"])[:MAX_DESCRIPTION_CHARS]
+        text = _cut(_trim(org["description"]))
         if _usable_description(text, names):
             return text, org_url, text, "jsonld_description_v1"
 
@@ -115,8 +115,9 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
         soup = BeautifulSoup(page.html, "lxml")
         tag = soup.select_one('meta[name="description"], meta[property="og:description"]')
         content = _trim(str(tag.get("content") or "")) if tag else ""
-        if _usable_description(content[:MAX_DESCRIPTION_CHARS], names):
-            return content[:MAX_DESCRIPTION_CHARS], page.final_url, content[:MAX_DESCRIPTION_CHARS], "meta_description_v1"
+        content = _cut(content)
+        if _usable_description(content, names):
+            return content, page.final_url, content, "meta_description_v1"
 
     # "kontor"/"kontoret" ("the office") is a common Norwegian about-us-equivalent page slug (see
     # crawl.py's PRIORITY_TERMS) -- an image-portfolio-style homepage with no body text at all
@@ -128,7 +129,8 @@ def extract_description(pages: list[PageFetch]) -> tuple[str | None, str | None,
         for para in re.split(r"\n{1,}", text):
             para = _trim(para)
             if len(para) >= 60 and _usable_description(para, names):
-                return para[:MAX_DESCRIPTION_CHARS], page.final_url, para[:MAX_DESCRIPTION_CHARS], "trafilatura_first_paragraph_v1"
+                para = _cut(para)
+                return para, page.final_url, para, "trafilatura_first_paragraph_v1"
     return None, None, None, None
 
 
@@ -139,6 +141,20 @@ def _not_about_the_company(page: PageFetch) -> bool:
     kind = str(getattr(page, "page_kind", "") or "").casefold()
     path = str(getattr(page, "final_url", "") or "").casefold().split("?")[0].rstrip("/").rsplit("/", 1)[-1]
     return kind != "homepage" and any(word in kind or word in path for word in _PAGE_NOT_ABOUT_COMPANY)
+
+
+def _cut(text: str, limit: int = 0) -> str:
+    """A verbatim prefix of at most `limit` characters ending at a sentence end, else at a word end:
+    never cut mid-word."""
+    limit = limit or MAX_DESCRIPTION_CHARS
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    stop = max(head.rfind(". "), head.rfind("! "), head.rfind("? "))
+    if stop >= limit // 3:
+        return head[:stop + 1]
+    space = head.rfind(" ")
+    return head[:space].rstrip(" ,;:-–") if space > 0 else head
 
 
 def _trim(text: str) -> str:

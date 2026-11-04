@@ -200,9 +200,13 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
     desc = _single(envelope, "description", "company_description")
     if desc is not None and isinstance(desc.value, str) and desc.value.strip():
         text = " ".join(desc.value.split())
-        quote = text if len(text) <= 200 else text[:197].rstrip() + "..."
+        if len(text) <= 200:
+            quote = text.rstrip(".")
+        else:  # cut at a word end and say so: never "... begin as sh"
+            head = text[:198]
+            quote = (head[:head.rfind(" ")] if " " in head else head).rstrip(" ,;:-–.") + "…"
         return SummarySentence(
-            text=f'{envelope.legal_name or "The company"} describes itself on its website as: "{quote.rstrip(".")}".',
+            text=f'{envelope.legal_name or "The company"} describes itself on its website as: "{quote}".',
             claim_ids=[desc.claim_id],
         )
     nace = _single(envelope, "identity", "nace_label")
@@ -218,7 +222,7 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
             claim_ids.append(nace.claim_id)
         if purpose is not None:
             label = "its registered activity is" if purpose.field == "registry_activity" else "its statutory purpose reads"
-            parts.append(f"{label} \"{_clip(purpose.value)}\"")
+            parts.append(f"{label} \"{_clip(purpose.value).rstrip('. ')}\"")  # one full stop, after the quote
             claim_ids.append(purpose.claim_id)
         if nace is not None:
             text = f"{name} " + "; ".join(parts) + "."
@@ -573,7 +577,8 @@ def _sentence_financial_health(envelope: Envelope) -> SummarySentence | None:
     parts: list[str] = []
     claim_ids: list[str] = []
     if rev and op is not None and rev > 0:
-        parts.append(f"an operating margin of {op / rev * 100:.1f}%")
+        margin = op / rev * 100
+        parts.append(f"an operating margin of {0.0 if abs(margin) < 0.05 else margin:.1f}%")  # never "-0.0%"
         claim_ids += [revenue.claim_id, operating.claim_id]
     if eq is not None and tot:
         ratio = eq / tot * 100
@@ -680,6 +685,7 @@ def _sentence_group(envelope: Envelope) -> SummarySentence | None:
     claim_ids: list[str] = []
     if parent is not None and isinstance(parent.value, dict):
         share = parent.value.get("ownership")
+        share = str(share).replace(",", ".") if share else share  # the register writes "98,0%"
         owned = f"{share} owned" if share else "owned"
         parts.append(f"is {owned} by {parent.value.get('name')} ({parent.value.get('organisation_number')})")
         claim_ids.append(parent.claim_id)

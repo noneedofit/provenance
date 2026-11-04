@@ -81,6 +81,7 @@ AD_URL_TMPL = "https://arbeidsplassen.nav.no/stillinger/stilling/{uuid}"
 SEARCH_URL = "https://arbeidsplassen.nav.no/stillinger/api/search"
 
 DETAIL_CAP = {"T1": 3, "T2": 5, "T3": 8}
+PREPARE_WAIT_MAX_S = 180
 LIVE_TIERS = ("T1", "T2", "T3")
 
 # Limited search fallback for companies the feed index can't see at all (import-sourced ads that never
@@ -280,7 +281,9 @@ class NavLiveConnector:
             if not already_claimed:
                 self._prepare_started = True
         if already_claimed:
-            self._prepared_event.wait()
+            # Never stall a worker on the shared feed walk: past this, the company reports NAV as not
+            # checked (index unavailable) instead of blocking the batch.
+            self._prepared_event.wait(timeout=PREPARE_WAIT_MAX_S)
             return
         self._do_prepare(client, state_dir, bulk_rows)
 

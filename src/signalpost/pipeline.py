@@ -57,7 +57,7 @@ REGISTRY_RESERVE = 5  # entity, roles, subunits, accounts, filing years
 # in the queue once and processed again after the rest of the batch, when the time left covers the rest of
 # the batch with this much margin to spare (see `can_defer`); otherwise its failed families stand.
 REGISTRY_RETRY_MIN_S = 180
-CHECKPOINT_EVERY_S = 30  # how often envelopes.jsonl is rewritten while the batch runs
+CHECKPOINT_EVERY_S = 10  # how often envelopes.jsonl is rewritten while the batch runs
 REGISTRY_RETRY_PAUSE_S = 20
 _TRANSIENT_ERRORS = ("network_error", "timeout", "ssl_error", "dns", "http_5xx")
 
@@ -262,6 +262,7 @@ def run_batch(
         return time_left > REGISTRY_ONLY_SAFETY_S + REGISTRY_RETRY_MIN_S + REGISTRY_ONLY_S_PER_COMPANY * not_started / worker_count
 
     def process(index: int, org: str, retry: bool = False) -> _CompanyOutcome:
+        company_started = time.monotonic()
         now = utc_now()
         registry_only = registry_only_now(first_attempt=not retry)
         deadline_hit = time.monotonic() > deadline_at
@@ -417,6 +418,9 @@ def run_batch(
                 errors.append({"stage": "synthesis", "error": f"{type(exc).__name__}: {exc}"})
 
             envelope.errors = errors
+            # Every family's claim_count is the number of current claims it holds, whatever a connector set.
+            for fam, state in envelope.families.items():
+                state.claim_count = sum(1 for c in envelope.claims if c.family == fam and c.status == "current")
             envelope.sections = {
                 section: [c.claim_id for c in envelope.claims if c.family in fams]
                 for section, fams in SECTIONS.items()
@@ -426,7 +430,7 @@ def run_batch(
             from .web import search as search_mod
 
             envelope.operations = Operations(
-                requests=org_requests, bytes=0, runtime_ms=int((time.monotonic() - t_start) * 1000),
+                requests=org_requests, bytes=0, runtime_ms=int((time.monotonic() - company_started) * 1000),
                 third_party_cost_usd=search_mod.cost_usd(org),
             )
             return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
