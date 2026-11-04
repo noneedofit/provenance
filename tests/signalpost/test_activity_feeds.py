@@ -221,8 +221,8 @@ def test_collect_extra_discovery_spends_at_most_the_budget():
     result = feeds.collect(ctx)
 
     assert result["claims"] == []
-    # 3 link candidates on offer, but the budget caps spend at EXTRA_DISCOVERY_BUDGET requests.
-    assert len(client.calls) <= feeds.EXTRA_DISCOVERY_BUDGET
+    # 3 link candidates on offer, but the budget caps spend at ARTICLE_DISCOVERY_BUDGET requests.
+    assert len(client.calls) <= feeds.ARTICLE_DISCOVERY_BUDGET
 
 
 def test_blog_comments_and_placeholder_posts_are_not_company_activity():
@@ -294,3 +294,59 @@ def test_page_builder_drafts_and_test_posts_are_not_news():
     for title in ("Elementor #2569", "Test", "Untitled", "Kladd"):
         assert not feeds.is_company_item({"url": "https://x.example/a/", "title": title}), title
     assert feeds.is_company_item({"url": "https://x.example/a/", "title": "Testing av nye maskiner"})
+
+
+def test_collect_reads_wordpress_post_list_with_verbatim_quotes():
+    client = FakeHttpClient()
+    rest = "https://eksempel.no/" + feeds.WP_POSTS_QUERY
+    body = ('[{"date":"2026-11-03T13:38:51","link":"https:\\/\\/eksempel.no\\/ny-avtale\\/",'
+            '"title":{"rendered":"Ny avtale p\\u00e5 plass"}}]')
+    client.route(rest, body.encode())
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True,
+        "site_pages": [{"url": "https://eksempel.no/", "final_url": "https://eksempel.no/", "links": []}],
+    })
+    result = feeds.collect(ctx)
+    assert [c.value["title"] for c in result["claims"]] == ["Ny avtale på plass"]
+    assert result["claims"][0].value["published"] == "2026-11-03"
+    quote = result["evidence"][0].claim_span
+    assert quote and quote in body
+    assert "listings" not in result
+
+
+def test_collect_follows_article_links_from_a_listing_page():
+    client = FakeHttpClient()
+    listing = ('<html><body><nav><a href="/kontakt">Kontakt</a></nav><main><h1>Nyheter</h1>'
+               '<a href="/nyheter/vi-har-flyttet-til-nye-lokaler">Vi har flyttet til nye lokaler</a>'
+               '<a href="/nyheter/side/2">Neste side</a><a href="/kategori/drift">Drift</a></main></body></html>')
+    article = ('<html><head><meta property="article:published_time" content="2026-10-01T08:00:00+00:00"></head>'
+               '<body><h1>Vi har flyttet til nye lokaler</h1></body></html>')
+    client.route("https://eksempel.no/nyheter", listing.encode())
+    client.route("https://eksempel.no/nyheter/vi-har-flyttet-til-nye-lokaler", article.encode())
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"},
+        "news_urls": ["https://eksempel.no/nyheter"],
+        "site_pages": [{"url": "https://eksempel.no/", "final_url": "https://eksempel.no/", "links": ["https://eksempel.no/kontakt"]}],
+    })
+    result = feeds.collect(ctx)
+    assert [c.value["url"] for c in result["claims"]] == ["https://eksempel.no/nyheter/vi-har-flyttet-til-nye-lokaler"]
+    urls = [c["url"] for c in client.calls]
+    assert "https://eksempel.no/nyheter/side/2" not in urls and "https://eksempel.no/kategori/drift" not in urls
+
+
+def test_article_links_skip_menu_links_and_short_labels():
+    html = ('<main><a href="https://eksempel.no/om-oss">Om oss</a><a href="/les">Les mer</a>'
+            '<a href="/2026/10/arets-sommerfest-ble-en-suksess">Les mer</a>'
+            '<a href="https://annen.no/artikkel-om-noe-helt-annet">Artikkel om noe helt annet</a></main>')
+    links = feeds.article_links_from_listing("https://eksempel.no/nyheter", html, {"https://eksempel.no/om-oss"})
+    assert links == ["https://eksempel.no/2026/10/arets-sommerfest-ble-en-suksess"]
+
+
+def test_wordpress_rest_404_is_not_an_error():
+    client = FakeHttpClient()
+    rest = "https://eksempel.no/" + feeds.WP_POSTS_QUERY
+    client.route(rest, b"{}", status=404)
+    client.route("https://eksempel.no/feed/", b"", status=404)
+    ctx = make_ctx(client=client, shared={"verified_site": {"url": "https://eksempel.no/", "domain": "eksempel.no"}, "wordpress": True})
+    result = feeds.collect(ctx)
+    assert result["errors"] == [] and len(client.calls) <= feeds.ARTICLE_DISCOVERY_BUDGET

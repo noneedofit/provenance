@@ -82,6 +82,11 @@ def normalize_social_url(url: str) -> dict[str, str] | None:
     if not parts or lowered[0] in _REJECTED_FIRST_SEGMENT.get(platform, set()):
         return None
     if platform == "facebook" and lowered[0] == "profile.php":
+        # Facebook pages created since 2022 have no username, only profile.php?id=<number>
+        # (bhenriksen.no links its page this way). Any other profile.php link is not an account.
+        page_id = urllib.parse.parse_qs(parsed.query).get("id", [""])[0]
+        if len(parts) == 1 and re.fullmatch(r"\d{5,20}", page_id):
+            return {"platform": platform, "url": f"https://{_CANONICAL_HOST[platform]}/profile.php?id={page_id}"}
         return None
     if platform == "facebook" and re.fullmatch(r"\d+_\d+", parts[0]):
         return None  # <page id>_<post id>: one post, not the account

@@ -729,6 +729,10 @@ class WebConnector:
         result.shared["ats_links"] = extraction.ats_links
         result.shared["brand_name"] = extraction.brand_name
         result.shared["news_urls"] = [extraction.news_url] if extraction.news_url else []
+        # WordPress serves its posts as dated JSON at /wp-json/wp/v2/posts: one request gives the newest posts.
+        result.shared["wordpress"] = any(p.ok and ("/wp-content/" in (p.html or "") or "/wp-json/" in (p.html or "")) for p in pages)
+        # News listing pages W3 already fetched: their article links cost nothing to find.
+        result.shared["news_listing_html"] = {p.final_url: p.html for p in pages if p.ok and p.page_kind in {"nyheter", "aktuelt", "news"}}
 
     def _publish_group_site(
         self, ctx: CompanyContext, result: ConnectorResult, cand: Candidate, verdict: verify_mod.Verdict, pages: list[PageFetch],

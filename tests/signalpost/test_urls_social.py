@@ -25,3 +25,11 @@ def test_a_website_builders_own_accounts_are_not_the_companys_profiles():
     for url in ("https://www.facebook.com/WixStudio", "https://www.instagram.com/wix/",
                 "https://www.linkedin.com/company/wix-com", "https://www.youtube.com/@squarespace"):
         assert normalize_social_url(url) is None, url
+
+
+def test_a_numeric_facebook_page_id_is_a_profile():
+    assert normalize_social_url("https://facebook.com/profile.php?id=61573755100482") == {
+        "platform": "facebook", "url": "https://facebook.com/profile.php?id=61573755100482"}
+    assert normalize_social_url("https://www.facebook.com/profile.php?id=61573755100482&sk=about")["url"].endswith("id=61573755100482")
+    assert normalize_social_url("https://www.facebook.com/profile.php") is None
+    assert normalize_social_url("https://www.facebook.com/profile.php?id=abc") is None

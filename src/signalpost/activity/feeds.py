@@ -8,8 +8,8 @@ W3's own page-picker prioritizes identity-verification pages (kontakt/om-oss/per
 over a news/blog page for its tier-limited secondary-page budget, so a real news section routinely never
 gets fetched at all -- `feed_urls`/`news_urls` end up empty even when the site clearly has one (measured
 on daily100: several "failed: no source" companies turned out to have an undiscovered `/blogg` or
-`/aktuelt` link right on the homepage). `EXTRA_DISCOVERY_BUDGET` extra requests per verified site pay for
-targeted follow-up, cheapest/most-likely-to-hit first:
+`/aktuelt` link right on the homepage). `ARTICLE_DISCOVERY_BUDGET` extra requests per verified site pay for
+targeted follow-up (see `collect` for the current order; the history below explains the earlier cap):
 1. A same-domain link already visible on a page W3 fetched (`ctx.shared["site_pages"][*]["links"]`) but
    never itself fetched, whose path/text matches a Norwegian news/blog term W3's crawl priority ranks
    below the identity pages -- free to *find* (already-fetched HTML), only fetching it costs a request,
@@ -41,13 +41,15 @@ from ._common import make_claim, make_evidence
 
 MAX_ACTIVITY_ITEMS = 10
 
-# Hard cap on EXTRA requests (beyond the free feed_urls/news_urls already fetched by W3) this module
-# will spend discovering activity sources for one company. Keeps this a cheap, bounded add-on rather
-# than an open-ended crawl. A gold-131 measurement at 2 landed at 1,858 total requests -- over the
-# 1,850 target for this batch mix (a denser-than-average concentration of verified sites) -- so this
-# is 1: spend it on the single best candidate (a real discovered link if one exists, else one
-# WordPress /feed/ guess), never both.
-EXTRA_DISCOVERY_BUDGET = 1
+# Nov 2026: one guessed request found news on 1 of 17 verified sites in smoke100 although most of them
+# publish news (dns.no/nyheter lists dozens of press releases). A listing page was read only for its own
+# date and then dropped, and WordPress's post list was never asked. A verified site now gets up to
+# ARTICLE_DISCOVERY_BUDGET requests: the WordPress post list (one request, up to 10 dated posts), then
+# up to ARTICLE_FOLLOW_MAX article links from a news listing page. Only ~1 in 5 companies has a verified
+# site, so this adds well under 100 requests per 100 companies.
+ARTICLE_DISCOVERY_BUDGET = 3
+ARTICLE_FOLLOW_MAX = 2
+WP_POSTS_QUERY = "wp-json/wp/v2/posts?per_page=10&_fields=date,link,title"
 
 # Terms W3's crawl.py PRIORITY_TERMS ranks below the identity-verification pages (kontakt/om-oss/
 # personvern/vilkar/karriere), so a genuine news/blog link is routinely present on an already-fetched
@@ -336,6 +338,16 @@ def _homepage_url(ctx) -> str | None:
     return f"https://{domain}/" if domain else None
 
 
+def _homepage_links(ctx) -> list[str]:
+    """Links on the homepage W3 fetched: the site's menus, shown on every page."""
+    pages = (ctx.shared or {}).get("site_pages") or []
+    home = _homepage_url(ctx)
+    for page in pages:
+        if page.get("final_url") == home or page.get("url") == home:
+            return list(page.get("links") or [])
+    return list(pages[0].get("links") or []) if pages else []
+
+
 def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
     """Same-domain links already visible on pages W3 fetched (`ctx.shared["site_pages"][*]["links"]`)
     whose path or anchor text matches a Norwegian news/blog term ranked below the identity-verification
@@ -438,9 +450,12 @@ def _process_wp_rest_url(ctx, rest_url: str, seen_urls: set[str], result: dict) 
     resp = ctx.client.get(rest_url, org=ctx.org, purpose="site_feed", accept="application/json", respect_robots=True)
     result["checked"] = True
     if not resp.ok:
-        result["errors"].append({"stage": "wp_rest", "url": rest_url, "error": resp.error or f"http_{resp.status}"})
+        # REST switched off or behind a login (401/403/404) is an answer, not an error.
+        if not (400 <= (resp.status or 0) < 500):
+            result["errors"].append({"stage": "wp_rest", "url": rest_url, "error": resp.error or f"http_{resp.status}"})
         return []
-    parsed = parse_wp_rest_posts(resp.text())
+    raw_text = resp.text()
+    parsed = parse_wp_rest_posts(raw_text)
     if feed_is_compromised(parsed):
         return []  # the same hacked WordPress as its RSS feed: nothing in it is the company's news
     ev = make_evidence(
@@ -455,8 +470,65 @@ def _process_wp_rest_url(ctx, rest_url: str, seen_urls: set[str], result: dict) 
         if not url or url in seen_urls or not is_company_item(item, rest_url):
             continue
         seen_urls.add(url)
-        out.append((item, ev))
+        quote = raw_wp_post_quote(raw_text, url)
+        item_ev = ev.model_copy(update={
+            "evidence_id": evidence_id(rest_url, f"wp post {url}"), "span": f"wp post {url}"[:500], "claim_span": quote,
+        }) if quote else ev
+        out.append((item, item_ev))
     return out
+
+
+def raw_wp_post_quote(text: str, url: str) -> str | None:
+    """The post's own JSON object ({"date":..,"link":..,"title":..}) copied verbatim from the REST response."""
+    if not text or not url:
+        return None
+    at = -1
+    for needle in (json.dumps(url)[1:-1].replace("/", "\\/"), json.dumps(url)[1:-1]):
+        at = text.find('"' + needle + '"')
+        if at >= 0:
+            break
+    if at < 0:
+        return None
+    start = text.rfind("{", 0, text.rfind('"date"', 0, at) + 1)
+    end = text.find("}}", at)
+    if start < 0 or end < 0 or end - start > 600:
+        return None
+    return text[start:end + 2][:500]
+
+
+# Paths that are sections, filters or assets, never one article.
+_NOT_ARTICLE_PATH = re.compile(
+    r"/(page|side|kategori|category|categories|tag|tags|stikkord|author|forfatter|feed|wp-content|wp-json|"
+    r"arkiv|archive|search|sok|søk)(/|$)|\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?)$", re.I)
+
+
+def article_links_from_listing(listing_url: str, listing_html: str, nav_links: set[str]) -> list[str]:
+    """Links on a news listing page that look like single articles: same host, a path below or beside the
+    listing, a real headline as anchor text, and not a menu link the homepage also shows. In page order."""
+    base = urllib.parse.urlsplit(listing_url)
+    host = base.netloc.lower().removeprefix("www.")
+    soup = BeautifulSoup(listing_html, "lxml")
+    root = soup.find("main") or soup.body or soup
+    for tag in root.find_all(["nav", "header", "footer", "aside"]):
+        tag.decompose()
+    found: list[str] = []
+    for a in root.find_all("a", href=True):
+        href = urllib.parse.urljoin(listing_url, str(a["href"]).strip()).split("#", 1)[0]
+        parts = urllib.parse.urlsplit(href)
+        if parts.scheme not in ("http", "https") or parts.netloc.lower().removeprefix("www.") != host or parts.query:
+            continue
+        path = parts.path or "/"
+        if path.rstrip("/") in ("", base.path.rstrip("/")) or _NOT_ARTICLE_PATH.search(path) or _PRODUCT_PATH.search(path):
+            continue
+        if href in nav_links or href.rstrip("/") in {n.rstrip("/") for n in nav_links}:
+            continue
+        text = " ".join(a.get_text(" ", strip=True).split())
+        slug = path.rstrip("/").rsplit("/", 1)[-1]
+        if len(text) < 12 and slug.count("-") < 2:
+            continue  # "Les mer" on its own still counts when the URL is a headline slug
+        if href not in found:
+            found.append(href)
+    return found
 
 
 def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, purpose: str = "site_news_page") -> tuple[dict, object] | None:
@@ -466,6 +538,7 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
         result["errors"].append({"stage": "news_page", "url": news_url, "error": resp.error or f"http_{resp.status}"})
         return None
     html = resp.text()
+    result.setdefault("listings", {})[resp.final_url or news_url] = html
     iso, span = extract_date_from_html(html)
     if not iso or news_url in seen_urls:
         return None
@@ -485,7 +558,7 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
 
 def collect(ctx) -> dict:
     """Fetch shared feed_urls + news_urls (free), then, only if that found nothing, spend up to
-    EXTRA_DISCOVERY_BUDGET extra requests on WordPress feed/REST discovery and same-domain news/blog
+    ARTICLE_DISCOVERY_BUDGET extra requests on WordPress post list/feed discovery and same-domain news/blog
     links already visible on pages W3 fetched. Extract dated items, return the <=10 most recent as
     claims."""
     result: dict = {"claims": [], "evidence": [], "checked": False, "errors": []}
@@ -508,37 +581,45 @@ def collect(ctx) -> dict:
         if item:
             candidates.append(item)
 
-    # Extra discovery: only spend the extra budget when the free sources above produced nothing --
-    # maximizes coverage exactly where it's needed without adding cost to sites that already work.
-    # Cheapest/most-likely-to-hit first (see module docstring for the request-budget measurement behind
-    # this order and the 2-request cap): a real link already seen on a fetched page, THEN one WordPress
-    # guess -- not both a WordPress feed guess AND a REST-API guess, which measured no extra coverage
-    # for the added request.
-    extra_requests_used = 0
-    if not candidates and extra_requests_used < EXTRA_DISCOVERY_BUDGET:
-        # 1. A same-domain news/blog link already visible on a page W3 fetched for identity
-        # verification, but that W3 itself never fetched (crowded out by kontakt/om-oss in the tier's
-        # secondary-page budget). Free to find; only fetching it costs a request.
-        link_candidates = _discover_link_candidates(ctx, seen_urls | set(news_urls))
-        for link in link_candidates:
-            if extra_requests_used >= EXTRA_DISCOVERY_BUDGET:
-                break
-            item = _process_news_url(ctx, link, seen_urls, result, purpose="site_news_page_discovered")
-            extra_requests_used += 1
-            if item:
-                candidates.append(item)
-                break  # one dated item is enough to confirm the section is real; stop spending budget
-
-        if not candidates and extra_requests_used < EXTRA_DISCOVERY_BUDGET:
-            # 2. WordPress /feed/ -- near-universal on the single most common Norwegian small-business
-            # CMS; reuses the same RSS/Atom parser as a discovered <link rel="alternate"> feed. Tried
-            # last since it's a guess rather than a link the site itself actually shows.
-            homepage = _homepage_url(ctx)
-            if homepage:
-                wp_feed_url = f"{homepage.rstrip('/')}/feed/"
-                if wp_feed_url not in feed_urls:
-                    candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result, guessed=True))
-                    extra_requests_used += 1
+    # Extra discovery, only when the free sources above produced nothing, capped at ARTICLE_DISCOVERY_BUDGET
+    # requests. Most dated items per request first.
+    extra = 0
+    if not candidates:
+        homepage = _homepage_url(ctx)
+        # 1. WordPress post list: one request, up to 10 dated posts with their own links.
+        if shared.get("wordpress") and homepage:
+            candidates.extend(_process_wp_rest_url(ctx, f"{homepage.rstrip('/')}/{WP_POSTS_QUERY}", seen_urls, result))
+            extra += 1
+        listings = {**(shared.get("news_listing_html") or {}), **(result.get("listings") or {})}
+        # 2. A news/blog link seen on a fetched page but never fetched (crowded out by kontakt/om-oss).
+        if not candidates and not listings:
+            for link in _discover_link_candidates(ctx, seen_urls | set(news_urls))[:1]:
+                item = _process_news_url(ctx, link, seen_urls, result, purpose="site_news_page_discovered")
+                extra += 1
+                if item:
+                    candidates.append(item)
+            listings.update(result.get("listings") or {})
+        # 3. Single articles linked from a news listing page.
+        if not candidates and listings:
+            nav = set(_homepage_links(ctx))
+            followed = 0
+            for listing_url, listing_html in listings.items():
+                for link in article_links_from_listing(listing_url, listing_html or "", nav):
+                    if followed >= ARTICLE_FOLLOW_MAX or extra >= ARTICLE_DISCOVERY_BUDGET:
+                        break
+                    if link in seen_urls:
+                        continue
+                    item = _process_news_url(ctx, link, seen_urls, result, purpose="site_news_article")
+                    extra += 1
+                    followed += 1
+                    if item:
+                        candidates.append(item)
+        # 4. WordPress /feed/ guess (also works where the REST list is switched off).
+        if not candidates and extra < ARTICLE_DISCOVERY_BUDGET and homepage:
+            wp_feed_url = f"{homepage.rstrip('/')}/feed/"
+            if wp_feed_url not in feed_urls:
+                candidates.extend(_process_feed_url(ctx, wp_feed_url, seen_urls, result, guessed=True))
+                extra += 1
 
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     claims = []
@@ -557,6 +638,7 @@ def collect(ctx) -> dict:
         )
         claims.append(claim)
         evidence.append(ev)
+    result.pop("listings", None)
     result["claims"] = claims
     result["evidence"] = evidence
     return result
