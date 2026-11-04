@@ -151,6 +151,20 @@ def _group_site_names_us(cand: Candidate, verdict: Any, homepage: PageFetch, nam
     return bool(core) and core <= title_tokens
 
 
+def _related_site_quote(page: PageFetch, verdict: Any) -> str | None:
+    """Text copied verbatim from the related site's page: the other organisation number as written there,
+    else the page's <title>. Our reading of it stays in the claim note."""
+    html = page.html or ""
+    for conflict in getattr(verdict, "conflicts", None) or []:
+        span = str(getattr(conflict, "span", "") or "").strip()
+        if span and span in html:
+            return span
+    match = re.search(r"<title\b[^>]*>([^<]{1,300})</title>", html, re.I)
+    if match and match.group(1).strip():
+        return match.group(1).strip()
+    return verdict.note
+
+
 def _worth_confirming(verdict: Any) -> bool:
     """One more look at the pages that name the business behind a site (privacy, terms, contact) can settle it
     either way. Worth it for:
@@ -743,7 +757,7 @@ class WebConnector:
     ) -> None:
         org = ctx.org
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
-        ev = _make_evidence(homepage, verdict.note, "web_related_site_v1")
+        ev = _make_evidence(homepage, _related_site_quote(homepage, verdict), "web_related_site_v1")
         result.evidence.append(ev)
         value = _without_default_port(homepage.final_url)
         # A related site (parent, brand, chain, another organisation) is never this company's official

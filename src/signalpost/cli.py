@@ -144,6 +144,9 @@ def _resolve_bulk_path(explicit: str | None, time_budget_s: float = BULK_DOWNLOA
             print("downloaded bulk file is incomplete", file=sys.stderr)
         except Exception as exc:  # network drop, IncompleteRead, timeout
             print(f"bulk download failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            if str(exc).startswith("too slow"):
+                tmp.unlink(missing_ok=True)
+                break  # the link is slow, not broken: another attempt would be just as slow
         tmp.unlink(missing_ok=True)
         if attempt < BULK_DOWNLOAD_ATTEMPTS and time.monotonic() - started + 5 * attempt < time_budget_s:
             time.sleep(5 * attempt)
