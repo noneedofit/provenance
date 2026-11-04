@@ -150,3 +150,14 @@ def test_a_quoted_register_activity_ends_with_one_full_stop() -> None:
     texts = [s.text for s in build_summary(make_envelope(run_id="r", claims=[act], evidence=[ev])).sentences]
     assert any(t.endswith('"Utleie av fast eiendom".') for t in texts), texts
     assert not [t for t in texts if '."' in t]
+
+
+def test_the_no_changes_sentence_cites_the_rechecked_facts():
+    ev = make_evidence("https://data.brreg.no/enhetsregisteret/api/enheter/" + ORG)
+    claim = make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])
+    env = make_envelope(run_id="run-2", claims=[claim], evidence=[ev])
+    env.run.previous_run_id = "run-1"
+    sentences = build_summary(env).sentences
+    no_change = [s for s in sentences if s.text.startswith("No material changes")]
+    assert no_change and no_change[0].claim_ids == [claim.claim_id]
+    assert all(s.claim_ids for s in sentences)

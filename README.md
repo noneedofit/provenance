@@ -136,7 +136,7 @@ uv run python -m signalpost run \
 
 `--organisations` accepts a `.jsonl` file (one organisation number, or `{"organisation_number": "..."}`,
 per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), or a plain `.txt` file
-(one number per line). Every input must be a 9-digit Norwegian organisation number with no duplicates.
+(one number per line). Each entry should be a 9-digit Norwegian organisation number; anything else is skipped with a warning, and a repeated number is processed once.
 
 `--bulk` is optional (see "Data prerequisites" above for the default-path/auto-download behaviour).
 `--caches` is optional; when omitted, `./cache` is used and built automatically (see above).

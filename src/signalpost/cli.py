@@ -19,24 +19,43 @@ BULK_DOWNLOAD_URL = "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/
 
 
 def _read_organisation_inputs(path: str) -> list[str]:
+    """Organisation numbers from a .txt (one per line), .jsonl or .json file. One bad line must not cost the
+    whole batch: an entry that is not 9 digits (after removing spaces, a BOM or other non-digits) is skipped
+    with a warning on stderr, and a repeated number is kept once, in first-seen order."""
     p = Path(path)
-    text = p.read_text(encoding="utf-8")
+    text = p.read_text(encoding="utf-8-sig")
+    values: list[Any] = []
     if p.suffix == ".jsonl":
-        values: list[Any] = [json.loads(line) for line in text.splitlines() if line.strip()]
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            try:
+                values.append(json.loads(line))
+            except ValueError:
+                values.append(line.strip())
     elif p.suffix == ".json":
         body = json.loads(text)
         values = body if isinstance(body, list) else body.get("organisation_numbers", [])
     else:
         values = [line.strip() for line in text.splitlines() if line.strip()]
-    orgs = []
+    orgs: list[str] = []
+    seen: set[str] = set()
+    skipped: list[str] = []
     for v in values:
         org = v.get("organisation_number") if isinstance(v, dict) else v
         org = "".join(ch for ch in str(org or "") if ch.isdigit())
         if len(org) != 9:
-            raise ValueError(f"Invalid Norwegian organisation number: {v!r}")
+            skipped.append(repr(v)[:40])
+            continue
+        if org in seen:
+            continue
+        seen.add(org)
         orgs.append(org)
-    if len(orgs) != len(set(orgs)):
-        raise ValueError("Organisation-number input contains duplicates")
+    if skipped:
+        print(f"warning: skipped {len(skipped)} input entries that are not 9-digit organisation numbers: "
+              f"{', '.join(skipped[:5])}", file=sys.stderr)
+    if values and not orgs:
+        raise ValueError("No valid 9-digit organisation numbers in the input")
     return orgs
 
 

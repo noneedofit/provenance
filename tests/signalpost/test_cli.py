@@ -164,3 +164,16 @@ def test_run_output_folder_includes_the_viewer(tmp_path, monkeypatch, capsys):
     report = json.loads(capsys.readouterr().out)  # stdout stays pure report JSON
     assert report["viewer"] == "site/index.html"
     assert json.loads((out / "run-report.json").read_text(encoding="utf-8"))["viewer"] == "site/index.html"
+
+
+def test_bad_input_lines_are_skipped_not_fatal(tmp_path, capsys):
+    from signalpost import cli
+    path = tmp_path / "orgs.txt"
+    path.write_bytes("﻿985954208\r\n985954208\n\n 912190552 \nabc\n12345678\n985 954 209\n".encode("utf-8"))
+    assert cli._read_organisation_inputs(str(path)) == ["985954208", "912190552", "985954209"]
+    assert "skipped 2" in capsys.readouterr().err
+    bad = tmp_path / "bad.txt"
+    bad.write_text("abc\n")
+    import pytest
+    with pytest.raises(ValueError):
+        cli._read_organisation_inputs(str(bad))

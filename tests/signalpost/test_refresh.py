@@ -324,3 +324,14 @@ def test_diff_treats_http_and_https_of_the_same_site_as_unchanged():
     assert diff_envelopes(prev, curr) == []
     moved = _env_for_diff(org, "c", [_claim_for_diff(org, "website", "official_website", {"url": "https://acme-group.no/", "domain": "acme-group.no"})])
     assert len(diff_envelopes(prev, moved)) == 1
+
+
+def test_a_resumed_run_is_not_its_own_previous_check(tmp_path: Path) -> None:
+    ev = make_evidence("https://example.no")
+    first = make_envelope(run_id="run-1", claims=[make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])], evidence=[ev])
+    apply_refresh(first, tmp_path, now="2026-01-01T00:00:00Z")
+    again = make_envelope(run_id="run-1", claims=[make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])], evidence=[ev])
+    result = apply_refresh(again, tmp_path, now="2026-01-01T00:05:00Z")
+    assert result.run.previous_run_id is None and result.changes == []
+    later = make_envelope(run_id="run-2", claims=[make_claim(family="identity", field="legal_name", value="Example AS", evidence_ids=[ev.evidence_id])], evidence=[ev])
+    assert apply_refresh(later, tmp_path, now="2026-02-01T00:00:00Z").run.previous_run_id == "run-1"

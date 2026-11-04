@@ -723,7 +723,13 @@ def _sentence_changes(envelope: Envelope) -> list[SummarySentence]:
     previous = envelope.run.previous_run_id
     if not envelope.changes:
         if previous:
-            return [SummarySentence(text=f"No material changes since the previous check (run {previous}).", claim_ids=[])]
+            # Cite the facts that were checked again and found unchanged, so the sentence is verifiable.
+            rechecked = [c.claim_id for c in envelope.claims
+                         if c.availability == "available" and getattr(c, "status", "current") == "current"
+                         and c.family in ("identity", "website", "financials", "leadership")][:6]
+            if not rechecked:
+                return []
+            return [SummarySentence(text=f"No material changes since the previous check (run {previous}).", claim_ids=rechecked)]
         return []
     out = []
     for change in envelope.changes[:8]:
@@ -736,7 +742,9 @@ def _sentence_changes(envelope: Envelope) -> list[SummarySentence]:
             text = f"No longer found since the previous check: {field} {_plain(change.previous_value)}."
         out.append(SummarySentence(text=text, claim_ids=[change.claim_id] if change.claim_id else []))
     if len(envelope.changes) > 8:
-        out.append(SummarySentence(text=f"{len(envelope.changes) - 8} further changes are listed in the change log.", claim_ids=[]))
+        rest = list(dict.fromkeys(c.claim_id for c in envelope.changes[8:] if c.claim_id))[:10]
+        if rest:
+            out.append(SummarySentence(text=f"{len(envelope.changes) - 8} further changes are listed in the change log.", claim_ids=rest))
     return out
 
 

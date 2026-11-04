@@ -272,6 +272,20 @@ def _previous_site_unreachable(ctx: Any, attempts: list[dict]) -> bool:
     return False
 
 
+def _none_read(attempts: list[dict]) -> bool:
+    """Every candidate failed before any page could be judged, and at least one failure was transient or
+    the request budget (a domain that does not resolve, or a 404, is an answer: the site is not there)."""
+    if not attempts:
+        return False
+    judged = {"exact", "related", "ambiguous", "rejected"}
+    if any(a.get("status") in judged for a in attempts):
+        return False
+    return any(
+        _transient(a.get("reason")) or str(a.get("reason") or "") in ("budget_exhausted", "request_budget")
+        for a in attempts
+    )
+
+
 def _transient(reason: Any) -> bool:
     """Connection-level or server-side failures; a 404 or DNS failure means the site may really be gone."""
     text = str(reason or "")
@@ -620,6 +634,14 @@ class WebConnector:
             )
             result.families["profiles"] = FamilyState(family="profiles", availability="not_available", reason="no verified site to link profiles from")
             result.families["description"] = FamilyState(family="description", availability="not_available", reason="no verified site to extract description from")
+        elif _none_read(attempts):
+            # No candidate page could be read at all (connection errors, timeouts, server errors or the
+            # request budget). That is "not checked", not "no website": saying not_available would assert
+            # a fact we never saw, and would wipe a stored site on refresh.
+            result.shared["website_unchecked"] = True
+            reason = f"{len(attempts)} candidates could not be read this run (network errors or request budget); not checked"
+            for fam in ("website", "profiles", "description"):
+                result.families[fam] = FamilyState(family=fam, availability="failed", reason=reason, sources_checked=[a["domain"] for a in attempts])
         else:
             reason = f"checked {len(attempts)} candidates: none verified" if attempts else "no candidates"
             result.families["website"] = FamilyState(family="website", availability="not_available", reason=reason, sources_checked=[a["domain"] for a in attempts])

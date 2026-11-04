@@ -552,3 +552,12 @@ def test_a_related_site_is_published_only_when_the_register_ties_it_to_us():
     assert _related_site_is_tied(ctx, NS(source="name_guess"), shows("922222222"))  # e.g. the co-op's manager
     assert not _related_site_is_tied(ctx, NS(source="name_guess"), shows("933333333"))  # a namesake's site
     assert _related_site_is_tied(ctx, NS(source="registry_website"), shows("933333333"))  # the register lists it
+
+
+def test_none_read_means_not_checked():
+    from signalpost.web.connector import _none_read
+    assert _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "unreachable", "reason": "dns_error"}])
+    assert _none_read([{"status": "skipped", "reason": "request_budget"}])
+    assert not _none_read([{"status": "unreachable", "reason": "network_error"}, {"status": "rejected", "reason": "parked_or_placeholder"}])
+    assert not _none_read([{"status": "unreachable", "reason": "dns_error"}])
+    assert not _none_read([])
