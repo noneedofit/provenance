@@ -63,7 +63,8 @@ def test_connector_marks_related_site_ambiguous_not_exact():
     )
     result = WebConnector().run(ctx)
     assert result.families["website"].availability == "ambiguous"
-    claim = next(c for c in result.claims if c.family == "website" and c.field == "official_website")
+    assert not [c for c in result.claims if c.field == "official_website"]
+    claim = next(c for c in result.claims if c.family == "website" and c.field == "related_website")
     assert claim.availability == "ambiguous"
     assert claim.relationship in {"franchise", "parent", "brand"}
     # never published as exact for a conflicting org number
@@ -110,7 +111,9 @@ def test_connector_uses_caches_org_count_to_reject_shared_registry_domain():
     result = WebConnector().run(ctx)
     # The company's own registry entry names the group site: published, but labelled as the group's site,
     # never as an exact own-site, and nothing (profiles, description) is taken from it.
-    claim = next((c for c in result.claims if c.family == "website" and c.field == "official_website"), None)
+    # A group site that does not show this company is never its website: kept only as a related site.
+    assert not [c for c in result.claims if c.field == "official_website"]
+    claim = next((c for c in result.claims if c.family == "website" and c.field == "related_website"), None)
     assert claim is not None and claim.relationship != "exact"
     assert result.families["profiles"].availability != "available"
     assert result.families["description"].availability != "available"
@@ -368,9 +371,13 @@ def test_a_group_site_named_exactly_like_us_gives_its_profiles_as_the_brand():
     assert profiles and all(c.relationship == "brand" and c.identity_basis == "registry_declared" for c in profiles)
 
 
-def test_a_group_site_with_a_different_name_keeps_its_profiles_to_itself():
+def test_a_group_site_that_does_not_show_our_name_is_only_a_related_site():
+    # VIDDA AS -> thon.no: the register lists the group's site, but the page does not show this company.
     result = WebConnector().run(_group_site_ctx("EKSEMPELFIRMA BYGG AS"))
-    assert result.families["website"].availability == "available"
+    assert result.families["website"].availability == "ambiguous"
+    assert not [c for c in result.claims if c.field == "official_website"]
+    related = [c for c in result.claims if c.field == "related_website"]
+    assert related and related[0].relationship != "exact"
     assert result.families["profiles"].availability == "not_available"
     assert not [c for c in result.claims if c.family == "profiles"]
 

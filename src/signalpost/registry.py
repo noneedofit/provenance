@@ -238,6 +238,33 @@ def bulk_row_sha256(row: dict[str, Any]) -> str:
     return hashlib.sha256(canonical(row).encode("utf-8")).hexdigest()
 
 
+def row_from_live_entity(body: dict[str, Any]) -> dict[str, str]:
+    """A bulk-file-shaped row (same column names, text values) built from the live entity JSON.
+
+    Used only for planning (tier, candidate hints) when the bulk file is missing or lacks the company: the
+    run must not treat a staffed company as a shell because a 155 MB download failed. Facts are never
+    published from this row; identity claims come from the live response itself."""
+    row: dict[str, str] = {}
+
+    def put(prefix: str, value: Any) -> None:
+        if isinstance(value, dict):
+            for key, inner in value.items():
+                if key != "_links":
+                    put(f"{prefix}.{key}" if prefix else key, inner)
+        elif isinstance(value, list):
+            texts = [str(v) for v in value if isinstance(v, (str, int, float)) and not isinstance(v, bool)]
+            if texts:
+                row[prefix] = ", ".join(texts)
+        elif isinstance(value, bool):
+            row[prefix] = "true" if value else "false"
+        elif value is not None:
+            row[prefix] = str(value)
+
+    if isinstance(body, dict):
+        put("", body)
+    return row
+
+
 def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, snapshot_sha256: str | None) -> None:
     """Fallback identity claims from the bulk row (used when the live entity fetch fails)."""
     org = builder.org
@@ -739,6 +766,13 @@ class RegistryConnector:
         if entity_ok and entity_body is not None:
             identity_claims_from_live(builder, entity_body, resp)
             ctx.registry["entity"] = entity_body
+            if not bulk_row:
+                # No bulk row (download failed or the file lacks this company): plan from the live entity.
+                ctx.bulk = row_from_live_entity(entity_body)
+                from .planner import classify
+
+                ctx.tier = classify(ctx.bulk, caches=getattr(ctx, "caches", None)).tier
+                tier = ctx.tier.upper()
         elif "identity" not in families:
             if bulk_row:
                 identity_claims_from_bulk(builder, bulk_row, snapshot_sha256=None)

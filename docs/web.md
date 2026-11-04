@@ -105,8 +105,10 @@ independent corroborating signals and zero conflicts.
 5. **`connector.WebConnector`** — tries candidates decisive-sources-first, stops at the first `exact`
    verdict. Publishes:
    - `website/official_website` (`{url, domain, brand_name}`, `relationship="exact"`) on success, or an
-     `ambiguous` claim carrying the best `related` candidate's URL/relationship if no candidate verified
-     exactly, or `not_available` with reason `"checked N candidates: none verified"` / `"no candidates"`.
+     `ambiguous` `website/related_website` claim carrying the best `related` candidate's URL/relationship if no
+     candidate verified exactly (a parent, brand or chain site is never published as `official_website`; a
+     registry-listed group site counts as the company's own only when its title carries our legal name or it
+     shows our org number, and it does not forward to another domain), or `not_available` with reason `"checked N candidates: none verified"` / `"no candidates"`.
    - `website/site_contact_email`, `website/site_phone` when found on the verified site.
    - `profiles/profile` — one claim per normalized social URL, `identity_basis="linked_from_verified_site"`.
    - `description/company_description`.

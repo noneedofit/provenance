@@ -57,6 +57,7 @@ REGISTRY_RESERVE = 5  # entity, roles, subunits, accounts, filing years
 # in the queue once and processed again after the rest of the batch, when the time left covers the rest of
 # the batch with this much margin to spare (see `can_defer`); otherwise its failed families stand.
 REGISTRY_RETRY_MIN_S = 180
+CHECKPOINT_EVERY_S = 30  # how often envelopes.jsonl is rewritten while the batch runs
 REGISTRY_RETRY_PAUSE_S = 20
 _TRANSIENT_ERRORS = ("network_error", "timeout", "ssl_error", "dns", "http_5xx")
 
@@ -299,6 +300,15 @@ def run_batch(
                     finally:
                         if getattr(connector, "name", "") == "registry":
                             budget.release(org)
+                    if getattr(connector, "name", "") == "registry" and not row and ctx.bulk:
+                        # No bulk row: the register connector planned from the live entity instead. Give the
+                        # company the allowance of its real tier, so a failed bulk download does not reduce
+                        # every company to the shell tier.
+                        live_tier = classify(ctx.bulk, caches=caches)
+                        if live_tier.allowance > tier_result.allowance:
+                            budget.allocate(org, live_tier.allowance - tier_result.allowance)
+                        tier_result = live_tier
+                        ctx.tier = live_tier.tier
                     if (
                         not retry and not registry_only and getattr(connector, "name", "") == "registry"
                         and _registry_failed_transiently(result) and can_defer()
@@ -430,8 +440,47 @@ def run_batch(
             )
             return _CompanyOutcome(index, org, envelope, deadline_hit, budget_exhausted)
 
+    envelopes_path = output_path / "envelopes.jsonl"
+    # Checkpoints: if the evaluator stops the process before the batch ends (a time limit shorter than ours),
+    # envelopes.jsonl still holds exactly one envelope per company: the finished ones, and a "not reached"
+    # placeholder for the rest. The final write below replaces it with the complete batch.
+    written: dict[int, str] = {}
+    last_checkpoint = [time.monotonic()]
+
+    def placeholder(org: str) -> str:
+        return Envelope(
+            organisation_number=org,
+            run=RunInfo(run_id=run_id, started_at=started_at, completed_at=utc_now(), terminal_status="failed"),
+            families={fam: FamilyState(family=fam, availability="failed", reason="not reached: run stopped before this company finished") for fam in FAMILIES},
+            errors=[{"stage": "pipeline", "error": "run stopped before this company finished"}],
+            sections={section: [] for section in SECTIONS},
+        ).model_dump_json()
+
+    checkpoint_lock = threading.Lock()
+
+    def checkpoint(force: bool = False) -> None:
+        with checkpoint_lock:
+            if not force and time.monotonic() - last_checkpoint[0] < CHECKPOINT_EVERY_S:
+                return
+            last_checkpoint[0] = time.monotonic()
+            lines = [written.get(i) or placeholder(org) for i, org in enumerate(org_list)]
+            try:
+                _atomic_write(envelopes_path, "\n".join(lines) + ("\n" if lines else ""))
+            except OSError as exc:  # a checkpoint must never stop the batch
+                print(f"checkpoint write failed: {exc}", file=sys.stderr)
+
+    def process_and_record(index: int, org: str, retry: bool = False) -> _CompanyOutcome:
+        outcome = process(index, org, retry)
+        if outcome.envelope is not None:
+            text = outcome.envelope.model_dump_json()
+            with checkpoint_lock:
+                written[index] = text
+            checkpoint()
+        return outcome
+
     deferred: list[tuple[int, str]] = []
     registry_retried = 0
+    checkpoint(force=True)
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         def collect(futures) -> None:
             nonlocal done_count
@@ -446,13 +495,13 @@ def run_batch(
                     if progress_cb:
                         progress_cb(done_count, len(org_list))
 
-        collect([pool.submit(process, i, org) for i, org in enumerate(org_list)])
+        collect([pool.submit(process_and_record, i, org) for i, org in enumerate(org_list)])
         if deferred:
             # Give a register outage a moment to pass, then run each deferred company once more.
             time.sleep(max(0.0, min(REGISTRY_RETRY_PAUSE_S, deadline_at - time.monotonic() - REGISTRY_ONLY_SAFETY_S - REGISTRY_RETRY_MIN_S)))
             retry_list, deferred = sorted(deferred), []
             registry_retried = len(retry_list)
-            collect([pool.submit(process, i, org, True) for i, org in retry_list])
+            collect([pool.submit(process_and_record, i, org, True) for i, org in retry_list])
 
     for t in prepare_threads:
         t.join(timeout=max(1.0, deadline_at - time.monotonic()))
@@ -461,7 +510,6 @@ def run_batch(
     deadline_hits = sum(1 for r in results if r and r.deadline_hit)
     budget_exhausted_count = sum(1 for r in results if r and r.budget_exhausted)
 
-    envelopes_path = output_path / "envelopes.jsonl"
     _atomic_write(envelopes_path, "\n".join(env.model_dump_json() for env in envelopes) + ("\n" if envelopes else ""))
 
     requests_log_path = output_path / "requests.jsonl"

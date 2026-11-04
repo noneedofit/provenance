@@ -127,7 +127,7 @@ _SECTION_TITLE = re.compile(
     r"(\s*(/|og|&|and)\s*\w+)?(\s+(fra|from|i|hos)\s+.{1,40})?$",
     re.IGNORECASE,
 )
-_DATE_TAGS = ("pubDate", "published", "updated", "dc:date")
+_DATE_TAGS = ("pubDate", "published", "dc:date")
 
 
 def raw_feed_item_quote(text: str, item: dict) -> str | None:
@@ -204,21 +204,55 @@ def parse_feed(text: str) -> list[dict]:
         elif local == "entry":  # Atom
             title = _child_text(elem, "title")
             link = _atom_link(elem)
-            pub = _child_text(elem, "published") or _child_text(elem, "updated")
+            # Atom <updated> is when an entry was last edited, not when it was published: never used as a date.
+            pub = _child_text(elem, "published")
             items.append({"title": title, "url": link, "published": normalize_iso_date(pub), "published_raw": pub})
     return items
 
 
-def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
-    """Best-effort (iso_date, span) from <time datetime>, meta article:published_time, JSON-LD
-    datePublished, or Norwegian-language date text. Returns (None, None) if nothing parseable found."""
-    soup = BeautifulSoup(html, "lxml")
+_ARTICLE_TYPES = {"article", "newsarticle", "blogposting", "report", "pressrelease", "analysisnewsarticle"}
+_NOT_ARTICLE_OG = {"product", "restaurant.menu", "restaurant.restaurant", "place", "business.business", "profile"}
+_DATE_HINT = re.compile(r"publi|posted|post-date|entry-date|article-date|news-date|dato", re.I)
 
-    time_el = soup.find("time", attrs={"datetime": True})
-    if time_el and time_el.get("datetime"):
-        iso = normalize_iso_date(time_el["datetime"])
-        if iso:
-            return iso, f'<time datetime="{time_el["datetime"]}">'
+
+def _jsonld_article_date(soup: BeautifulSoup) -> str | None:
+    """datePublished of a JSON-LD node typed as an article (Article, NewsArticle, BlogPosting...)."""
+    def walk(node):
+        if isinstance(node, list):
+            for item in node:
+                yield from walk(item)
+        elif isinstance(node, dict):
+            types = node.get("@type")
+            types = types if isinstance(types, list) else [types]
+            if node.get("datePublished") and any(str(t).lower() in _ARTICLE_TYPES for t in types if t):
+                yield str(node["datePublished"])
+            for key in ("@graph", "mainEntity", "mainEntityOfPage"):
+                if key in node:
+                    yield from walk(node[key])
+
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        try:
+            data = json.loads(script.string or script.get_text() or "")
+        except Exception:
+            continue
+        for raw in walk(data):
+            if normalize_iso_date(raw):
+                return raw
+    return None
+
+
+def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
+    """(iso_date, span) of the page's own publication date, or (None, None).
+
+    Only a date the page states as an article's publication date counts: meta article:published_time,
+    JSON-LD datePublished on an article-typed node, or a <time datetime> inside <article> or marked as the
+    publish/post date. A page typed as a product, menu, place or profile is never a dated news item,
+    and a date merely written somewhere in the text (opening hours, "updated", a price list) is not used."""
+    soup = BeautifulSoup(html, "lxml")
+    og_type = soup.find("meta", attrs={"property": "og:type"})
+    og = str(og_type.get("content") or "").strip().lower() if og_type else ""
+    if og in _NOT_ARTICLE_OG or og.startswith("product"):
+        return None, None
 
     meta = soup.find("meta", attrs={"property": "article:published_time"})
     if meta and meta.get("content"):
@@ -226,22 +260,25 @@ def extract_date_from_html(html: str) -> tuple[str | None, str | None]:
         if iso:
             return iso, "meta[property=article:published_time]"
 
-    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
-        try:
-            data = json.loads(script.string or script.get_text() or "")
-        except Exception:
-            continue
-        candidates = data if isinstance(data, list) else [data]
-        for obj in candidates:
-            if isinstance(obj, dict) and obj.get("datePublished"):
-                iso = normalize_iso_date(str(obj["datePublished"]))
-                if iso:
-                    return iso, "JSON-LD datePublished"
+    raw = _jsonld_article_date(soup)
+    if raw:
+        return normalize_iso_date(raw), "JSON-LD datePublished"
 
-    text = soup.get_text(" ", strip=True)[:4000]
-    iso = parse_norwegian_date(text)
-    if iso:
-        return iso, "regex Norwegian date pattern"
+    for time_el in soup.find_all("time", attrs={"datetime": True}):
+        marked = time_el.find_parent("article") is not None or str(time_el.get("itemprop") or "") == "datePublished" \
+            or _DATE_HINT.search(" ".join(time_el.get("class") or []) + " " + " ".join(
+                " ".join(p.get("class") or []) for p in list(time_el.parents)[:2] if hasattr(p, "get")))
+        if not marked:
+            continue
+        iso = normalize_iso_date(time_el["datetime"])
+        if iso:
+            return iso, f'<time datetime="{time_el["datetime"]}">'
+
+    if og == "article":
+        text = soup.get_text(" ", strip=True)[:4000]
+        iso = parse_norwegian_date(text)
+        if iso:
+            return iso, "regex Norwegian date pattern"
     return None, None
 
 

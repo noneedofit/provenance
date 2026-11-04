@@ -85,7 +85,9 @@ curl -L 'https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv' -o data
 pass `--bulk <path>` explicitly). If neither is found, or the copy is more than 20 hours old (the register
 publishes it nightly), it downloads the file itself, up to 3 attempts within at most 10 minutes in all (the register serves
 it without resume, and on a slow day at a few hundred KB/s), each counted as a setup request; a failed
-download falls back to the older copy, or to the live registry API alone. No API key is required — the registry API is keyless and public.
+download falls back to the older copy, or to the live registry API alone. Without a bulk row for a company, its
+search tier is planned from the live registry entry instead (staff, legal form, NACE, registered site), so a
+failed download never reduces every company to the shell tier. No API key is required — the registry API is keyless and public.
 
 **Caches are built automatically.** When `--caches` is omitted, `signalpost run` uses `./cache` and, if
 it is empty, builds the two identity-critical parts itself before the batch starts: the shared-domain
@@ -255,6 +257,10 @@ Brønnøysund registry APIs (company sites, NAV, Mattilsynet, YouTube all check 
 through an SSRF guard (`assert_public_url`) that resolves DNS and rejects private/loopback/link-local/reserved
 addresses before connecting. The one-time setup downloads (bulk file, and Wikidata only when run live) go to
 fixed official URLs and are counted separately as `setup_requests` in `run-report.json`.
+
+While the batch runs, `envelopes.jsonl` is rewritten about every 30 seconds with exactly one envelope per input
+company: the finished ones, and a `failed` placeholder ("not reached") for the rest. If the evaluator stops the
+process before our own deadline, the companies already researched are kept; the final write replaces the file.
 
 ## Expected cost per run
 

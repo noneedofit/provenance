@@ -342,3 +342,34 @@ def test_a_register_failure_that_persists_is_reported_failed_after_one_retry(tmp
     assert len(envs) == 1 and registry.calls == 2
     assert envs[0]["families"]["leadership"]["availability"] == "failed"
     assert envs[0]["run"]["terminal_status"] == "partial"
+
+
+class _CheckpointSpy(_StubConnector):
+    """Reads envelopes.jsonl while the second company runs: the first one is finished by then."""
+
+    def __init__(self, out: Path):
+        self.out = out
+        self.seen: list[dict] = []
+
+    def run(self, ctx: CompanyContext) -> ConnectorResult:
+        if ctx.org == "222222222":
+            text = (self.out / "envelopes.jsonl").read_text(encoding="utf-8")
+            self.seen = [json.loads(line) for line in text.splitlines() if line.strip()]
+        return super().run(ctx)
+
+
+def test_run_batch_checkpoints_one_envelope_per_company_while_running(tmp_path: Path, monkeypatch):
+    # If the evaluator stops the process early, envelopes.jsonl must still hold one envelope per company.
+    monkeypatch.setattr(pipeline, "CHECKPOINT_EVERY_S", 0)
+    orgs = ["111111111", "222222222", "333333333"]
+    spy = _CheckpointSpy(tmp_path / "out")
+    pipeline.run_batch(
+        orgs, output_dir=str(tmp_path / "out"), state_dir=str(tmp_path / "state"), run_id="cp",
+        bulk_rows={o: {} for o in orgs}, connectors=[spy], workers=1,
+    )
+    assert [e["organisation_number"] for e in spy.seen] == orgs
+    assert spy.seen[0]["families"]["identity"]["availability"] == "available"
+    assert spy.seen[1]["run"]["terminal_status"] == "failed"
+    assert spy.seen[2]["families"]["identity"]["reason"].startswith("not reached")
+    final = [json.loads(line) for line in (tmp_path / "out" / "envelopes.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert all(e["families"]["identity"]["availability"] == "available" for e in final)

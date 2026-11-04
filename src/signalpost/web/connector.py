@@ -136,6 +136,21 @@ def _is_group_site(ctx: Any, cand: Candidate, verdict: Any, pages: list[PageFetc
     return any((len(t) >= 3 and t in label) or (len(t) == 2 and label.startswith(t)) for t in tokens)
 
 
+def _group_site_names_us(cand: Candidate, verdict: Any, homepage: PageFetch, name: str) -> bool:
+    """A group site counts as this company's website only when it shows the company: our legal name in the
+    page title (or our org number), and it stays on the declared domain instead of forwarding elsewhere
+    (appelx.no -> studiox.no). A sister company's org number in the footer of a site that carries our own
+    name on our own domain (haikjeften.no) does not disqualify it."""
+    if registered_domain(homepage.final_url or "") != cand.domain:
+        return False
+    if any(s.kind in ("legal_name_match", "org_number_on_source", "jsonld_org_number") for s in verdict.signals):
+        return True
+    # With another organisation number on the page the verifier stops before its name check: read the title.
+    core = verify_mod._legal_name_core(name)
+    title_tokens = set(re.findall(r"[a-z0-9]+", verify_mod._normalize(homepage.title or "")))
+    return bool(core) and core <= title_tokens
+
+
 def _worth_confirming(verdict: Any) -> bool:
     """One more look at the pages that name the business behind a site (privacy, terms, contact) can settle it
     either way. Worth it for:
@@ -683,6 +698,12 @@ class WebConnector:
         homepage = next((p for p in pages if p.page_kind == "homepage"), pages[0])
         declared_by = "registry hjemmeside" if cand.source == "registry_website" else cand.label
         branch = _declared_branch_page(ctx, cand, pages)
+        if not branch and not _group_site_names_us(cand, verdict, homepage, str(_registry_facts(ctx).get("name") or "")):
+            # The register lists the group's site (thon.no for VIDDA AS, a Thon hotel), or a domain that now
+            # forwards to another organisation's site (appelx.no -> studiox.no): the page does not show this
+            # company. Never published as its website; kept as a labelled related site.
+            self._publish_related(ctx, result, cand, verdict, pages)
+            return
         where = "its own page on a shared chain/group site" if branch else "the company's group site"
         note = f"website declared for this organisation number ({declared_by}) is {where} ({verdict.relationship}): {verdict.note}"
         ev = _make_evidence(homepage, f"{declared_by}: {cand.url}", "web_group_site_v1")
@@ -725,9 +746,11 @@ class WebConnector:
         ev = _make_evidence(homepage, verdict.note, "web_related_site_v1")
         result.evidence.append(ev)
         value = _without_default_port(homepage.final_url)
+        # A related site (parent, brand, chain, another organisation) is never this company's official
+        # website: its own field, so nothing reads it as the company's site.
         result.claims.append(Claim(
-            claim_id=claim_key(org, "website", "official_website", None), organisation_number=org,
-            family="website", field="official_website", value=value, availability="ambiguous",
+            claim_id=claim_key(org, "website", "related_website", None), organisation_number=org,
+            family="website", field="related_website", value=value, availability="ambiguous",
             confidence=0.4, relationship=verdict.relationship, evidence_ids=[ev.evidence_id],
             note=verdict.note,
         ))

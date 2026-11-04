@@ -28,10 +28,32 @@ def test_parse_norwegian_date():
 
 
 def test_extract_date_from_html_prefers_time_tag():
-    html = '<html><body><time datetime="2026-01-05T10:00:00Z">5. januar</time></body></html>'
+    html = '<html><body><article><h1>Ny avtale</h1><time datetime="2026-01-05T10:00:00Z">5. januar</time></article></body></html>'
     iso, span = feeds.extract_date_from_html(html)
     assert iso == "2026-01-05"
     assert "time" in span
+
+
+def test_extract_date_from_html_ignores_dates_outside_an_article():
+    # A product or menu page with a stray <time> (opening hours, a footer) or a date in the text is not news.
+    loose = '<html><body><h1>Lunsjmeny</h1><time datetime="2026-01-05">5. januar</time><p>Oppdatert 12. mars 2026</p></body></html>'
+    assert feeds.extract_date_from_html(loose) == (None, None)
+    product = ('<html><head><meta property="og:type" content="product">'
+               '<meta property="article:published_time" content="2026-01-05"></head><body></body></html>')
+    assert feeds.extract_date_from_html(product) == (None, None)
+    jsonld_product = '<html><head><script type="application/ld+json">{"@type": "Product", "datePublished": "2026-01-05"}</script></head></html>'
+    assert feeds.extract_date_from_html(jsonld_product) == (None, None)
+    # Some CMSs type every page "website": an explicit article publish time still counts.
+    cms = ('<html><head><meta property="og:type" content="website">'
+           '<meta property="article:published_time" content="2026-02-01T08:00:00Z"></head></html>')
+    assert feeds.extract_date_from_html(cms)[0] == "2026-02-01"
+
+
+def test_parse_feed_atom_never_uses_updated_as_published():
+    xml = ('<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Om oss</title>'
+           '<link href="https://example.no/om-oss"/><updated>2026-10-01T00:00:00Z</updated></entry></feed>')
+    items = feeds.parse_feed(xml)
+    assert items and items[0]["published"] is None
 
 
 def test_extract_date_from_html_jsonld_and_norwegian_fallback():
