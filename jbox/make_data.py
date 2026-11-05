@@ -220,6 +220,8 @@ def main(src, out):
             elif c["field"] == "activity_item" and isinstance(v, dict) and v.get("title"):
                 fact["label"] = "News · " + nice_date(str(v.get("published") or ""))
                 fact["value"] = str(v["title"])
+                if str(v.get("url") or "").startswith(("https://", "http://")):
+                    fact["link"] = v["url"]  # the article itself (the source may be the site's feed)
             elif c["field"] == "annual_accounts_copy" and year_of(c):
                 fact["label"] = f"Annual accounts {year_of(c)} (PDF)"
             facts.append(fact)
