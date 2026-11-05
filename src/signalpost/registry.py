@@ -1009,10 +1009,13 @@ class RegistryConnector:
                     financial_history_claims(builder, body, resp, legal_form=legal_form)
                     hist_claims = [c for c in builder.claims if c.family == "financial_history"]
                     not_applicable = any(c.availability == "not_applicable" for c in hist_claims)
+                    # Available only with an available fact: a "no filed accounts" claim is a checked none.
+                    have = any(c.availability == "available" for c in hist_claims)
                     families["financial_history"] = FamilyState(
                         family="financial_history",
-                        availability="not_applicable" if not_applicable else ("available" if hist_claims else "not_available"),
-                        reason=(hist_claims[0].note if not_applicable and hist_claims else (None if hist_claims else "checked: none found")),
+                        availability="not_applicable" if not_applicable else ("available" if have else "not_available"),
+                        reason=(None if have else "Legal form is not categorically filing-obliged" if not_applicable
+                                else "no filed annual accounts in the register" if hist_claims else "checked: none found"),
                         sources_checked=builder.sources_checked.get("financial_history", []), claim_count=len(hist_claims),
                     )
                 except Exception as exc:

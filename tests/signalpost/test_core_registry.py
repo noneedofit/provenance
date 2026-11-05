@@ -255,3 +255,17 @@ def test_other_accounts_server_errors_stay_failed():
     result = registry.RegistryConnector().run(_ctx(client))
     assert result.families["financials"].availability == "failed"
     assert result.families["group"].availability == "failed"
+
+
+def test_no_filed_accounts_is_a_checked_none_not_an_available_family():
+    # A new company (or an unknown org number) whose filed-years list is empty: the family is not_available
+    # with the reason, never "available" with no available fact (found by the bad-input stress test).
+    client = FakeHttpClient()
+    for module in ("entity", "roles", "subunits", "accounts", "years"):
+        data = _load(module)
+        client.add_json(data["url"], data["status"], [] if module == "years" else data["body"])
+    result = registry.RegistryConnector().run(_ctx(client))
+    state = result.families["financial_history"]
+    assert state.availability == "not_available" and state.reason == "no filed annual accounts in the register"
+    claim = next(c for c in result.claims if c.family == "financial_history" and c.field == "filed_years")
+    assert claim.availability == "not_available" and claim.value is None
