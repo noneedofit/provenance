@@ -64,7 +64,7 @@ def lean_quote(quote: str, value: str) -> str:
 
 
 # Plain-English labels for the register's Norwegian role names (the source quote keeps the original).
-ROLE_EN = {"Daglig leder": "Chief executive (daglig leder)", "Styrets leder": "Board chair", "Styremedlem": "Board member",
+ROLE_EN = {"Daglig leder": "Chief executive officer", "Styrets leder": "Chair of the board", "Styremedlem": "Board member",
            "Nestleder": "Deputy chair", "Varamedlem": "Deputy board member", "Observatør": "Board observer",
            "Revisor": "Auditor", "Regnskapsfører": "Accountant", "Forretningsfører": "Business manager",
            "Innehaver": "Owner", "Kontaktperson": "Contact person", "Komplementar": "General partner",
@@ -72,6 +72,23 @@ ROLE_EN = {"Daglig leder": "Chief executive (daglig leder)", "Styrets leder": "B
            "Daglig leder/ adm.direktør": "Chief executive", "Oppl om foretaket i hjemlandet": "Foreign parent (home country)",
            "Norsk representant for utenlandsk enhet": "Norwegian representative", "Bestyrende reder": "Managing owner"}
 STATUS_EN = {"active": "Active", "liquidating": "In liquidation", "bankrupt": "Bankrupt", "deleted": "Deleted"}
+
+
+PLATFORM = {"facebook": "Facebook", "instagram": "Instagram", "linkedin": "LinkedIn", "youtube": "YouTube",
+            "x": "X (Twitter)", "twitter": "X (Twitter)", "tiktok": "TikTok", "pinterest": "Pinterest", "vimeo": "Vimeo"}
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def place_name(name: str | None) -> str | None:
+    """'INDRE ØSTFOLD' -> 'Indre Østfold', 'NORD-FRON' -> 'Nord-Fron' (the register writes places in capitals)."""
+    if not name:
+        return name
+    return " ".join("-".join(part.capitalize() for part in word.split("-")) for word in str(name).split())
+
+
+def nice_date(iso: str) -> str:
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", iso or "")
+    return f"{int(m.group(3))} {_MONTHS[int(m.group(2)) - 1]} {m.group(1)}" if m else (iso or "")
 
 
 def display_value(c: dict, text: str) -> str:
@@ -148,7 +165,7 @@ KIND = {"official_registry": "Official register (Brønnøysund)", "official_regi
         "company_owned": "Company website", "official_public": "Public agency", "public_open_data": "Open data"}
 LABEL = {"legal_name": "Legal name", "nace": "Industry", "secondary_nace": "Other industry",
          "institutional_sector": "Sector", "registration_date": "Registered", "registered_in": "Registered in", "legal_form": "Legal form", "founded_date": "Founded",
-         "status": "Status", "business_address": "Business address", "registered_employees": "Registered employees",
+         "status": "Status", "business_address": "Business address", "registered_employees": "Number of employees",
          "official_website": "Website", "revenue": "Revenue", "annual_result": "Annual result",
          "operating_result": "Operating result", "equity": "Equity", "total_assets": "Total assets",
          "total_debt": "Total debt", "role": "Role", "workplace": "Workplace", "profile": "Profile",
@@ -197,19 +214,30 @@ def main(src, out):
                     quick["ceo"] = fact["value"]
                 elif c["value"].get("role_code") == "LEDE":
                     quick["chair"] = fact["value"]
+            v = c.get("value")
+            if c["field"] == "profile" and isinstance(v, dict):
+                fact["label"] = PLATFORM.get(str(v.get("platform") or "").lower(), str(v.get("platform") or "Profile").capitalize())
+            elif c["field"] == "activity_item" and isinstance(v, dict) and v.get("title"):
+                fact["label"] = "News · " + nice_date(str(v.get("published") or ""))
+                fact["value"] = str(v["title"])
+            elif c["field"] == "annual_accounts_copy" and year_of(c):
+                fact["label"] = f"Annual accounts {year_of(c)} (PDF)"
             facts.append(fact)
+            if c["family"] == "identity" and c["field"] == "business_address" and isinstance(v, dict) and v.get("municipality"):
+                facts.append({"id": c["claim_id"] + "_municipality", "section": fact["section"], "label": "Municipality",
+                              "value": place_name(v["municipality"]), "year": None, "sources": sources})
             f = c["field"]
             if c["family"] == "financials" and f in ("revenue", "annual_result"):
                 quick[f] = c.get("value", {}).get("amount") if isinstance(c.get("value"), dict) else c.get("value")
                 quick["accounts_year"] = year_of(c)
             elif f == "registered_employees":
-                quick["employees"] = c["value"]
+                quick["employees"] = c["value"].get("count") if isinstance(c["value"], dict) else c["value"]
             elif f == "official_website":
                 quick["website"] = text
             elif f == "nace":
                 quick["industry"] = text
             elif f == "business_address" and c["family"] == "identity" and isinstance(c["value"], dict):
-                quick["municipality"] = c["value"].get("municipality") or c["value"].get("city")
+                quick["municipality"] = place_name(c["value"].get("municipality") or c["value"].get("city"))
         # Newest news first (the site lists facts in file order).
         published = {c["claim_id"]: str((c.get("value") or {}).get("published") or "") for c in e.get("claims", [])
                      if c["family"] == "activity" and isinstance(c.get("value"), dict)}
