@@ -222,6 +222,11 @@ def main(src, out):
                 fact["value"] = str(v["title"])
                 if str(v.get("url") or "").startswith(("https://", "http://")):
                     fact["link"] = v["url"]  # the article itself (the source may be the site's feed)
+            elif c["field"] == "registered_employees" and isinstance(v, dict) and v.get("count") is not None:
+                # The bare count, so it matches the comparison column; the register date goes beside it.
+                fact["value"] = str(v["count"])
+                if v.get("registered_at"):
+                    fact["year"] = "registered " + nice_date(str(v["registered_at"]))
             elif c["field"] == "annual_accounts_copy" and year_of(c):
                 fact["label"] = f"Annual accounts {year_of(c)} (PDF)"
             facts.append(fact)
@@ -248,7 +253,9 @@ def main(src, out):
         facts = [next(news_iter) if f["id"] in published else f for f in facts]
         kept = {f["id"] for f in facts}
         # The site heads the summary "In short", so the first sentence does not repeat it.
-        summary = [{"text": re.sub(r"^In short:\s*", "", s["text"]) if n == 0 else s["text"],
+        # Dates in the prose read as "1 Jul 2012", like the rest of the site.
+        summary = [{"text": re.sub(r"\b\d{4}-\d{2}-\d{2}\b", lambda m: nice_date(m.group(0)),
+                                   re.sub(r"^In short:\s*", "", s["text"]) if n == 0 else s["text"]),
                     "fact_ids": [i for i in s.get("claim_ids", []) if i in kept]}
                    for n, s in enumerate((e.get("summary") or {}).get("sentences", []))]
         companies.append({"org": e["organisation_number"], "name": e.get("legal_name"), "quick": quick,
