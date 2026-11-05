@@ -250,7 +250,7 @@ def _sitemap_links(ctx: Any, homepage: str, homepage_domain: str, limit: int) ->
 # Pages that by law or custom name the business behind a Norwegian site, usually with its org number: privacy
 # statement (the data controller), sales terms (the seller), impressum; then contact and about pages.
 CONFIRM_TERMS = (
-    "personvern", "privacy", "vilkar", "salgsbetingelser", "kjopsbetingelser", "terms", "impressum",
+    "personvern", "privacy", "vilkar", "salgsbetingelser", "kjopsbetingelser", "betingelser", "terms", "impressum",
     "kontakt", "contact", "om-oss", "om_oss", "about-us", "about",
 )
 CONFIRM_PAGE_LIMIT = 2
@@ -277,8 +277,10 @@ def fetch_confirmation_pages(ctx: Any, result: CrawlResult, limit: int = CONFIRM
         clean = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", "", "", ""))
         if clean.rstrip("/") in seen:
             continue
-        haystack = (parsed.path + " " + anchor.get_text(" ", strip=True)).casefold()
-        rank = next((i for i, term in enumerate(CONFIRM_TERMS) if term in haystack), None)
+        # Folded like the terms ("Vilkår" -> "vilkar", "/kj%C3%B8psvilk%C3%A5r" -> "/kjopsvilkar"); link text
+        # "Om oss" matches "om-oss" too.
+        haystack = fold(urllib.parse.unquote(parsed.path) + " " + anchor.get_text(" ", strip=True))
+        rank = next((i for i, term in enumerate(CONFIRM_TERMS) if term in haystack or term.replace("-", " ") in haystack), None)
         if rank is not None and (clean not in picked or rank < picked[clean]):
             picked[clean] = rank
     added = 0

@@ -143,3 +143,21 @@ def test_a_bot_challenge_page_is_not_read_as_the_site():
     # A normal page that merely loads a challenge script is still a normal page.
     normal = "<html><body><script>window._cf_chl_opt={}</script>" + "<p>Velkommen til Guarded AS, vi bygger hus.</p>" * 20 + "</body></html>"
     assert not is_bot_challenge(normal)
+
+
+def test_confirmation_pages_match_norwegian_link_text():
+    # Link text is folded like the terms: "Vilkår" finds "vilkar" and "Kjøpsbetingelser" finds
+    # "kjopsbetingelser" even when the URL path carries no such word.
+    from signalpost.web.crawl import fetch_confirmation_pages
+    home = ('<html><head><title>Butikk</title></head><body><p>Velkommen.</p>'
+            '<a href="/side/12">Vilkår</a><a href="/p/9">Kjøpsbetingelser</a></body></html>')
+    client = FakeHttpClient(pages={
+        "https://butikk.no/": FakePage(home),
+        "https://butikk.no/side/12": FakePage("<html><body>Butikk AS, org.nr 923 456 783</body></html>"),
+        "https://butikk.no/p/9": FakePage("<html><body>Betingelser</body></html>"),
+    })
+    ctx = make_ctx("923456783", tier="T2", client=client)
+    cand = Candidate(domain="butikk.no", url="https://butikk.no/", source="name_guess", label="x", decisive=False)
+    result = crawl_candidate(ctx, cand)
+    assert fetch_confirmation_pages(ctx, result) == 2
+    assert {p.page_kind for p in result.pages} >= {"vilkar", "kjopsbetingelser"}
