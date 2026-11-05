@@ -9,3 +9,6 @@ fields that hold the fact (for example the address block). Regenerate it with:
 ```bash
 uv run python jbox/make_data.py smoke-test/envelopes.jsonl jbox/companies.json
 ```
+
+Displayed values are written for visitors ("Yes" for a true register flag, English role names, plain
+sentences for what could not be found, newest news first); every source quote stays verbatim.

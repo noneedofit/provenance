@@ -62,6 +62,82 @@ def lean_quote(quote: str, value: str) -> str:
     pieces = pieces or [p for p in clean if p.startswith(('"organisasjonsnummer"', '"navn"'))]
     return " ... ".join(pieces)
 
+
+# Plain-English labels for the register's Norwegian role names (the source quote keeps the original).
+ROLE_EN = {"Daglig leder": "Chief executive (daglig leder)", "Styrets leder": "Board chair", "Styremedlem": "Board member",
+           "Nestleder": "Deputy chair", "Varamedlem": "Deputy board member", "Observatør": "Board observer",
+           "Revisor": "Auditor", "Regnskapsfører": "Accountant", "Forretningsfører": "Business manager",
+           "Innehaver": "Owner", "Kontaktperson": "Contact person", "Komplementar": "General partner",
+           "Deltaker med delt ansvar": "Partner (shared liability)", "Deltaker med fullt ansvar": "Partner (full liability)",
+           "Daglig leder/ adm.direktør": "Chief executive", "Oppl om foretaket i hjemlandet": "Foreign parent (home country)",
+           "Norsk representant for utenlandsk enhet": "Norwegian representative", "Bestyrende reder": "Managing owner"}
+STATUS_EN = {"active": "Active", "liquidating": "In liquidation", "bankrupt": "Bankrupt", "deleted": "Deleted"}
+
+
+def display_value(c: dict, text: str) -> str:
+    """How the site shows a fact: readable words instead of the raw record. The verbatim source quote
+    is untouched; only the line a visitor reads changes."""
+    v, f = c.get("value"), c["field"]
+    if isinstance(v, bool):
+        return "Yes" if v else "No"
+    if f == "status" and isinstance(v, str):
+        return STATUS_EN.get(v, v.capitalize())
+    if isinstance(v, dict):
+        if f == "accounting_type":
+            kind = "Company accounts" if v.get("type") == "SELSKAP" else "Group accounts" if v.get("type") == "KONSERN" else str(v.get("type") or "Accounts")
+            return kind + ("; small enterprise rules" if v.get("small_enterprise") else "")
+        if f == "audit_status":
+            if v.get("fravalgRevisjon"):
+                return "Not audited (the company has opted out of audit)"
+            return "Not audited" if v.get("ikkeRevidertAarsregnskap") else "Audited"
+        if f == "group_role":
+            return "Parent company of a group (stated in its annual accounts)"
+        if f in ("parent_company", "subsidiary") and v.get("name"):
+            share = re.sub(r"[,.]0+%$", "%", str(v.get("ownership") or ""))
+            own = (f", owns {share} of this company" if f == "parent_company" else f", {share} owned") if share else ""
+            return f"{v['name']} (org. no. {v.get('organisation_number')}){own}"
+        if f == "active_postings_count" and "verified" in v:
+            n = int(v["verified"] or 0)
+            return f"{n} open job ad{'s' if n != 1 else ''} on NAV"
+    return text
+
+
+_UNKNOWN_RULES = [
+    (r"^Public reviews or ratings:", "Reviews and ratings: none found. We checked Mattilsynet's food-safety inspections; Google, Trustpilot and Glassdoor reviews are only available under a paid licence."),
+    (r"^Public activity[^:]*: no (exact-)?verified company website", "News and posts: none, because no company website could be confirmed."),
+    (r"^Public activity[^:]*: no site-derived activity source", "News and posts: the company website has no news page, news feed or linked video channel."),
+    (r"^Public activity[^:]*: checked: none found", "News and posts: none found on the company website."),
+    (r"^Public social or video profiles: no (exact-)?verified site", "Social profiles: none, because no company website could be confirmed."),
+    (r"^Public social or video profiles: checked: none found", "Social profiles: the company website links none."),
+    (r"^A description of what it does: no (exact-)?verified site", "Description: none, because no company website could be confirmed."),
+    (r"^Its group / ownership structure: not part of a registered group", "Group and ownership: not part of a registered group."),
+    (r"^Open job postings: not searched", "Job ads: not searched, as the company has no registered employees and no website."),
+    (r"^Open job postings: checked NAV", "Job ads: no open ads under this organisation number on NAV (arbeidsplassen.no)."),
+    (r"^An official website: no candidates", "Official website: none found."),
+    (r"^An official website: related site found \(brand\)", "Official website: the site found belongs to the brand owner, so it is not listed as this company's own."),
+    (r"^An official website: related site found \(parent\): registry hjemmeside is shared by (\d+)",
+     lambda m: f"Official website: the registered website is shared by {m.group(1)} organisations, so it is not listed as this company's own."),
+    (r"^An official website: related site found", "Official website: the site found belongs to a parent or related organisation, so it is not listed as this company's own."),
+]
+
+
+def plain_unknown(text: str) -> str:
+    """A visitor-facing sentence for one 'could not find' line; the pipeline's wording otherwise."""
+    m = re.match(r"^An official website: checked (\d+) candidates?: none verified", text)
+    if m:
+        n = int(m.group(1))
+        found = "none showed" if n != 1 else "it did not show"
+        return (f"Official website: none confirmed. We checked {n} possible site{'s' if n != 1 else ''}; "
+                f"{found} this company's name together with its address or org. number.")
+    m = re.match(r"^An official website: checked: (\S+) belongs to another organisation", text)
+    if m:
+        return f"Official website: {m.group(1)} belongs to a different organisation, so it is not listed."
+    for pattern, out in _UNKNOWN_RULES:
+        m = re.match(pattern, text)
+        if m:
+            return out(m) if callable(out) else out
+    return text
+
 SKIP = {("identity", "registry_email"), ("identity", "registry_phone"), ("website", "site_contact_email")}
 SECTION = {
     "identity": "Identity", "financials": "Accounts", "financial_history": "Accounts history", "group": "Group",
@@ -111,10 +187,11 @@ def main(src, out):
                                     "quote": lean_quote(x.get("claim_span") or "", text)[:600]})
             sources = drop_contact_sources(sources, e["organisation_number"])
             fact = {"id": c["claim_id"], "section": SECTION.get(c["family"], c["family"]),
-                    "label": LABEL.get(c["field"], c["field"].replace("_", " ").capitalize()), "value": text,
+                    "label": LABEL.get(c["field"], c["field"].replace("_", " ").capitalize()), "value": display_value(c, text),
                     "year": year_of(c) if c["family"] in ("financials", "financial_history") else None, "sources": sources}
             if c["field"] == "role" and isinstance(c.get("value"), dict):
-                fact["label"] = str(c["value"].get("role_label") or "Role")
+                role_label = str(c["value"].get("role_label") or "Role")
+                fact["label"] = ROLE_EN.get(role_label, role_label)
                 fact["value"] = str(c["value"].get("name") or text)
                 if c["value"].get("role_code") == "DAGL":
                     quick["ceo"] = fact["value"]
@@ -133,11 +210,19 @@ def main(src, out):
                 quick["industry"] = text
             elif f == "business_address" and c["family"] == "identity" and isinstance(c["value"], dict):
                 quick["municipality"] = c["value"].get("municipality") or c["value"].get("city")
+        # Newest news first (the site lists facts in file order).
+        published = {c["claim_id"]: str((c.get("value") or {}).get("published") or "") for c in e.get("claims", [])
+                     if c["family"] == "activity" and isinstance(c.get("value"), dict)}
+        news = sorted((f for f in facts if f["id"] in published), key=lambda f: published[f["id"]], reverse=True)
+        news_iter = iter(news)
+        facts = [next(news_iter) if f["id"] in published else f for f in facts]
         kept = {f["id"] for f in facts}
-        summary = [{"text": s["text"], "fact_ids": [i for i in s.get("claim_ids", []) if i in kept]}
-                   for s in (e.get("summary") or {}).get("sentences", [])]
+        # The site heads the summary "In short", so the first sentence does not repeat it.
+        summary = [{"text": re.sub(r"^In short:\s*", "", s["text"]) if n == 0 else s["text"],
+                    "fact_ids": [i for i in s.get("claim_ids", []) if i in kept]}
+                   for n, s in enumerate((e.get("summary") or {}).get("sentences", []))]
         companies.append({"org": e["organisation_number"], "name": e.get("legal_name"), "quick": quick,
-                          "summary": summary, "unknowns": (e.get("summary") or {}).get("unknowns", []),
+                          "summary": summary, "unknowns": [plain_unknown(u) for u in (e.get("summary") or {}).get("unknowns", [])],
                           "retrieved": e["run"].get("completed_at"), "facts": facts})
     companies.sort(key=lambda c: c["name"] or "")
     json.dump({"source": "Provenance (Signalpost agent) run output", "companies": companies}, open(out, "w", encoding="utf-8"),
