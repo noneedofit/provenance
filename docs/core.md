@@ -54,7 +54,7 @@ Stdlib-only (`urllib`), implements `context.HttpClient`. Key behaviors:
   (fetched without robots) pause 2 s before a `5xx` retry and get one more attempt after 4 s.
 - **Concurrency**: a `threading.Semaphore` per host, default 2, `data.brreg.no` gets 10, `pam-stilling-feed.nav.no` 8
   (`HOST_CONCURRENCY_OVERRIDES`).
-- **Budget**: `Budget` is a thread-safe global counter with a hard cap (`--max-requests`, default 26 per input company) and
+- **Budget**: `Budget` is a thread-safe global counter with a hard cap (`--max-requests`, default 26 per input company plus 60 run-wide) and
   soft per-org allowances (`allocate`/`charge`/`remaining`) that borrow from the shared pool — an org can
   spend past its own allocation as long as the global hard cap isn't hit. When the hard cap is hit,
   `.get()`/`.post_json()` return a `Response` with `error="budget_exhausted"` instead of raising.

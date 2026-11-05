@@ -146,7 +146,10 @@ def test_run_output_folder_includes_the_viewer(tmp_path, monkeypatch, capsys):
     envelope = Path("smoke-test/envelopes.jsonl").read_text(encoding="utf-8").splitlines()[0]
     out = tmp_path / "out"
 
+    seen = {}
+
     def fake_run_batch(orgs, output_dir, **kwargs):
+        seen.update(kwargs)
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         (Path(output_dir) / "envelopes.jsonl").write_text(envelope + "\n", encoding="utf-8")
         report = {"total_requests": 0}
@@ -161,6 +164,8 @@ def test_run_output_folder_includes_the_viewer(tmp_path, monkeypatch, capsys):
     assert cli.main(["run", "--organisations", str(orgs), "--output-dir", str(out),
                      "--state-dir", str(tmp_path / "state"), "--run-id", "t"]) == 0
     assert (out / "site" / "index.html").exists() and (out / "site" / "compare.html").exists()
+    # One company still gets its own 26 requests on top of the run-wide NAV feed allowance.
+    assert seen["max_requests"] == pipeline.DEFAULT_REQUESTS_PER_COMPANY + pipeline.DEFAULT_SHARED_REQUESTS
     report = json.loads(capsys.readouterr().out)  # stdout stays pure report JSON
     assert report["viewer"] == "site/index.html"
     assert json.loads((out / "run-report.json").read_text(encoding="utf-8"))["viewer"] == "site/index.html"

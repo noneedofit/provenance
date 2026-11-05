@@ -144,7 +144,7 @@ per line), a `.json` file (a JSON list, or `{"organisation_numbers": [...]}`), o
 Run budget (the official batch is 1,000 companies in one run, and may grow to 1,100; the scored reference
 set is 1,500):
 - `--max-requests` (env `SIGNALPOST_MAX_REQUESTS`) — total outbound request cap; default 26 per input
-  company (2,600 per 100, 39,000 per 1,500). Measured use: 10–13 per company.
+  company plus 60 for the run-wide NAV feed (2,660 per 100, 39,060 per 1,500). Measured use: 10–13 per company.
 - `--deadline-seconds` (env `SIGNALPOST_DEADLINE_SECONDS`) — default 2,400 (40 minutes), counted from the
   start of the command, setup included (setup time is in `run-report.json` as `setup_s`). When the time
   left is short for the companies not yet started, each remaining company gets the official-registry pass
@@ -249,7 +249,7 @@ Full source-by-source detail, robots handling and licence basis: see `SOURCES.md
 ## Request budgeting
 
 Every request made during the batch — including every redirect hop and every retry — is charged against a single
-global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 26 per input company, overridable
+global `Budget` (`src/signalpost/http.py`), hard-capped at `--max-requests` (default 26 per input company plus 60 run-wide, overridable
 by the evaluator). Each company gets a soft per-company allowance from `planner.classify` (14/24/
 36/55 requests for tiers T0–T3, based only on bulk-registry signals — staff count, NACE code, legal
 form, presence of a registered site/domain), but may borrow from the shared pool up to the hard cap.

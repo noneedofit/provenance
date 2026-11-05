@@ -262,7 +262,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     bulk_path, bulk_requests = _resolve_bulk_path(args.bulk, min(BULK_DOWNLOAD_MAX_S, args.deadline_seconds / 4))
     caches_dir, setup_requests = _ensure_caches(args.caches, bulk_path)
     setup_requests += bulk_requests
-    max_requests = args.max_requests or pipeline.DEFAULT_REQUESTS_PER_COMPANY * max(1, len(orgs))
+    max_requests = args.max_requests or (
+        pipeline.DEFAULT_REQUESTS_PER_COMPANY * max(1, len(orgs)) + pipeline.DEFAULT_SHARED_REQUESTS)
     if setup_requests and max_requests:
         max_requests = max(0, max_requests - setup_requests)
     # The deadline covers the whole command, setup included, so a slow setup shortens the batch instead of
@@ -323,7 +324,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--bulk", default=None, help="Path to the (gzip) Brreg bulk enheter CSV")
     p_run.add_argument("--caches", default=None, help="Path to a prepared caches directory")
     p_run.add_argument("--max-requests", type=int, default=_env_int("SIGNALPOST_MAX_REQUESTS"),
-                       help=f"Total outbound request cap for the run (default: {pipeline.DEFAULT_REQUESTS_PER_COMPANY} per input company; env SIGNALPOST_MAX_REQUESTS)")
+                       help=f"Total outbound request cap for the run (default: {pipeline.DEFAULT_REQUESTS_PER_COMPANY} per input company plus {pipeline.DEFAULT_SHARED_REQUESTS} for run-wide feeds; env SIGNALPOST_MAX_REQUESTS)")
     p_run.add_argument("--workers", type=int, default=_env_int("SIGNALPOST_WORKERS") or pipeline.DEFAULT_WORKERS)
     p_run.add_argument("--deadline-seconds", type=int, default=_env_int("SIGNALPOST_DEADLINE_SECONDS") or pipeline.DEFAULT_DEADLINE_S,
                        help="Stop starting new work this many seconds after the command starts, setup included (default 2400; env SIGNALPOST_DEADLINE_SECONDS)")

@@ -45,6 +45,10 @@ MULTI_SOURCE_FAMILIES = frozenset({"description"})
 DEFAULT_DEADLINE_S = 2400  # 40 minutes
 # Requests allowed per input company when --max-requests is not given (100 companies -> 2,600).
 DEFAULT_REQUESTS_PER_COMPANY = 26
+# Plus, when --max-requests is not given, a fixed allowance for the sources read once for the whole run (the
+# NAV job feed pages and token): without it a run of one to three companies spent its whole budget on the feed
+# and had none left for the companies' own websites.
+DEFAULT_SHARED_REQUESTS = 60
 # Registry-only fallback: when the time left is short for the companies not yet started, each of them
 # gets just the official-registry pass (a few seconds) instead of nothing at the deadline.
 # The margin also covers full crawls already in flight when the switch happens (up to a few minutes).
