@@ -180,6 +180,7 @@ def build_row(envelope: dict, page_url: str) -> dict:
         "group_revenue_source": source(group_revenue_claim),
         "financial_year": financial_year,
         "employees_source": employees_source,
+        "workforce": _val(field_value(fin, "financials", "workforce")),
         "website": website_url,
         "website_state": website_state,
         "profiles_count": profiles_count,
@@ -486,6 +487,7 @@ def _render_header(envelope: dict, by_family: dict, row: dict) -> str:
         ("Municipality", esc(row["municipality"]) if row["municipality"] else None),
         ("Industry (NACE)", nace_html),
         ("Employees (registered)", esc(row["employees"]) if row["employees"] is not None else None),
+        ("Workforce (annual accounts)", display_value("workforce", row["workforce"]) if row.get("workforce") else None),
         ("Business address", address_html),
     ]
     _not_available = '<span class="muted">not available</span>'

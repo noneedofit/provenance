@@ -1,9 +1,9 @@
 """Batch orchestration: build a CompanyContext per org, run connectors, assemble one Envelope each.
 
-Public entry point: `run_batch(...)`. Connectors run in order [registry, nav, web, activity]; nav/web/activity
+Public entry point: `run_batch(...)`. Connectors run in order [registry, nav, web, activity, workforce]; nav/web/activity
 are imported lazily so the pipeline works standalone before those workstreams land. `nav` (live NAV
 arbeidsplassen jobs, backed by a shared feed index - see `activity/nav_feed.py`) runs before `web` so the
-website module can use NAV-confirmed employer homepages as candidates; `activity` runs last and turns
+website module can use NAV-confirmed employer homepages as candidates; `activity` runs after web and turns
 `nav`'s `ctx.shared["nav_ads"]` into job claims. Any connector defining `.prepare(client, state_dir)` (nav
 does) gets it called once, in a background thread, before per-company processing starts - see the
 "prepare_threads" block below. Exactly one envelope is emitted per input organisation number, in input
@@ -101,6 +101,10 @@ def _default_connectors() -> list[Any]:
         connectors.append(ActivityConnector())
     except ImportError:
         pass
+    # Last: reads the latest annual-accounts copy (OCR), CPU work that should not delay the web connectors.
+    from signalpost.workforce import WorkforceConnector
+
+    connectors.append(WorkforceConnector())
     return connectors
 
 
@@ -257,6 +261,18 @@ def run_batch(
         time_left = deadline_at - time.monotonic()
         return time_left < REGISTRY_ONLY_SAFETY_S + REGISTRY_ONLY_S_PER_COMPANY * (not_started + 1) / worker_count
 
+    def on_pace() -> bool:
+        """Whether the run, at its pace so far, finishes the companies not yet done with a third of the time to
+        spare. Optional CPU-heavy steps (OCR of annual accounts) run only while this holds, so they can never
+        push companies into the registry-only pass."""
+        with done_lock:
+            done = done_count
+        if done < max(5, worker_count):
+            return deadline_at - time.monotonic() > REGISTRY_ONLY_SAFETY_S * 2  # too early to measure the pace
+        elapsed = time.monotonic() - t_start
+        projected = elapsed / done * (len(org_list) - done)
+        return deadline_at - time.monotonic() > REGISTRY_ONLY_SAFETY_S + 1.33 * projected
+
     def can_defer() -> bool:
         """Whether a company can be run again after the batch without pushing the batch into the
         registry-only pass: the projected time for the companies not yet started, plus a margin, is left."""
@@ -285,7 +301,7 @@ def run_batch(
             budget.allocate(org, budget.org_used(org) if retry else tier_result.allowance)
             ctx = CompanyContext(
                 org=org, run_id=run_id, now=now, tier=tier_result.tier, bulk=row, caches=caches,
-                client=client, snapshots=snapshots, shared={"registry_only": registry_only, "bulk_retrieved_at": bulk_retrieved_at}, previous=_load_previous(state_path, org),
+                client=client, snapshots=snapshots, shared={"registry_only": registry_only, "bulk_retrieved_at": bulk_retrieved_at, "deadline_at": deadline_at, "on_pace": on_pace}, previous=_load_previous(state_path, org),
             )
             if not deadline_hit:
                 for connector in conn_list:

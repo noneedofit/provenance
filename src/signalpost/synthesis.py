@@ -283,7 +283,10 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
     employees = _single(envelope, "identity", "employees")
     revenue = _single(envelope, "financials", "revenue")
     op_result = _single(envelope, "financials", "operating_result")
-    if employees is None and revenue is None and op_result is None:
+    workforce = _single(envelope, "financials", "workforce")
+    if not (workforce is not None and isinstance(workforce.value, dict) and workforce.value.get("count") is not None):
+        workforce = None
+    if employees is None and revenue is None and op_result is None and workforce is None:
         return None
     parts = []
     claim_ids = []
@@ -291,6 +294,14 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
         count = _display(employees.value)
         parts.append(f"has {count} registered employee{'' if count == '1' else 's'}")
         claim_ids.append(employees.claim_id)
+    if workforce is not None:
+        # The figure the company filed in its annual-accounts notes (årsverk = full-time equivalents).
+        count = workforce.value["count"]
+        shown = f"{count:g}" if isinstance(count, (int, float)) else str(count)
+        noun = "full-time equivalent" if workforce.value.get("measure") == "fte" else "employee"
+        year = workforce.value.get("year") or "its latest"
+        parts.append(f"had {shown} {noun}{'' if shown == '1' else 's'} ({year} annual accounts)")
+        claim_ids.append(workforce.claim_id)
     if revenue is not None:
         period = _period_label(revenue) or "its latest filed year"
         parts.append(f"reported revenue of {format_money(revenue.value)} for {period}")

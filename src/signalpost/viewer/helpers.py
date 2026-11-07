@@ -187,6 +187,14 @@ def display_value(field: str, value: Any, *, _depth: int = 0) -> str:
             if value.get("registered"):
                 bits.append(f"since {esc(value['registered'])}")
             return " · ".join(bits)
+        if "measure" in value and "count" in value and "year" in value:
+            # Workforce read from the annual accounts: "8.4 full-time equivalents (årsverk) · 2025 annual accounts (PDF)"
+            count = value["count"]
+            shown = f"{count:g}" if isinstance(count, (int, float)) else str(count)
+            text = f"{esc(shown)} {esc(value.get('label') or value['measure'])} · {esc(value['year'])} "
+            if value.get("url"):
+                return text + f'<a href="{esc(value["url"])}" target="_blank" rel="noopener noreferrer">annual accounts (PDF)</a>'
+            return text + "annual accounts"
         if "year" in value and "url" in value and len(value) == 2:
             return f'{esc(value["year"])}: <a href="{esc(value["url"])}" target="_blank" rel="noopener noreferrer">annual accounts (PDF)</a>'
         if _ADDRESS_KEYS & value.keys():

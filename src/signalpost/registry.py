@@ -1067,6 +1067,11 @@ class RegistryConnector:
 
         ctx.registry["subunits"] = subunit_facts
         shared = {"registry_facts": registry_facts(ctx, builder=builder, entity_body=entity_body, bulk_row=bulk_row, subunit_facts=subunit_facts)}
+        # The latest year with filed annual accounts, for connectors that read that year's official copy.
+        filed = [int(c.value["year"]) for c in builder.claims if c.field == "annual_accounts_copy" and isinstance(c.value, dict) and str(c.value.get("year", "")).isdigit()]
+        filed += [int(c.value) for c in builder.claims if c.field == "latest_filed_year" and str(c.value).isdigit()]
+        if filed:
+            shared["latest_filed_year"] = max(filed)
 
         return ConnectorResult(claims=builder.claims, evidence=list(builder.evidence.values()), families=families, errors=errors, shared=shared)
 
