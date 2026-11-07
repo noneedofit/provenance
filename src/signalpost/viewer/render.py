@@ -51,7 +51,9 @@ def page_shell(*, title: str, description: str, body: str, asset_prefix: str = "
 
     nav = (
         nav_link(f"{asset_prefix}index.html", "Directory", "directory")
+        + nav_link(f"{asset_prefix}research/index.html", "Research", "research")
         + nav_link(f"{asset_prefix}compare.html", "Compare", "compare")
+        + nav_link(f"{asset_prefix}refresh/index.html", "Changes", "refresh")
     )
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -271,6 +273,149 @@ def render_index_page(rows: list[dict]) -> str:
         asset_prefix="",
         nav_active="directory",
     )
+
+
+# --------------------------------------------------------------------------------------- research page
+
+
+def _json_script(data: Any) -> str:
+    """JSON for a <script type="application/json"> block: '<' escaped so no text can close the tag."""
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+
+
+def render_research_page(rows: list[dict]) -> str:
+    """/research/: look up one company by name or organisation number and get its checked key facts, each
+    with the link to verify it. A query that matches nothing says so instead of guessing."""
+    lookup = []
+    for r in rows:
+        wf = r.get("workforce") if isinstance(r.get("workforce"), dict) else {}
+        lookup.append({
+            "org": r["org"], "name": r["legal_name"], "brand": r.get("brand_name") or "",
+            "town": r.get("municipality") or "", "industry": r.get("nace_label") or "", "status": r.get("status") or "",
+            "website": r.get("website") or "", "revenue": r.get("revenue"), "year": r.get("financial_year") or "",
+            "revenue_source": r.get("revenue_source") or "",
+            "workforce": wf.get("count"), "workforce_year": wf.get("year") or "", "workforce_url": wf.get("url") or "",
+            "jobs": r.get("jobs_count") or 0, "news": r.get("activity_count") or 0, "coverage": r.get("coverage") or 0,
+        })
+    body = f"""
+<h1>Research a company</h1>
+<p class="muted">Type a company name or a 9-digit organisation number. You get the checked facts for that exact
+registered company, each with a link to its source; open the profile for every claim, its quote and the reasons for
+anything missing. Names are matched against the {len(rows)} companies in this run only: if nothing matches, nothing is shown.</p>
+<div class="toolbar" role="search">
+  <input type="search" id="research-q" placeholder="e.g. 923609016 or Fruktkongen" aria-label="Company name or organisation number" autocomplete="off">
+</div>
+<p class="stat-line" id="research-stat" aria-live="polite"></p>
+<div id="research-results" class="company-grid"></div>
+<script type="application/json" id="research-data">{_json_script(lookup)}</script>
+<script>
+(function () {{
+  var data = JSON.parse(document.getElementById("research-data").textContent);
+  var q = document.getElementById("research-q"), out = document.getElementById("research-results"),
+      stat = document.getElementById("research-stat");
+  function fold(t) {{ return (t || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\s+/g, " ").trim(); }}
+  function el(tag, text, cls) {{ var e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }}
+  function link(href, text) {{ var a = el("a", text); a.href = href; if (/^https?:/.test(href)) {{ a.target = "_blank"; a.rel = "noopener noreferrer"; }} return a; }}
+  function nok(v) {{ return v == null ? null : "NOK " + Math.round(v).toLocaleString("en-GB"); }}
+  function row(dl, label, value, href) {{
+    if (value == null || value === "") return;
+    dl.appendChild(el("dt", label));
+    var dd = el("dd"); dd.appendChild(href ? link(href, String(value)) : document.createTextNode(String(value))); dl.appendChild(dd);
+  }}
+  function card(c) {{
+    var d = el("article", null, "company-card");
+    var h = el("h3"); h.appendChild(link("../companies/" + c.org + ".html", c.name)); d.appendChild(h);
+    d.appendChild(el("p", "Org. no. " + c.org + (c.town ? " · " + c.town : "") + (c.status ? " · " + c.status : ""), "small muted"));
+    var dl = el("dl", null, "kv");
+    row(dl, "Industry", c.industry);
+    row(dl, "Website", c.website, c.website);
+    row(dl, "Revenue" + (c.year ? " (" + c.year + ")" : ""), nok(c.revenue), c.revenue_source);
+    row(dl, "Workforce" + (c.workforce_year ? " (" + c.workforce_year + ")" : ""), c.workforce == null ? null : c.workforce + " FTE", c.workforce_url);
+    row(dl, "Open job ads", c.jobs || null);
+    row(dl, "Dated news/posts", c.news || null);
+    d.appendChild(dl);
+    var p = el("p", null, "small");
+    p.appendChild(link("../companies/" + c.org + ".html", "Full profile and sources"));
+    p.appendChild(document.createTextNode(" · "));
+    p.appendChild(link("https://data.brreg.no/enhetsregisteret/api/enheter/" + c.org, "Brreg record"));
+    p.appendChild(document.createTextNode(" · "));
+    p.appendChild(link("../data/companies/" + c.org + ".json", "JSON"));
+    d.appendChild(p);
+    return d;
+  }}
+  function run() {{
+    var t = fold(q.value), digits = q.value.replace(/\\D/g, "");
+    out.textContent = "";
+    if (!t) {{ stat.textContent = data.length + " companies available."; return; }}
+    var hits = data.filter(function (c) {{
+      if (digits.length >= 3 && digits.length === q.value.replace(/\\s/g, "").length) return c.org.indexOf(digits) === 0;
+      return fold(c.name).indexOf(t) >= 0 || (c.brand && fold(c.brand).indexOf(t) >= 0);
+    }});
+    hits.sort(function (a, b) {{ return (fold(a.name).indexOf(t) === 0 ? 0 : 1) - (fold(b.name).indexOf(t) === 0 ? 0 : 1) || b.coverage - a.coverage; }});
+    stat.textContent = hits.length ? hits.length + " match" + (hits.length > 1 ? "es" : "") + (hits.length > 20 ? " (showing 20)" : "")
+      : "No company in this run matches \\u201c" + q.value + "\\u201d. Nothing is guessed: check the spelling or the organisation number.";
+    hits.slice(0, 20).forEach(function (c) {{ out.appendChild(card(c)); }});
+  }}
+  var initial = new URLSearchParams(location.search).get("q");
+  if (initial) q.value = initial;
+  q.addEventListener("input", run);
+  run();
+}})();
+</script>
+"""
+    return page_shell(title="Research", description="Look up a company and verify its facts at the source.",
+                      body=body, asset_prefix="../", nav_active="research")
+
+
+def render_company_alias(org: str) -> str:
+    """/companies/<org>/ points to the profile page companies/<org>.html."""
+    target = f"../{esc(org)}.html"
+    return (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>{esc(org)} · {SITE_TITLE}</title>'
+            f'<meta http-equiv="refresh" content="0; url={target}"><link rel="canonical" href="{target}"></head>'
+            f'<body><p><a href="{target}">Open the profile of organisation {esc(org)}</a></p></body></html>')
+
+
+# --------------------------------------------------------------------------------------- refresh page
+
+
+def render_refresh_page(envelopes: list[dict]) -> str:
+    """/refresh/: every typed change this run found against the previous run, newest first, with links."""
+    previous = sum(1 for e in envelopes if (e.get("run") or {}).get("previous_run_id"))
+    items, counts = [], {}
+    for env in envelopes:
+        for ch in env.get("changes") or []:
+            counts[ch["change_type"]] = counts.get(ch["change_type"], 0) + 1
+            items.append((str(ch.get("detected_at") or ""), env, ch))
+    items.sort(key=lambda t: (t[0], t[1].get("legal_name") or ""), reverse=True)
+    if counts:
+        summary = " · ".join(f"{esc(k.replace('_', ' '))}: {v}" for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+        rows_html = "".join(
+            f'<tr><td><a href="../companies/{esc(env["organisation_number"])}.html#refresh-changes">{esc(env.get("legal_name") or env["organisation_number"])}</a></td>'
+            f'<td>{esc(ch["change_type"].replace("_", " "))}</td>'
+            f'<td>{esc(FAMILY_LABELS.get(ch["family"], ch["family"]))} / {esc(label_from_field(ch["field"]))}</td>'
+            f'<td>{esc(_fmt_change_value(ch.get("previous_value"))) if ch.get("previous_value") is not None else "—"}</td>'
+            f'<td>{esc(_fmt_change_value(ch.get("current_value"))) if ch.get("current_value") is not None else "—"}</td>'
+            f'<td>{fmt_date(ch.get("detected_at"))}</td></tr>'
+            for _, env, ch in items
+        )
+        content = (f'<p class="stat-line">{len(items)} changes across {len({e["organisation_number"] for _, e, _ in items})} companies. {summary}</p>'
+                   '<div class="table-wrap"><table class="data-table"><thead><tr><th>Company</th><th>Change</th><th>Field</th>'
+                   f'<th>Before</th><th>Now</th><th>Detected</th></tr></thead><tbody>{rows_html}</tbody></table></div>')
+    elif previous:
+        content = f'<p class="muted">{previous} companies were compared with their previous run; nothing changed.</p>'
+    else:
+        content = ('<p class="muted">This is the first run for these companies, so there is nothing to compare yet. Each company '
+                   'page still names the newest dated events on record. Run <code>signalpost run</code> again with the same '
+                   '<code>--state-dir</code> to refresh: every changed fact is then listed here as a typed change '
+                   '(new role, new filing, closed job, new location, changed description, …) with its before and after values.</p>')
+    body = f"""
+<h1>What changed</h1>
+<p class="muted">Changes between this run and the previous run of the same companies ({previous} of {len(envelopes)} had a previous run).
+Each row links to the company page, where both values carry their sources.</p>
+{content}
+"""
+    return page_shell(title="What changed", description="Typed changes found by refreshing company profiles.",
+                      body=body, asset_prefix="../", nav_active="refresh")
 
 
 # --------------------------------------------------------------------------------------- compare page

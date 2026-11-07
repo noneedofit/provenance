@@ -200,6 +200,24 @@ def test_refresh_changes_show_previous_and_current_with_evidence(site_dir):
     assert html.count("[src]") >= 4  # both previous and current sides link evidence
 
 
+def test_routes_research_refresh_and_company_alias(site_dir, raw_envelopes):
+    research = (site_dir / "research" / "index.html").read_text(encoding="utf-8")
+    payload = re.search(r'<script type="application/json" id="research-data">(.*?)</script>', research, re.S).group(1)
+    lookup = json.loads(payload)
+    assert {c["org"] for c in lookup} == {e["organisation_number"] for e in raw_envelopes}
+    refresh = (site_dir / "refresh" / "index.html").read_text(encoding="utf-8")
+    assert "changed website" in refresh and "companies/956789012.html#refresh-changes" in refresh
+    for env in raw_envelopes:
+        alias = (site_dir / "companies" / env["organisation_number"] / "index.html").read_text(encoding="utf-8")
+        assert f'url=../{env["organisation_number"]}.html' in alias
+
+
+def test_research_data_cannot_close_its_script_tag():
+    from signalpost.viewer.render import _json_script
+    assert "</script" not in _json_script([{"name": "X </script><script>alert(1)</script>"}])
+    assert json.loads(_json_script([{"name": "a<b"}])) == [{"name": "a<b"}]
+
+
 def test_financials_sparkline_is_inline_svg(site_dir):
     html = (site_dir / "companies" / "979543883.html").read_text(encoding="utf-8")
     assert "<svg" in html

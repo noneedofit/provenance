@@ -24,6 +24,11 @@ compact JSON file (every fact with its source URL, retrieval time and exact sour
 
 - **Find:** type a name, org number, municipality or industry in the search box on the directory page;
   filter by legal form, size, website, hiring or recent activity. `directory.csv` has every row.
+- **Research:** `research/` (`research/?q=<name or org number>`) looks up one company and lists its key facts,
+  each linking to its source, plus the profile, the Brreg record and the JSON. A query that matches no company
+  in the run says so; nothing is guessed. `companies/<org>/` opens that company's profile.
+- **Refresh:** `refresh/` lists every typed change (new role, new filing, closed job, new location, changed
+  description, …) found against the previous run with the same `--state-dir`, with before and after values.
 - **Compare:** tick "Compare" on 2–4 companies, then "Compare selected" (or open
   `compare.html?orgs=<org>,<org>`). The table shows the financial year, revenue, annual result,
   registered employees, website, hiring and latest activity side by side, each with a `source` link.
@@ -217,7 +222,8 @@ uv run python -m signalpost.viewer.build --envelopes out/envelopes.jsonl --out o
 
 Produces a fully static, offline-capable site (`out/site/index.html`) — a directory with search/filter/
 sort/CSV export, a pre-rendered profile page per company with an evidence drawer on every fact, and a
-2–4-company compare view. No CDN, no external scripts or fonts; works from a plain `file://` URL or any
+2–4-company compare view, a research lookup (`research/`) and a page of changes since the previous run
+(`refresh/`). No CDN, no external scripts or fonts; works from a plain `file://` URL or any
 static host. See `docs/viewer.md`.
 
 ### Refresh

@@ -21,7 +21,10 @@ from signalpost.models import Envelope
 from .render import (
     build_row,
     render_company_page,
+    render_company_alias,
     render_compare_page,
+    render_refresh_page,
+    render_research_page,
     render_directory_csv,
     render_index_page,
 )
@@ -71,6 +74,13 @@ def build_site(envelopes_path: Path, out_dir: Path, state_dir: Path | None = Non
 
     (out_dir / "index.html").write_text(render_index_page(rows), encoding="utf-8")
     (out_dir / "compare.html").write_text(render_compare_page(rows), encoding="utf-8")
+    for route, page in (("research", render_research_page(rows)), ("refresh", render_refresh_page(envelopes))):
+        (out_dir / route).mkdir(exist_ok=True)
+        (out_dir / route / "index.html").write_text(page, encoding="utf-8")
+    for row in rows:  # /companies/<org>/ -> the profile page
+        alias = out_dir / "companies" / row["org"]
+        alias.mkdir(exist_ok=True)
+        (alias / "index.html").write_text(render_company_alias(row["org"]), encoding="utf-8")
     (out_dir / "directory.csv").write_text(render_directory_csv(rows), encoding="utf-8")
     (out_dir / "data" / "index.json").write_text(
         json.dumps({"companies": rows}, ensure_ascii=False, indent=2), encoding="utf-8"

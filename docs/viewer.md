@@ -23,7 +23,10 @@ the envelopes file; it never touches the refresh state store.
 out/site/
   index.html            directory: search, filter, sort, CSV export, compare picker
   compare.html           side-by-side comparison of 2-4 companies
+  research/index.html    look up one company by name or org number (?q=...): key facts with source links
+  refresh/index.html     every typed change found against the previous run (same --state-dir)
   companies/{org}.html   one fully pre-rendered profile page per company
+  companies/{org}/index.html   short route /companies/{org}/ -> the profile page
   data/companies/{org}.json   the company's Envelope, pretty-printed (download target + audit trail)
   data/index.json        the directory rows as JSON (for anyone who wants to consume it programmatically)
   directory.csv           the full directory as CSV
