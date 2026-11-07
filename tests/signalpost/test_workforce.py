@@ -87,3 +87,11 @@ def test_number_first_column_thousands_and_years():
     assert workforce.extract("Antall årsverk i regnskapsåret 2024: 12,5")["count"] == 12.5
     assert workforce.extract("Antall årsverk i regnskapsaret 8 40")["count"] == 8.4
     assert workforce.extract("Antall årsverk 8 40", ocr=False)["count"] == 8
+
+
+def test_history_slot_within_skips_long_queue(monkeypatch):
+    from signalpost import registry
+    monkeypatch.setattr(registry, "_history_last", [time.monotonic() + 100])
+    assert registry.history_slot_within(5) is False
+    monkeypatch.setattr(registry, "_history_last", [0.0])
+    assert registry.history_slot_within(5) is True

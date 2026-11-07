@@ -50,6 +50,20 @@ def _history_slot() -> None:
         _history_last[0] = time.monotonic()
 
 
+def history_slot_within(max_wait_s: float) -> bool:
+    """Take the next slot on the same 1/s pacing as `_history_slot` (Regnskapsregisteret's `aarsregnskap/kopi/`
+    endpoints share one rate limit) only if it comes within `max_wait_s`; otherwise reserve nothing."""
+    with _history_lock:
+        slot_at = max(time.monotonic(), _history_last[0] + _HISTORY_MIN_INTERVAL_S)
+        wait = slot_at - time.monotonic()
+        if wait > max_wait_s:
+            return False
+        _history_last[0] = slot_at
+    if wait > 0:
+        time.sleep(wait)
+    return True
+
+
 BRREG_ACCOUNT_YEARS = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/{org}/aar"
 BRREG_ACCOUNT_PDF = "https://data.brreg.no/regnskapsregisteret/regnskap/aarsregnskap/kopi/{org}/{year}"
 BULK_DOWNLOAD_URL = "https://data.brreg.no/enhetsregisteret/api/enheter/lastned/csv"

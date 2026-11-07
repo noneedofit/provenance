@@ -46,6 +46,8 @@ MIN_TIME_LEFT_S = 420
 MIN_RUN_REQUESTS_LEFT = 100
 # Longest wait for a free OCR slot (a safety net; the pace check in the pipeline is what protects the deadline).
 SLOT_WAIT_S = 60.0
+# Longest wait in the register's 1/s queue for the accounts-copy download.
+SLOT_QUEUE_MAX_S = 30.0
 OCR_SLOTS = max(1, (os.cpu_count() or 2) // 2)
 EXTRACTION_METHOD = "annual_accounts_ocr_v1"
 
@@ -228,6 +230,12 @@ class WorkforceConnector:
         if client.remaining(ctx.org) < 1 or client.remaining(None) < MIN_RUN_REQUESTS_LEFT:
             return ConnectorResult()
         url = PDF_URL.format(org=ctx.org, year=year)
+        # The accounts-copy endpoints are rate-limited together (HTTP 429 when two runs shared them): take a slot
+        # on the register's 1/s pacing, unless the queue is long, in which case the step is skipped.
+        from . import registry
+
+        if not registry.history_slot_within(SLOT_QUEUE_MAX_S):
+            return ConnectorResult()
         resp = client.get(url, org=ctx.org, purpose="annual_accounts_pdf", accept="*/*", max_bytes=MAX_PDF_BYTES,
                           timeout=30.0, respect_robots=False, snapshot=False)
         if not resp.ok or not resp.body.startswith(b"%PDF") or len(resp.body) > MAX_PDF_BYTES:

@@ -248,6 +248,9 @@ def main(src, out):
                 quick["accounts_year"] = year_of(c)
             elif f == "registered_employees":
                 quick["employees"] = c["value"].get("count") if isinstance(c["value"], dict) else c["value"]
+            elif f == "workforce" and isinstance(c["value"], dict):
+                quick["workforce_fte"] = c["value"].get("count")
+                quick["workforce_year"] = c["value"].get("year")
             elif f == "official_website":
                 quick["website"] = text
             elif f == "nace":
@@ -267,6 +270,8 @@ def main(src, out):
                                    re.sub(r"^In short:\s*", "", s["text"]) if n == 0 else s["text"]),
                     "fact_ids": [i for i in s.get("claim_ids", []) if i in kept]}
                    for n, s in enumerate((e.get("summary") or {}).get("sentences", []))]
+        quick["news_count"] = len(published)
+        quick["fact_count"] = len(facts)
         companies.append({"org": e["organisation_number"], "name": e.get("legal_name"), "quick": quick,
                           "summary": summary, "unknowns": [plain_unknown(u) for u in (e.get("summary") or {}).get("unknowns", [])],
                           "retrieved": e["run"].get("completed_at"), "facts": facts})
