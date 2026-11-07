@@ -237,7 +237,11 @@ def main(src, out):
                 n = v["count"]
                 shown = f"{n:g}" if isinstance(n, (int, float)) else str(n)
                 fact["label"] = "Workforce (annual accounts)"
-                fact["value"] = f"{shown} full-time equivalent{'' if shown == '1' else 's'}" if v.get("measure") == "fte" else f"{shown} employee{'' if shown == '1' else 's'}"
+                # The bare number, so it matches the Compare column (as for registered employees); the unit and
+                # the accounts year go beside it.
+                fact["value"] = shown
+                unit = "full-time equivalents" if v.get("measure") == "fte" else "employees"
+                fact["year"] = f"{unit} · {v.get('year')}" if v.get("year") else unit
                 if v.get("url"):
                     fact["link"] = v["url"]
             elif c["field"] == "annual_accounts_copy" and year_of(c):
