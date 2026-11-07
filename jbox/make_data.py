@@ -91,6 +91,10 @@ def nice_date(iso: str) -> str:
     return f"{int(m.group(3))} {_MONTHS[int(m.group(2)) - 1]} {m.group(1)}" if m else (iso or "")
 
 
+# The site shows no e-mail addresses (some contact addresses on company pages are personal).
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+
+
 def display_value(c: dict, text: str) -> str:
     """How the site shows a fact: readable words instead of the raw record. The verbatim source quote
     is untouched; only the line a visitor reads changes."""
@@ -203,7 +207,7 @@ def main(src, out):
                 if x:
                     sources.append({"url": x.get("final_url") or x.get("source_url"), "retrieved_at": x.get("retrieved_at"),
                                     "kind": KIND.get(x.get("source_class"), x.get("source_class")),
-                                    "quote": lean_quote(x.get("claim_span") or "", text)[:600]})
+                                    "quote": _EMAIL.sub("[e-mail]", lean_quote(x.get("claim_span") or "", text)[:600])})
             sources = drop_contact_sources(sources, e["organisation_number"])
             fact = {"id": c["claim_id"], "section": SECTION.get(c["family"], c["family"]),
                     "label": LABEL.get(c["field"], c["field"].replace("_", " ").capitalize()), "value": display_value(c, text),
