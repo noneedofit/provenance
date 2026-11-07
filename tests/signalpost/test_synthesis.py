@@ -161,3 +161,26 @@ def test_the_no_changes_sentence_cites_the_rechecked_facts():
     no_change = [s for s in sentences if s.text.startswith("No material changes")]
     assert no_change and no_change[0].claim_ids == [claim.claim_id]
     assert all(s.claim_ids for s in sentences)
+
+
+def test_first_check_names_newest_events_and_what_is_still_unknown() -> None:
+    from signalpost.models import FamilyState
+
+    ev = make_evidence("https://data.brreg.no/regnskapsregisteret/regnskap/" + ORG)
+    name = make_claim(family="identity", field="legal_name", value="TEST AS", evidence_ids=[ev.evidence_id])
+    prev = make_claim(family="financial_history", field="revenue", value={"amount": 100_000, "currency": "NOK"},
+                      evidence_ids=[ev.evidence_id], reporting_period=("2024-01-01", "2024-12-31"))
+    latest = make_claim(family="financials", field="revenue", value={"amount": 0, "currency": "NOK"},
+                        evidence_ids=[ev.evidence_id], reporting_period=("2025-01-01", "2025-12-31"))
+    families = {
+        "jobs": FamilyState(family="jobs", availability="not_available", reason="checked: none found"),
+        "group": FamilyState(family="group", availability="not_available", reason="no parent registered"),
+    }
+    envelope = make_envelope(run_id="run-1", claims=[name, prev, latest], evidence=[ev], families=families)
+    texts = {s.text: s for s in build_summary(envelope).sentences}
+    recent = next(s for t, s in texts.items() if t.startswith("What changed recently"))
+    assert "event on record is its 2025 accounts (no revenue, after revenue in 2024)" in recent.text
+    assert set(recent.claim_ids) == {latest.claim_id, prev.claim_id}
+    unknown = next(s for t, s in texts.items() if t.startswith("Still unknown"))
+    assert "open job ads" in unknown.text and "parent" not in unknown.text
+    assert unknown.claim_ids == [name.claim_id]

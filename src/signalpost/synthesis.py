@@ -759,6 +759,70 @@ def _sentence_changes(envelope: Envelope) -> list[SummarySentence]:
     return out
 
 
+def _sentence_recent_changes(envelope: Envelope) -> SummarySentence | None:
+    """First check of a company (no earlier run to diff against): name the newest dated events on record, so
+    the summary still says what changed recently. Each event cites its claim."""
+    if envelope.run.previous_run_id:
+        return None
+    events: list[tuple[str, str, list[str]]] = []  # (iso date or year, text, claim ids)
+    revenue = _single(envelope, "financials", "revenue")
+    history = _financial_history_claims(envelope, "revenue")
+    if revenue is not None and history:
+        latest_year = _period_label(revenue)
+        previous = [h for h in history if (_period_label(h) or "") < (latest_year or "")]
+        prev = max(previous, key=lambda h: _period_label(h) or "") if previous else None
+        current_amount, prev_amount = _amount_of(revenue), _amount_of(prev)
+        if latest_year and prev is not None and current_amount is not None and prev_amount:
+            change = _pct_change(prev_amount, current_amount)
+            if current_amount == 0:
+                detail = f"no revenue, after revenue in {_period_label(prev)}"
+            elif change is not None:
+                detail = f"revenue {'up' if change >= 0 else 'down'} {abs(change):.0f}% on {_period_label(prev)}"
+            else:
+                detail = None
+            if detail:
+                events.append((latest_year, f"its {latest_year} accounts ({detail})", [revenue.claim_id, prev.claim_id]))
+    changed = sorted(_current_claims(envelope, "leadership", "roles_last_changed"), key=lambda c: str(c.value), reverse=True)
+    if changed:
+        events.append((str(changed[0].value)[:10], f"a change to its registered roles on {str(changed[0].value)[:10]}", [changed[0].claim_id]))
+    items = [c for c in _current_claims(envelope, "activity", "activity_item") if isinstance(c.value, dict) and c.value.get("published")]
+    if items:
+        newest = max(items, key=lambda c: str(c.value.get("published")))
+        title = _clip(str(newest.value.get("title") or ""), 90)
+        events.append((str(newest.value["published"])[:10], f'"{title}" ({str(newest.value["published"])[:10]})', [newest.claim_id]))
+    if not events:
+        return None
+    events.sort(key=lambda e: e[0], reverse=True)
+    ids = list(dict.fromkeys(cid for _, _, cids in events for cid in cids))
+    return SummarySentence(
+        text="What changed recently: this is the first check of the company, so changes are tracked from now on; "
+             + ("the newest dated events on record are " if len(events) > 1 else "the newest dated event on record is ")
+             + _join([text for _, text, _ in events]) + ".",
+        claim_ids=ids,
+    )
+
+
+_UNKNOWN_SHORT: dict[str, str] = {
+    "website": "an official website", "profiles": "social profiles", "description": "a description from its own site",
+    "jobs": "open job ads", "activity": "dated news or posts", "reviews": "public ratings",
+    "financials": "published financial figures",
+}
+
+
+def _sentence_still_unknown(envelope: Envelope) -> SummarySentence | None:
+    """Close with what remains unknown, so the summary itself says what is missing (detail in `unknowns`).
+    Cites the legal-name record: the searches behind these gaps were made for that registered identity."""
+    missing = [label for family, label in _UNKNOWN_SHORT.items()
+               if (state := envelope.families.get(family)) is not None and state.availability != "available"]
+    anchor = _single(envelope, "identity", "legal_name")
+    if not missing or anchor is None:
+        return None
+    return SummarySentence(
+        text="Still unknown: " + _join(missing) + " (checked in permitted sources; nothing confirmed for this organisation number; see unknowns for the reasons).",
+        claim_ids=[anchor.claim_id],
+    )
+
+
 # --- Public API -----------------------------------------------------------------------------------
 
 def build_summary(envelope: Envelope) -> Summary:
@@ -782,6 +846,12 @@ def build_summary(envelope: Envelope) -> Summary:
     )
     sentences.extend(sentence for sentence in ordered if sentence is not None)
     sentences.extend(_sentence_changes(envelope))
+    recent = _sentence_recent_changes(envelope)
+    if recent is not None and sentences:
+        sentences.append(recent)
+    still_unknown = _sentence_still_unknown(envelope)
+    if still_unknown is not None and sentences:
+        sentences.append(still_unknown)
 
     if not sentences:
         # Sparse shell: fall back to whatever identity facts exist.
