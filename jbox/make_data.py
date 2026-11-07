@@ -121,6 +121,8 @@ def display_value(c: dict, text: str) -> str:
 
 _UNKNOWN_RULES = [
     (r"^Public reviews or ratings:", "Reviews and ratings: none found. We checked Mattilsynet's food-safety inspections; Google, Trustpilot and Glassdoor reviews are only available under a paid licence."),
+    (r"^Public activity[^:]*: no (exact-)?verified company website.*news search", "News and posts: no news article naming the company was found (Bing News), and no company website could be confirmed."),
+    (r"^Public activity[^:]*: .*news search", "News and posts: none found on the company website or in news search (Bing News)."),
     (r"^Public activity[^:]*: no (exact-)?verified company website", "News and posts: none, because no company website could be confirmed."),
     (r"^Public activity[^:]*: no site-derived activity source", "News and posts: the company website has no news page, news feed or linked video channel."),
     (r"^Public activity[^:]*: checked: none found", "News and posts: none found on the company website."),
@@ -162,7 +164,7 @@ SECTION = {
     "description": "About", "jobs": "Jobs", "activity": "News & activity", "reviews": "Reviews",
 }
 KIND = {"official_registry": "Official register (Brønnøysund)", "official_registry_bulk": "Official register bulk file",
-        "company_owned": "Company website", "official_public": "Public agency", "public_open_data": "Open data"}
+        "company_owned": "Company website", "official_filing": "Official accounts copy (Brønnøysund)", "news_media": "News article", "official_public": "Public agency", "public_open_data": "Open data"}
 LABEL = {"legal_name": "Legal name", "nace": "Industry", "secondary_nace": "Other industry",
          "institutional_sector": "Sector", "registration_date": "Registered", "registered_in": "Registered in", "legal_form": "Legal form", "founded_date": "Founded",
          "status": "Status", "business_address": "Business address", "registered_employees": "Number of employees",

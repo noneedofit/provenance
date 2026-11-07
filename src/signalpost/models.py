@@ -45,6 +45,7 @@ SourceClass = Literal[
     "company_owned",           # the verified company website and feeds it publishes
     "company_owned_platform",  # company-owned profile on a third-party platform (URL/feeds only)
     "official_inspection",     # public authority inspection result (Mattilsynet smilefjes)
+    "news_media",              # a news article found by news search, naming the company by its registered name
     "open_places_dataset",     # open places dataset record (Overture Maps / OpenStreetMap)
     "derived",                 # computed by the agent from other evidence (e.g. summary)
 ]
@@ -58,6 +59,7 @@ IdentityBasis = Literal[
     "open_map_org_number",      # OpenStreetMap feature tagged ref:NO:orgnr with the exact organisation number
     "linked_from_verified_site",  # linked from a site already verified as exact
     "corroborated",             # >=2 independent corroborating signals, no conflict
+    "legal_name_on_source",     # the source names the company by its full registered legal name (unique in the register)
 ]
 
 

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from ..context import CompanyContext
 from ..models import Claim, ConnectorResult, Evidence, FamilyState
-from . import ats, feeds, nav_jobs, smilefjes, youtube
+from . import ats, feeds, nav_jobs, news_search, smilefjes, youtube
 from ._common import make_claim, norm_title
 
 REVIEWS_REASON = "checked Mattilsynet food-hygiene inspections: no inspected place with this organisation number; no other permitted keyless review source (Google/Trustpilot/Glassdoor require licensed API access)"
@@ -152,6 +152,10 @@ class ActivityConnector:
         else:
             families["jobs"] = FamilyState(family="jobs", availability="not_applicable", reason="no NAV cache supplied to this run", sources_checked=jobs_sources, claim_count=0)
 
+        # ---- activity: news articles naming the company (Bing News RSS; no website needed) ----
+        news = news_search.collect(ctx)
+        errors.extend(news.get("errors", []))
+
         # ---- activity: site feeds/news + YouTube (needs HTTP + a verified site) ----
         if not has_verified_site and (ctx.shared or {}).get("website_unchecked"):
             families["activity"] = FamilyState(
@@ -198,5 +202,32 @@ class ActivityConnector:
                 # discovery (WordPress /feed/, REST API, linked news/blog pages) found no candidate to
                 # try either. An honest absence ("checked, nothing to check"), not a failure.
                 families["activity"] = FamilyState(family="activity", availability="not_available", reason="no site-derived activity source discoverable (no feed, no news/blog page, no linked video channel)", sources_checked=activity_sources, claim_count=0)
+
+        if news["claims"]:
+            site_items = [c for c in claims if c.family == "activity" and c.availability == "available"]
+            claims.extend(news["claims"])
+            evidence.extend(news["evidence"])
+            previous = families.get("activity")
+            if previous is not None and previous.availability == "failed":
+                # The website could not be read this run: keep "failed" so refresh carries its earlier items
+                # forward; the news articles are published alongside.
+                families["activity"] = FamilyState(
+                    family="activity", availability="failed", reason=previous.reason,
+                    sources_checked=list(previous.sources_checked or []) + ["bing_news_rss"],
+                    claim_count=len(site_items) + len(news["claims"]),
+                )
+            else:
+                families["activity"] = FamilyState(
+                    family="activity", availability="available",
+                    sources_checked=list(previous.sources_checked or [] if previous else []) + ["bing_news_rss"],
+                    claim_count=len(site_items) + len(news["claims"]),
+                )
+        elif news["checked"] and families.get("activity") and families["activity"].availability in ("not_applicable", "not_available"):
+            state = families["activity"]
+            families["activity"] = FamilyState(
+                family="activity", availability="not_available",
+                reason=(state.reason or "") + "; news search (Bing News): no dated article naming the company",
+                sources_checked=list(state.sources_checked or []) + ["bing_news_rss"], claim_count=0,
+            )
 
         return ConnectorResult(claims=claims, evidence=evidence, families=families, errors=errors, shared={})

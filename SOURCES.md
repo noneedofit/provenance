@@ -61,6 +61,18 @@ replaced once, which is the same request, not a retry. See `README.md`'s
 
 ---
 
+## Bing News RSS
+
+- `GET https://www.bing.com/news/search?q="<legal name without form>"&format=rss&setmkt=nb-NO` (one per company,
+  at most one per second across the run), then the article pages it lists (at most three per company).
+- **Robots**: bing.com/robots.txt disallows `/search` but not `/news/search`; `respect_robots=True` for Bing and
+  for every publisher page.
+- **Identity rule**: published only when the article page shows the company's full registered name including its
+  legal form (unique in the register) or its org number, and states its own publication date (never the feed date).
+- **Used for**: `activity` (`activity_item`, source class `news_media`).
+
+---
+
 ## NAV (Norwegian Labour and Welfare Administration)
 
 ### `arbeidsplassen.nav.no` job search (off by default)

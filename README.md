@@ -58,6 +58,11 @@ point into that company's `evidence` list (source URL, retrieval time, hash and 
   `pam-stilling-feed` since that snapshot, kept incrementally in `--state-dir`; every posting is confirmed
   live against the org number), ATS feeds, site RSS/news, and YouTube channel RSS for channels linked from
   the verified site.
+- Searches Bing News RSS (keyless; `/news/search` is allowed by bing.com's robots.txt) for the company's legal
+  name and publishes an article only when the article page itself names the company with its full registered
+  name including the legal form, or its org number, and states its own publication date. One search and at most
+  three article fetches per company, one Bing call per second across the run; `SIGNALPOST_NEWS_SEARCH=0` turns
+  it off.
 - Reads Mattilsynet's public food-hygiene inspection results (smilefjes) for the company's food-service
   locations, published only when the inspection page shows the company's or a subunit's org number.
 - Diffs every run against the previous stored profile for the same organisation, emitting `Change`
@@ -248,6 +253,7 @@ itself.
 | Wikidata (bundled snapshot; live SPARQL opt-in) | company websites/social profile cache | CC0 |
 | Overture Maps Places (bundled snapshot) | website candidates | CDLA-Permissive-2.0 / Apache-2.0 / CC0 |
 | OpenStreetMap `ref:NO:orgnr` (bundled snapshot) | website candidates | ODbL 1.0, © OpenStreetMap contributors |
+| Bing News RSS (`www.bing.com/news/search?format=rss`) | news article candidates; each article is re-fetched and must name the company (full legal name or org number) and state its own date | robots.txt allows `/news/search`; keyless public RSS; titles and links only, article pages fetched with robots respected |
 | Mattilsynet smilefjes | food-hygiene inspection ratings | public authority data |
 | Company websites | verified official site content | robots.txt respected per host; see `SOURCES.md` |
 | YouTube `feeds/videos.xml` | channel activity, only for channels linked from a verified site | attempted, `respect_robots=True`; currently blocked by YouTube's own `robots.txt` — see `LIMITATIONS.md` |
