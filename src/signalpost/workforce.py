@@ -78,12 +78,20 @@ def fold(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def _number(raw: str) -> int | float | None:
-    raw = raw.strip()
-    split = re.fullmatch(r"([0-9oO]{1,4}) ([0-9oO]{2})", raw)  # "8 40": an OCR-split decimal
+def _number(raw: str, *, ocr: bool = True) -> int | float | None:
+    """The figure at the start of `raw`. Only the first figure counts: a text layer can carry this year's and
+    last year's columns side by side ("3 4"). Norwegian thousands spacing ("1 200") is read as one number; an
+    OCR-split decimal ("8 40" for 8.40) is joined only for OCR text. A bare year (1990-2035) is not a count."""
+    raw = raw.strip().replace("o", "0").replace("O", "0")
+    thousands = re.match(r"([0-9]{1,2}(?: [0-9]{3})+)(?![0-9.,])", raw)
+    split = re.fullmatch(r"([0-9]{1,4}) ([0-9]{2})", raw) if ocr else None
     if split:
         raw = f"{split.group(1)}.{split.group(2)}"
-    cleaned = raw.replace("o", "0").replace("O", "0").replace(" ", "").strip(".,")
+    elif thousands:
+        raw = thousands.group(1)
+    else:
+        raw = raw.split(" ")[0]
+    cleaned = raw.replace(" ", "").strip(".,")
     if not cleaned:
         return None
     if "," in cleaned and "." not in cleaned:
@@ -94,12 +102,12 @@ def _number(raw: str) -> int | float | None:
         value = float(cleaned)
     except ValueError:
         return None
-    if not 0 <= value <= 50_000:
+    if not 0 <= value <= 50_000 or (value.is_integer() and 1990 <= value <= 2035 and not re.search(r"[.,]", cleaned)):
         return None
     return int(value) if value.is_integer() else round(value, 2)
 
 
-def extract(text: str) -> dict[str, Any] | None:
+def extract(text: str, *, ocr: bool = True) -> dict[str, Any] | None:
     """The company's own workforce statement in `text`: {"status": "ok", "count", "measure", "match"} or
     {"status": "conflict", "values"} when the page states different figures at the same priority, else None."""
     folded = fold(text)
@@ -108,7 +116,7 @@ def extract(text: str) -> dict[str, Any] | None:
         for m in pattern.finditer(folded):
             if _GROUP.search(folded[max(0, m.start() - 80): m.end() + 20]):
                 continue
-            value = _number(m.group(1))
+            value = _number(m.group(1), ocr=ocr)
             if value is not None:
                 found.append((priority, value, measure, m.group(0)))
     for m in _ZERO.finditer(folded):
@@ -172,7 +180,7 @@ def read_pdf(pdf: Path) -> dict[str, Any] | None:
     t = tools()
     if t["pdftotext"]:
         text = _run([t["pdftotext"], "-layout", str(pdf), "-"], 60)
-        result = extract(text)
+        result = extract(text, ocr=False)
         if result:
             return {"result": result, "page": None, "text": text, "method": "text"}
     if not t["ocr"]:
@@ -208,7 +216,8 @@ class WorkforceConnector:
         client = ctx.client
         if os.environ.get("SIGNALPOST_WORKFORCE", "1") == "0":
             return ConnectorResult()
-        if client is None or shared.get("registry_only") or not year or not tools()["ocr"] and not tools()["pdftotext"]:
+        # Without OCR nothing is read from the register's copies (image scans): no request is spent.
+        if client is None or shared.get("registry_only") or not year or not tools()["ocr"]:
             return ConnectorResult()
         deadline_at = shared.get("deadline_at")
         if deadline_at is not None and deadline_at - time.monotonic() < MIN_TIME_LEFT_S:

@@ -52,9 +52,11 @@ replaced once, which is the same request, not a retry. See `README.md`'s
 - `GET https://data.brreg.no/regnskapsregisteret/regnskap/{org}` (latest filed accounts),
   `GET .../regnskap/aarsregnskap/kopi/{org}/aar` (list of filed years; 1 request/s; a T0 company whose
   bulk row states its latest filed year uses that instead).
+- `GET .../regnskap/aarsregnskap/kopi/{org}/{year}` (the official accounts copy, PDF) for the latest filed
+  year: one request per company, read locally with Tesseract OCR for the workforce statement in the notes.
 - **Licence**: NLOD 2.0.
 - **Robots**: `respect_robots=False`.
-- **Used for**: `financials`, `financial_history` families, and `group` (the accounts' parent-company
+- **Used for**: `financials` (incl. `workforce`), `financial_history` families, and `group` (the accounts' parent-company
   flag `virksomhet.morselskap` → `group_role: parent_company`).
 
 ---
@@ -194,7 +196,7 @@ food-hygiene inspection results (see above).
 | Source | URL pattern | Licence / terms | Robots | Used for |
 |---|---|---|---|---|
 | Brreg Enhetsregisteret | `data.brreg.no/enhetsregisteret/api/...` | NLOD 2.0 | `respect_robots=False` (official API) | identity, leadership, locations, group |
-| Brreg Regnskapsregisteret | `data.brreg.no/regnskapsregisteret/...` | NLOD 2.0 | `respect_robots=False` | financials, financial_history |
+| Brreg Regnskapsregisteret | `data.brreg.no/regnskapsregisteret/...` | NLOD 2.0 | `respect_robots=False` | financials (incl. workforce from the accounts copy), financial_history |
 | NAV pam-stilling-feed | `pam-stilling-feed.nav.no/api/...` | NLOD 2.0 | `respect_robots=True` (official feed) | jobs (active-ads index + feed-entry confirmation) |
 | NAV arbeidsplassen search (off by default) | `arbeidsplassen.nav.no/stillinger/api/search` | NLOD-equivalent public data | `respect_robots=True`, keyless | opt-in jobs fallback |
 | Wikidata (bundled snapshot; SPARQL opt-in) | `query.wikidata.org/sparql` | CC0 | n/a by default; query API when live | website/profile candidate cache |

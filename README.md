@@ -43,6 +43,11 @@ point into that company's `evidence` list (source URL, retrieval time, hash and 
   parent company's consolidated group accounts (`group_*`), one fact per filed year with its official
   accounts copy, and the registered group (direct parent with ownership share, top parent, subsidiaries).
   Register quotes are the exact JSON text of the response, so each one can be found word for word.
+- Reads the workforce the company itself filed (`financials.workforce`: "Antall årsverk i regnskapsåret",
+  average employees, or "har ikke hatt ansatte") from the latest official annual-accounts copy, with OCR
+  (the register's copies are image scans). One request per company; needs Tesseract and Poppler (below),
+  and is skipped when they are missing, when the run is behind pace for its deadline, or near the request
+  cap. `SIGNALPOST_WORKFORCE=0` turns it off.
 - Generates website candidates from registry data, Wikidata, NAV job ads, two bundled open places
   datasets (Overture Maps places matched on the registry phone/e-mail or name and postcode, and
   OpenStreetMap features tagged with the org number) and name guesses, crawls each one, and verifies it
@@ -72,6 +77,9 @@ Requires Python 3.12+ and [`uv`](https://docs.astral.sh/uv/).
 ```bash
 uv sync
 ```
+
+Optional, for workforce from the annual-accounts copies (OCR): `brew install tesseract poppler` (macOS) or
+`apt-get install tesseract-ocr poppler-utils` (Debian/Ubuntu). Without them the run is otherwise identical.
 
 ### Data prerequisites
 
@@ -235,7 +243,7 @@ itself.
 | Language model | none — every claim and summary sentence is built deterministically from fetched evidence; no LLM is called anywhere in the pipeline | n/a |
 | Brønnøysund Enhetsregisteret (bulk + live) | company identity, roles, subunits, group structure (`konsernstruktur`) | NLOD 2.0 |
 | Brave Search API (optional, only with `BRAVE_SEARCH_API_KEY`) | website candidates only, never evidence; results kept in memory only | Brave Search API terms; key supplied by the evaluator |
-| Brønnøysund Regnskapsregisteret | annual accounts | NLOD 2.0 |
+| Brønnøysund Regnskapsregisteret | annual accounts; workforce read with Tesseract OCR from the official accounts copy | NLOD 2.0; Tesseract and Poppler are local open-source tools (Apache-2.0 / GPL), no data leaves the machine |
 | NAV `pam-stilling-feed` (bundled active-ads snapshot + live catch-up) | job postings | NLOD; keyless public feed token. The arbeidsplassen search fallback is off by default (`SIGNALPOST_NAV_SEARCH_MAX`) |
 | Wikidata (bundled snapshot; live SPARQL opt-in) | company websites/social profile cache | CC0 |
 | Overture Maps Places (bundled snapshot) | website candidates | CDLA-Permissive-2.0 / Apache-2.0 / CC0 |

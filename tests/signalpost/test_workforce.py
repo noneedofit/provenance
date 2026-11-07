@@ -78,3 +78,12 @@ def test_connector_skips_without_ocr_tools(monkeypatch):
     monkeypatch.setattr(workforce, "tools", lambda: {"ocr": False, "pdftotext": None})
     assert workforce.WorkforceConnector().run(_ctx(client, latest_filed_year=2024)).claims == []
     assert client.calls == []
+
+
+def test_number_first_column_thousands_and_years():
+    assert workforce.extract("Antall årsverk 3   4", ocr=False)["count"] == 3
+    assert workforce.extract("Gjennomsnittlig antall årsverk: 1 200")["count"] == 1200
+    assert workforce.extract("Antall årsverk 2024 2023") is None
+    assert workforce.extract("Antall årsverk i regnskapsåret 2024: 12,5")["count"] == 12.5
+    assert workforce.extract("Antall årsverk i regnskapsaret 8 40")["count"] == 8.4
+    assert workforce.extract("Antall årsverk 8 40", ocr=False)["count"] == 8

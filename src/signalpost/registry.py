@@ -1070,6 +1070,8 @@ class RegistryConnector:
         # The latest year with filed annual accounts, for connectors that read that year's official copy.
         filed = [int(c.value["year"]) for c in builder.claims if c.field == "annual_accounts_copy" and isinstance(c.value, dict) and str(c.value.get("year", "")).isdigit()]
         filed += [int(c.value) for c in builder.claims if c.field == "latest_filed_year" and str(c.value).isdigit()]
+        if not filed and str(bulk_row.get("sisteInnsendteAarsregnskap") or "").strip().isdigit():
+            filed = [int(str(bulk_row["sisteInnsendteAarsregnskap"]).strip())]  # filed-years call failed: bulk file
         if filed:
             shared["latest_filed_year"] = max(filed)
 

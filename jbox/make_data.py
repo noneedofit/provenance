@@ -227,6 +227,13 @@ def main(src, out):
                 fact["value"] = str(v["count"])
                 if v.get("registered_at"):
                     fact["year"] = "registered " + nice_date(str(v["registered_at"]))
+            elif c["field"] == "workforce" and isinstance(v, dict) and v.get("count") is not None:
+                n = v["count"]
+                shown = f"{n:g}" if isinstance(n, (int, float)) else str(n)
+                fact["label"] = "Workforce (annual accounts)"
+                fact["value"] = f"{shown} full-time equivalent{'' if shown == '1' else 's'}" if v.get("measure") == "fte" else f"{shown} employee{'' if shown == '1' else 's'}"
+                if v.get("url"):
+                    fact["link"] = v["url"]
             elif c["field"] == "annual_accounts_copy" and year_of(c):
                 fact["label"] = f"Annual accounts {year_of(c)} (PDF)"
             facts.append(fact)
