@@ -217,6 +217,8 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
         parts = []
         claim_ids = []
         name = envelope.legal_name or "The company"
+        if nace is not None and purpose is not None:
+            nace = None  # the opening sentence already names the industry; say what the register adds
         if nace is not None:
             parts.append(f"is registered in the industry \"{_display(nace.value)}\"")
             claim_ids.append(nace.claim_id)
@@ -227,7 +229,8 @@ def _sentence_what_it_does(envelope: Envelope) -> SummarySentence | None:
         if nace is not None:
             text = f"{name} " + "; ".join(parts) + "."
         else:
-            text = f"According to the register, {parts[0].replace('its registered activity is', 'the registered activity of ' + name + ' is').replace('its statutory purpose reads', 'the statutory purpose of ' + name + ' reads')}."
+            text = f"{name} has " + parts[0].replace("its registered activity is", "the registered activity").replace(
+                "its statutory purpose reads", "the statutory purpose") + "."
         return SummarySentence(text=text, claim_ids=claim_ids)
     return None
 
@@ -300,7 +303,10 @@ def _sentence_size(envelope: Envelope) -> SummarySentence | None:
         shown = f"{count:g}" if isinstance(count, (int, float)) else str(count)
         noun = "full-time equivalent" if workforce.value.get("measure") == "fte" else "employee"
         year = workforce.value.get("year") or "its latest"
-        parts.append(f"had {shown} {noun}{'' if shown == '1' else 's'} ({year} annual accounts)")
+        if count == 0:
+            parts.append(f"had no {noun}s ({year} annual accounts)")
+        else:
+            parts.append(f"had {shown} {noun}{'' if shown == '1' else 's'} ({year} annual accounts)")
         claim_ids.append(workforce.claim_id)
     if revenue is not None:
         period = _period_label(revenue) or "its latest filed year"
@@ -377,8 +383,8 @@ def _sentence_footprint(envelope: Envelope) -> SummarySentence | None:
     website = _single(envelope, "website", "official_website")
     profiles = _current_claims(envelope, "profiles", "profile")
     locations = _current_claims(envelope, "locations", "location")
-    if website is None and not profiles and not locations:
-        return None
+    if website is None and not profiles and len(locations) <= 1:
+        return None  # one registered workplace alone adds nothing to the brief (it is in the profile)
     parts = []
     claim_ids = []
     if website is not None:
@@ -677,7 +683,7 @@ def _sentence_leadership_detail(envelope: Envelope) -> SummarySentence | None:
     if len(board) > 1:
         parts.append(f"It has a board of {len(board)}.")
         claim_ids += [c.claim_id for c in board]
-    if changed:
+    if changed and envelope.run.previous_run_id:  # on a first check the "what changed" sentence carries it
         years = _years_since(changed[0].value, envelope.run.started_at)
         recent = " (within the past year)" if years is not None and years < 1 else ""
         parts.append(f"The register last recorded a change to its roles on {changed[0].value}{recent}.")
@@ -781,23 +787,22 @@ def _sentence_recent_changes(envelope: Envelope) -> SummarySentence | None:
             else:
                 detail = None
             if detail:
-                events.append((latest_year, f"its {latest_year} accounts ({detail})", [revenue.claim_id, prev.claim_id]))
+                events.append((latest_year, f"{latest_year} accounts ({detail})", [revenue.claim_id, prev.claim_id]))
     changed = sorted(_current_claims(envelope, "leadership", "roles_last_changed"), key=lambda c: str(c.value), reverse=True)
     if changed:
-        events.append((str(changed[0].value)[:10], f"a change to its registered roles on {str(changed[0].value)[:10]}", [changed[0].claim_id]))
+        events.append((str(changed[0].value)[:10], f"roles changed in the register on {str(changed[0].value)[:10]}", [changed[0].claim_id]))
     items = [c for c in _current_claims(envelope, "activity", "activity_item") if isinstance(c.value, dict) and c.value.get("published")]
     if items:
         newest = max(items, key=lambda c: str(c.value.get("published")))
-        title = _clip(str(newest.value.get("title") or ""), 90)
-        events.append((str(newest.value["published"])[:10], f'"{title}" ({str(newest.value["published"])[:10]})', [newest.claim_id]))
+        title = _clip(str(newest.value.get("title") or ""), 60)
+        events.append((str(newest.value["published"])[:10], f'latest news "{title}" ({str(newest.value["published"])[:10]})', [newest.claim_id]))
     if not events:
         return None
     events.sort(key=lambda e: e[0], reverse=True)
     ids = list(dict.fromkeys(cid for _, _, cids in events for cid in cids))
     return SummarySentence(
-        text="What changed recently: this is the first check of the company, so changes are tracked from now on; "
-             + ("the newest dated events on record are " if len(events) > 1 else "the newest dated event on record is ")
-             + _join([text for _, text, _ in events]) + ".",
+        text="What changed recently: first check, so changes are tracked from now on. Newest dated "
+             + ("events: " if len(events) > 1 else "event: ") + "; ".join(text for _, text, _ in events) + ".",
         claim_ids=ids,
     )
 
@@ -821,6 +826,15 @@ def _sentence_still_unknown(envelope: Envelope) -> SummarySentence | None:
         text="Still unknown: " + _join(missing) + " (checked in permitted sources; nothing confirmed for this organisation number; see unknowns for the reasons).",
         claim_ids=[anchor.claim_id],
     )
+
+
+def _refer_back(sentences: list[SummarySentence], name: str | None) -> None:
+    """Name the company once; later sentences that open with its full legal name say "It" instead."""
+    if not name or len(sentences) < 2:
+        return
+    for sentence in sentences[1:]:
+        if sentence.text.startswith(name + " "):
+            sentence.text = "It " + sentence.text[len(name) + 1:]
 
 
 # --- Public API -----------------------------------------------------------------------------------
@@ -852,6 +866,7 @@ def build_summary(envelope: Envelope) -> Summary:
     still_unknown = _sentence_still_unknown(envelope)
     if still_unknown is not None and sentences:
         sentences.append(still_unknown)
+    _refer_back(sentences, envelope.legal_name)
 
     if not sentences:
         # Sparse shell: fall back to whatever identity facts exist.

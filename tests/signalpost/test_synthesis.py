@@ -179,7 +179,7 @@ def test_first_check_names_newest_events_and_what_is_still_unknown() -> None:
     envelope = make_envelope(run_id="run-1", claims=[name, prev, latest], evidence=[ev], families=families)
     texts = {s.text: s for s in build_summary(envelope).sentences}
     recent = next(s for t, s in texts.items() if t.startswith("What changed recently"))
-    assert "event on record is its 2025 accounts (no revenue, after revenue in 2024)" in recent.text
+    assert "Newest dated event: 2025 accounts (no revenue, after revenue in 2024)." in recent.text
     assert set(recent.claim_ids) == {latest.claim_id, prev.claim_id}
     unknown = next(s for t, s in texts.items() if t.startswith("Still unknown"))
     assert "open job ads" in unknown.text and "parent" not in unknown.text
