@@ -109,6 +109,7 @@ def test_published_site_must_show_our_number_or_name(monkeypatch):
     monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "VIGGO VENN IN VEST AS"})
     assert connector._site_lacks_our_name(None, v("registry_email_domain", "registry_declared"))
     assert connector._site_lacks_our_name(None, v("domain_name_match", "role_name")) is None
+    assert connector._site_lacks_our_name(None, v("registry_declared", "registered_address")) is None
 
 
 def test_a_page_that_only_says_parked_is_parked():

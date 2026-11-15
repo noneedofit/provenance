@@ -202,9 +202,9 @@ _NAME_KINDS = {"legal_name_match", "legal_name_in_text", "domain_name_match"}
 
 def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
     """Why an `exact` site must not be published as the company's, or None. The page (or its domain) must
-    show the company's org number or its name: a site tied only by the register's listing, an e-mail
-    domain, a phone or an address can be another business's (viggovenn.com for VIGGO VENN IN VEST AS,
-    korposon.se, a Swedish parent's site, for its Norwegian branch). A holding company's site needs its
+    show the company's org number, its name or its registered address: a site tied only by the register's
+    listing, an e-mail domain, a phone or a board member's name can be another business's (viggovenn.com,
+    a performer's own page, for VIGGO VENN IN VEST AS). A holding company's site needs its
     org number or its full legal name: the brand site is usually the operating business's (QUBBS HOLDING AS
     lists qubbs.world, a German shop)."""
     kinds = {s.kind for s in verdict.signals}
@@ -213,7 +213,9 @@ def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
     name = str(_registry_facts(ctx).get("name") or "")
     if re.search(r"\bHOLDING\b", name, re.I):
         return None if "legal_name_in_text" in kinds else "holding company: the site shows neither its org number nor its full legal name"
-    return None if kinds & _NAME_KINDS else "the site shows neither the company's org number nor its name"
+    if kinds & (_NAME_KINDS | {"registered_address"}):
+        return None  # our name, or our registered street address printed on the page (A PLACE TO STAY STAVANGER AS)
+    return "the site shows neither the company's org number, its name nor its registered address"
 
 
 def _domain_is_our_name(ctx: Any, cand: Candidate) -> bool:
