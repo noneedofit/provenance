@@ -80,3 +80,11 @@ def test_registered_name_needs_capital_form_and_not_a_longer_name():
     assert f("Norwegian company Rapp Hydema AS, an exhibitor", "HYDEMA AS") is None
     assert f("Avtale med Hydema AS i Moss", "HYDEMA AS") is not None
     assert f("Selskapet er solgt. Hydema AS har", "HYDEMA AS") is not None
+
+
+def test_registered_name_longer_name_at_sentence_start_and_names_without_form():
+    from signalpost.text import find_registered_name as f
+    assert f("does not escape. Rapp Hydema AS has applied", "HYDEMA AS") is None
+    assert f("Rapp-Hydema AS vant", "HYDEMA AS") is None
+    assert f("Selskapet Hydema AS har", "HYDEMA AS") is not None
+    assert f("Utbygger mener Valentinlyst borettslag kan", "VALENTINLYST BORETTSLAG") is not None
