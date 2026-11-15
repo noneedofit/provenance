@@ -5,6 +5,8 @@ Tries candidates in provenance order, stops at the first `exact` verdict. Publis
 """
 from __future__ import annotations
 
+import dataclasses
+
 import hashlib
 import json
 import os
@@ -192,6 +194,17 @@ def _worth_confirming(verdict: Any) -> bool:
         return False
     kinds = {s.kind for s in verdict.signals}
     return bool(kinds & {"legal_name_match", "legal_name_in_text", "domain_name_match"})
+
+
+_PROOF_KINDS = {"org_number_on_source", "jsonld_org_number", "wikidata", "osm_orgnr", "nav_employer_homepage", "legal_name_in_text"}
+
+
+def _holding_without_proof(ctx: Any, verdict: Any) -> bool:
+    """A holding company (HOLDING in its legal name) whose site evidence has no org number and no full legal name."""
+    name = str(_registry_facts(ctx).get("name") or "")
+    if not re.search(r"\bHOLDING\b", name, re.I):
+        return False
+    return not ({s.kind for s in verdict.signals} & _PROOF_KINDS)
 
 
 def _domain_is_our_name(ctx: Any, cand: Candidate) -> bool:
@@ -613,6 +626,12 @@ class WebConnector:
                 "note": verdict.note, "signals": [s.kind for s in verdict.signals],
                 "conflicts": [c.org_number for c in verdict.conflicts],
             })
+            if verdict.status == "exact" and _holding_without_proof(ctx, verdict):
+                # A holding company's declared or name-matching site is usually its operating business's
+                # (QUBBS HOLDING AS lists qubbs.world, a German shop). Ours only if the page shows our org
+                # number or our full legal name; otherwise nothing is published for it.
+                verdict = dataclasses.replace(verdict, status="rejected", relationship=None, identity_basis=None,
+                                              note="holding company: the site shows neither its org number nor its full legal name")
             if verdict.status != "exact":
                 _mark_unconfirmed(cand)
 

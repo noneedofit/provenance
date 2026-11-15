@@ -320,9 +320,8 @@ def identity_claims_from_bulk(builder: _ClaimBuilder, row: dict[str, Any], *, sn
         builder.add_claim(family="identity", field="postal_address", value=postal_address, evidence_ids=[eid])
     if row.get("stiftelsesdato"):
         builder.add_claim(family="identity", field="founded_date", value=row["stiftelsesdato"], evidence_ids=[eid])
-    website = normalize_website(row.get("hjemmeside"))
-    if website:
-        builder.add_claim(family="identity", field="registered_website", value=website, evidence_ids=[eid])
+    # The register's own "hjemmeside" is not published as a fact: it is often stale, a typo (ww.obos.no) or
+    # another business's site. The website step reads it as a candidate and publishes it only once verified.
     if row.get("epostadresse"):
         builder.add_claim(family="identity", field="registry_email", value=row["epostadresse"], evidence_ids=[eid])
     phone = row.get("telefon") or row.get("mobil")
@@ -439,9 +438,8 @@ def identity_claims_from_live(builder: _ClaimBuilder, body: dict[str, Any], resp
         builder.add_claim(family="identity", field="postal_address", value=postal_address, evidence_ids=[ev(f"{span_prefix}.postadresse")])
     if body.get("stiftelsesdato"):
         builder.add_claim(family="identity", field="founded_date", value=body["stiftelsesdato"], evidence_ids=[ev(f"{span_prefix}.stiftelsesdato")])
-    website = normalize_website(body.get("hjemmeside"))
-    if website:
-        builder.add_claim(family="identity", field="registered_website", value=website, evidence_ids=[ev(f"{span_prefix}.hjemmeside")])
+    # The register's own "hjemmeside" is not published as a fact: it is often stale, a typo (ww.obos.no) or
+    # another business's site. The website step reads it as a candidate and publishes it only once verified.
     if body.get("epostadresse"):
         builder.add_claim(family="identity", field="registry_email", value=body["epostadresse"], evidence_ids=[ev(f"{span_prefix}.epostadresse")])
     phone = body.get("telefon") or body.get("mobil")

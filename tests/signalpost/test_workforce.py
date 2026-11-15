@@ -95,3 +95,15 @@ def test_history_slot_within_skips_long_queue(monkeypatch):
     assert registry.history_slot_within(5) is False
     monkeypatch.setattr(registry, "_history_last", [0.0])
     assert registry.history_slot_within(5) is True
+
+
+def test_holding_company_site_needs_org_number_or_full_legal_name(monkeypatch):
+    from types import SimpleNamespace
+    from signalpost.web import connector
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "QUBBS HOLDING AS"})
+    weak = SimpleNamespace(signals=[SimpleNamespace(kind="registry_declared"), SimpleNamespace(kind="registry_email")])
+    strong = SimpleNamespace(signals=[SimpleNamespace(kind="registry_declared"), SimpleNamespace(kind="org_number_on_source")])
+    assert connector._holding_without_proof(None, weak) is True
+    assert connector._holding_without_proof(None, strong) is False
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "KOGGER AS"})
+    assert connector._holding_without_proof(None, weak) is False
