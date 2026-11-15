@@ -97,13 +97,21 @@ def test_history_slot_within_skips_long_queue(monkeypatch):
     assert registry.history_slot_within(5) is True
 
 
-def test_holding_company_site_needs_org_number_or_full_legal_name(monkeypatch):
+def test_published_site_must_show_our_number_or_name(monkeypatch):
     from types import SimpleNamespace
     from signalpost.web import connector
+    v = lambda *kinds: SimpleNamespace(signals=[SimpleNamespace(kind=k) for k in kinds])
     monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "QUBBS HOLDING AS"})
-    weak = SimpleNamespace(signals=[SimpleNamespace(kind="registry_declared"), SimpleNamespace(kind="registry_email")])
-    strong = SimpleNamespace(signals=[SimpleNamespace(kind="registry_declared"), SimpleNamespace(kind="org_number_on_source")])
-    assert connector._holding_without_proof(None, weak) is True
-    assert connector._holding_without_proof(None, strong) is False
-    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "KOGGER AS"})
-    assert connector._holding_without_proof(None, weak) is False
+    assert connector._site_lacks_our_name(None, v("registry_declared", "registry_email"))
+    assert connector._site_lacks_our_name(None, v("legal_name_match", "registry_email"))  # brand in title: not enough
+    assert connector._site_lacks_our_name(None, v("org_number_on_source")) is None
+    assert connector._site_lacks_our_name(None, v("legal_name_in_text", "registry_email")) is None
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "VIGGO VENN IN VEST AS"})
+    assert connector._site_lacks_our_name(None, v("registry_email_domain", "registry_declared"))
+    assert connector._site_lacks_our_name(None, v("domain_name_match", "role_name")) is None
+
+
+def test_a_page_that_only_says_parked_is_parked():
+    from signalpost.web.crawl import is_parked_page
+    assert is_parked_page("<html><head><title>Parked</title></head><body><h1>Parked</h1></body></html>", "Parked", "http://arcticsubsea.no/")
+    assert not is_parked_page("<html><body><h1>Parkering</h1><p>Vi har parked biler i sentrum</p></body></html>", "Parkering Vi har parked biler i sentrum", "http://x.no/")

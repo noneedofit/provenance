@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
-from ..text import fold
+from ..text import find_registered_name, fold
 from .blocklist import is_franchise_chain_domain
 from .candidates import Candidate, registered_domain
 from .crawl import PageFetch, is_parked_page
@@ -586,7 +586,7 @@ def assess(
             # The full registered name, legal form included ("Lapsen & Co AS"), in the visible text: how a
             # company's own footer or contact block names it. Same dimension as the <title> match (a name),
             # so it still needs an independent registry fact (address, phone, e-mail, role holder) beside it.
-            hit = next(((p, m.group(0)) for p, t in page_texts if (m := phrase.search(t))), None)
+            hit = next(((p, m.group(0)) for p, t in page_texts if (m := find_registered_name(t, registry_facts.get("name") or ""))), None)
             if hit is not None:
                 where, text_hit = hit[0].final_url, hit[1]
                 signals.append(Signal("legal_name_in_text", "full registered name (with legal form) found in page text", where, text_hit))

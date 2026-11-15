@@ -130,6 +130,8 @@ def is_parked_page(html: str, text: str, url: str = "") -> bool:
         visible.append(fold(soup.get_text(" ", strip=True)))
         navigable = _internal_page_count(soup, url) > PLACEHOLDER_MAX_INTERNAL_LINKS
     short = [v for v in visible if len(v) <= PLACEHOLDER_MAX_TEXT]
+    if any(re.fullmatch(r"(?:\s*(?:parked|parkert|domain parked|parked domain)\s*)+", v) for v in visible if v.strip()):
+        return True  # the whole page says only "Parked" (arcticsubsea.no)
     if any(marker in v for v in short for marker in DEFAULT_PAGE_MARKERS):
         return True
     return not navigable and any(marker in v for v in short for marker in COMING_SOON_MARKERS)

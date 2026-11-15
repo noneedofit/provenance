@@ -72,3 +72,11 @@ def test_off_switch_and_registry_only(monkeypatch):
     ctx = _ctx(client)
     ctx.shared["registry_only"] = True
     assert news_search.collect(ctx)["claims"] == [] and client.calls == []
+
+
+def test_registered_name_needs_capital_form_and_not_a_longer_name():
+    from signalpost.text import find_registered_name as f
+    assert f("You can mark as read later", "MARK AS") is None
+    assert f("Norwegian company Rapp Hydema AS, an exhibitor", "HYDEMA AS") is None
+    assert f("Avtale med Hydema AS i Moss", "HYDEMA AS") is not None
+    assert f("Selskapet er solgt. Hydema AS har", "HYDEMA AS") is not None

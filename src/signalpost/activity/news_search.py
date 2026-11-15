@@ -23,7 +23,7 @@ from xml.etree import ElementTree as ET
 
 from bs4 import BeautifulSoup
 
-from ..text import fold
+from ..text import find_registered_name, fold
 from ._common import make_claim, make_evidence
 from .feeds import extract_date_from_html, raw_news_page_quote
 
@@ -152,7 +152,7 @@ def collect(ctx: Any) -> dict:
         page_html = page.text()
         text = _space(BeautifulSoup(page_html, "lxml").get_text(" ", strip=True))
         by_org = _org_on_page(text, ctx.org)
-        if not by_org and not _contains(fold(text), legal_name):
+        if not by_org and find_registered_name(text, legal_name) is None:
             continue  # the page never names the company with its legal form or org number: possibly a namesake
         iso, span = extract_date_from_html(page_html)
         if not iso:
