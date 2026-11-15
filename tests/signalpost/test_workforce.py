@@ -115,3 +115,22 @@ def test_a_page_that_only_says_parked_is_parked():
     from signalpost.web.crawl import is_parked_page
     assert is_parked_page("<html><head><title>Parked</title></head><body><h1>Parked</h1></body></html>", "Parked", "http://arcticsubsea.no/")
     assert not is_parked_page("<html><body><h1>Parkering</h1><p>Vi har parked biler i sentrum</p></body></html>", "Parkering Vi har parked biler i sentrum", "http://x.no/")
+
+
+def test_dns_temporary_failure_is_not_cached(monkeypatch):
+    import socket
+    from signalpost import http as sp_http
+    client = sp_http.BudgetedHttpClient.__new__(sp_http.BudgetedHttpClient)
+    import threading, concurrent.futures
+    client._dns_lock = threading.Lock(); client._dns_cache = {}; client.dns_timeout = 1.0
+    client._dns_executor = concurrent.futures.ThreadPoolExecutor(2)
+    calls = []
+    def flaky(host, port):
+        calls.append(host)
+        raise socket.gaierror(socket.EAI_AGAIN, "temporary failure")
+    monkeypatch.setattr(socket, "getaddrinfo", flaky)
+    assert client.dns_resolves("example.no") is False and "example.no" not in client._dns_cache
+    def nxdomain(host, port):
+        raise socket.gaierror(socket.EAI_NONAME, "no such name")
+    monkeypatch.setattr(socket, "getaddrinfo", nxdomain)
+    assert client.dns_resolves("nosuch.no") is False and client._dns_cache["nosuch.no"] is False

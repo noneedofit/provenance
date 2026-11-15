@@ -189,7 +189,7 @@ def test_a_slow_dns_answer_is_retried_and_not_cached_as_missing(monkeypatch):
     assert "stuck.example" not in client._dns_cache  # a timeout is not an answer
 
     def nx(host, port):
-        raise socket.gaierror("nodename nor servname provided")
+        raise socket.gaierror(socket.EAI_NONAME, "nodename nor servname provided")
 
     monkeypatch.setattr(http_mod.socket, "getaddrinfo", nx)
     assert client.dns_resolves("gone.example") is False and client._dns_cache["gone.example"] is False

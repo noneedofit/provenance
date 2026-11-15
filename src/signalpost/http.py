@@ -241,6 +241,9 @@ def _sha256(body: bytes) -> str:
     return sha256_text(body)
 
 
+_DNS_NO_SUCH_NAME = {code for code in (getattr(socket, "EAI_NONAME", None), getattr(socket, "EAI_NODATA", None)) if code is not None}
+
+
 class BudgetedHttpClient:
     """Stdlib HttpClient implementation: manual redirects, retries, robots, SSRF guard, snapshots."""
 
@@ -292,9 +295,13 @@ class BudgetedHttpClient:
                 break
             except concurrent.futures.TimeoutError:
                 continue
+            except socket.gaierror as exc:
+                if exc.errno in _DNS_NO_SUCH_NAME:
+                    ok, definite = False, True  # the resolver says the name does not exist
+                    break
+                continue  # "temporary failure, try again" (EAI_AGAIN) and the like: not an answer, never cached
             except Exception:
-                ok, definite = False, True
-                break
+                continue
         if definite:
             with self._dns_lock:
                 self._dns_cache[hostname] = ok
