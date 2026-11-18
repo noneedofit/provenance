@@ -26,6 +26,7 @@ Only dated items become claims. Undated items are dropped rather than fabricatin
 """
 from __future__ import annotations
 
+import datetime
 import html as html_lib
 import itertools
 import json
@@ -51,6 +52,14 @@ ARTICLE_DISCOVERY_BUDGET = 3
 # Tried and removed (Nov 2026): following the sitemap's newest news URLs cost 53 requests on ref100 for
 # 0 new dated items; the sites it reached render their dates with JavaScript.
 ARTICLE_FOLLOW_MAX = 2
+# A feed or WordPress list says an item exists; only its own page says it is a dated news post. Feed items are
+# published only after their page is fetched and shows a publication date matching the feed's (within
+# ITEM_DATE_TOLERANCE_DAYS). A hand-check of 16 own-site items (500 random companies, 17 Nov) found 6 wrong
+# without this: location and service pages carried by the feed, theme demo posts (lorem ipsum), undated case
+# studies. At most ITEM_VERIFY_MAX item pages are fetched per company, newest first.
+ITEM_VERIFY_MAX = 6
+ITEM_DATE_TOLERANCE_DAYS = 2
+_DEMO_TEXT = re.compile(r"\blorem ipsum\b|\bdolor sit amet\b", re.I)
 WP_POSTS_QUERY = "wp-json/wp/v2/posts?per_page=10&_fields=date,link,title"
 
 # Terms W3's crawl.py PRIORITY_TERMS ranks below the identity-verification pages (kontakt/om-oss/
@@ -443,7 +452,8 @@ def _discover_link_candidates(ctx, already_seen: set[str]) -> list[str]:
 
 
 _COMMENT_TITLE = re.compile(r"^\s*(comment on|comments on|kommentar til|kommentarer til|kommentar på)\b", re.I)
-_PLACEHOLDER_KEYS = {"hello world", "hei verden", "hallo verden", "sample page", "eksempelside"}
+_PLACEHOLDER_KEYS = {"hello world", "hei verden", "hallo verden", "sample page", "eksempelside", "nyheter med bilde",
+                     "a post showing how headings looks like", "sample post", "eksempelinnlegg", "post format gallery"}
 # Page-builder drafts and test posts ("Elementor #2569", "Test", "Untitled"): never published news.
 _DRAFT_TITLE = re.compile(
     r"^\s*(elementor\s*#?\s*\d+|test(ing)?( ?\d+)?|untitled|uten tittel|draft|kladd|ny side|new page|#\d+)\s*$", re.I)
@@ -633,6 +643,53 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
     return ({"title": title, "url": news_url, "published": iso}, ev)
 
 
+def _item_page_confirms(html: str, published: str) -> bool:
+    """The item's own page states a publication date within ITEM_DATE_TOLERANCE_DAYS of the feed's date and is
+    not placeholder (lorem ipsum) content."""
+    iso, _span = extract_date_from_html(html)
+    if not iso:
+        return False
+    try:
+        delta = abs((datetime.date.fromisoformat(iso[:10]) - datetime.date.fromisoformat(str(published)[:10])).days)
+    except ValueError:
+        return False
+    if delta > ITEM_DATE_TOLERANCE_DAYS:
+        return False
+    text = BeautifulSoup(html, "lxml").get_text(" ", strip=True)[:20000]
+    return not _DEMO_TEXT.search(text)
+
+
+def _verified_on_own_page(ctx, candidates: list[tuple[dict, object]], result: dict) -> list[tuple[dict, object]]:
+    """Keep page-dated items (html_news_v1: their date was read from the item's own page) and feed/WordPress
+    items whose own page confirms them; fetch at most ITEM_VERIFY_MAX item pages, newest first."""
+    home = _homepage_url(ctx)
+    home_domain = _registered_domain(home) if home else None
+    kept: list[tuple[dict, object]] = []
+    fetched = 0
+    for item, ev in candidates:
+        if getattr(ev, "extraction_method", "") == "html_news_v1":
+            kept.append((item, ev))
+            continue
+        url = str(item.get("url") or "")
+        if not url or (home_domain and _registered_domain(url) != home_domain):
+            continue  # an item hosted elsewhere is not the company's own page
+        if fetched >= ITEM_VERIFY_MAX:
+            break
+        fetched += 1
+        resp = ctx.client.get(url, org=ctx.org, purpose="site_news_item_check", accept="text/html", respect_robots=True)
+        if not resp.ok:
+            continue
+        if _item_page_confirms(resp.text(), item["published"]):
+            kept.append((item, ev))
+    return kept
+
+
+def _registered_domain(url: str) -> str:
+    from ..web.candidates import registered_domain
+
+    return registered_domain(url)
+
+
 def collect(ctx) -> dict:
     """Fetch shared feed_urls + news_urls (free), then, only if that found nothing, spend up to
     ARTICLE_DISCOVERY_BUDGET extra requests on WordPress post list/feed discovery and same-domain news/blog
@@ -703,6 +760,7 @@ def collect(ctx) -> dict:
     candidates = [pair for pair in candidates
                   if not (str(pair[0].get("url") or "").rstrip("/") in menu and len(str(pair[0].get("title") or "").split()) <= 2)]
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
+    candidates = _verified_on_own_page(ctx, candidates, result)
     claims = []
     evidence = []
     quotes: dict[str, list[str]] = {}

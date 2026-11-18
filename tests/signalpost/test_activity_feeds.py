@@ -5,6 +5,18 @@ from activity_testkit import FakeHttpClient, load_fixture, make_ctx
 from signalpost.activity import feeds
 
 
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _item_pages_confirm(monkeypatch):
+    """These tests predate the item-page check (tested in test_activity_item_check.py): every item's page confirms it."""
+    from signalpost.activity import feeds as _feeds
+    monkeypatch.setattr(_feeds, "_item_page_confirms", lambda html, published: True)
+    monkeypatch.setattr(_feeds, "_registered_domain", lambda url: "same-site")  # fixtures' feeds link other domains
+
+
+
 def test_parse_feed_rss_generic():
     xml = load_fixture("generic_news.rss.xml").decode("utf-8")
     items = feeds.parse_feed(xml)

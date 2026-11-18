@@ -40,6 +40,7 @@ class FakeHttpClient:
     calls: list[dict] = field(default_factory=list)
     budget: dict[str, int] = field(default_factory=dict)
     default_remaining: int = 100
+    item_pages_exist: bool = True
 
     def route(self, url: str, body: bytes, *, status: int = 200, error: str | None = None) -> None:
         self.routes[url] = FakeRoute(body=body, status=status, error=error)
@@ -53,6 +54,10 @@ class FakeHttpClient:
         if org is not None:
             self.budget[org] = self.budget.get(org, self.default_remaining) - 1
         route = self.routes.get(url)
+        if route is None and purpose == "site_news_item_check" and self.item_pages_exist:
+            # Tests written before item-page checks: every feed item's own page exists (tests that exercise the
+            # check itself route the pages explicitly and patch nothing).
+            route = FakeRoute(body=b"<html><body>item</body></html>", content_type="text/html")
         if route is None:
             return Response(
                 url=url, final_url=url, redirect_chain=[url], status=0, headers={}, body=b"",

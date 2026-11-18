@@ -18,6 +18,7 @@ Precision over recall: when unsure, this module returns `ambiguous` or `rejected
 from __future__ import annotations
 
 import re
+import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
@@ -60,6 +61,9 @@ def is_valid_orgnr(digits: str) -> bool:
     if check == 10:
         return False
     return check == int(digits[8])
+
+
+_LOCATION_PAGE_RE = re.compile(r"/(lokasjoner|lokasjon|avdelinger|avdeling|butikker|butikk|kontorer|stores|locations|forhandlere)(/|$)", re.I)
 
 
 @dataclass
@@ -491,8 +495,17 @@ def assess(
     # that happens to pass the mod-11 check) is not strong enough evidence of ownership and is discarded.
     other_org_matches: list[Conflict] = []
     site_owner_names: list[str] = []
+    # Pages where our number is only one entry in a list of several organisations (a parent group's
+    # "our companies" page: homeretail.no lists HOVDEN HYTTEUTVIKLING AS among its subsidiaries).
+    our_number_pages = 0
+    our_number_list_pages = 0
     for page in live_pages:
-        for m in find_org_numbers(_page_all_text(page)):
+        page_matches = find_org_numbers(_page_all_text(page))
+        if any(m.digits == our_digits for m in page_matches):
+            our_number_pages += 1
+            if len({m.digits for m in page_matches if m.digits != our_digits}) >= 2:
+                our_number_list_pages += 1
+        for m in page_matches:
             if m.digits == our_digits:
                 signals.append(Signal("org_number_on_source", "organisation number found on site", page.final_url, m.span))
             elif m.labeled:
@@ -724,6 +737,19 @@ def assess(
             note=f"site shows a different organisation number ({conflicts[0].org_number}); treated as {relationship}",
         )
 
+    listed_among_others = (
+        our_number_pages > 0 and our_number_list_pages == our_number_pages
+        and not any(s.kind in decisive_kinds - {"org_number_on_source"} for s in signals)
+        and not (distinct_corroborating_raw & {"legal_name_match", "domain_name_match"})
+    )
+    if has_decisive and listed_among_others:
+        # Our number appears only inside a list of several organisations and the site is not named after us:
+        # a parent group's site, not this company's own.
+        return Verdict(
+            "related", None, "parent", signals=signals, conflicts=[],
+            note="organisation number appears only in a list of several organisations on a site not named after this company; treated as parent",
+        )
+
     if has_decisive:
         basis = next(s.kind for s in signals if s.kind in decisive_kinds)
         identity_basis_map = {
@@ -825,6 +851,13 @@ def assess(
                     "weak on their own for a company that could be sharing an office/personnel with an "
                     "unrelated or parent entity"
                 ),
+            )
+        if _LOCATION_PAGE_RE.search(urllib.parse.urlparse(homepage.final_url).path or ""):
+            # A chain's location page (tess.no/lokasjoner/alesund/): it carries our address, but the site,
+            # its news and its social profiles belong to the chain.
+            return Verdict(
+                "related", None, "brand", signals=signals, conflicts=[],
+                note="corroborated only on a chain's location/branch page; treated as brand",
             )
         return Verdict("exact", "corroborated", "exact", signals=signals, conflicts=[], note=">=2 independent corroborating signals, no conflict")
 

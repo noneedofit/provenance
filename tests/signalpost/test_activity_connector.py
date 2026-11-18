@@ -9,6 +9,18 @@ from signalpost.activity import ActivityConnector
 ORG = "999888777"
 
 
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _item_pages_confirm(monkeypatch):
+    """These tests predate the item-page check (tested in test_activity_item_check.py): every item's page confirms it."""
+    from signalpost.activity import feeds as _feeds
+    monkeypatch.setattr(_feeds, "_item_page_confirms", lambda html, published: True)
+    monkeypatch.setattr(_feeds, "_registered_domain", lambda url: "same-site")  # fixtures' feeds link other domains
+
+
+
 def _iso(days_ago: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days_ago)).date().isoformat()
 
