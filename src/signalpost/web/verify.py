@@ -741,6 +741,8 @@ def assess(
         our_number_pages > 0 and our_number_list_pages == our_number_pages
         and not any(s.kind in decisive_kinds - {"org_number_on_source"} for s in signals)
         and not (distinct_corroborating_raw & {"legal_name_match", "domain_name_match"})
+        # a group site carrying our name in its domain (lundbeck.com/no for H. LUNDBECK AS) is ours to publish
+        and not _page_names_us(registry_facts.get("name") or "", (candidate.domain or "").split(".")[0])
     )
     if has_decisive and listed_among_others:
         # Our number appears only inside a list of several organisations and the site is not named after us:
