@@ -128,6 +128,24 @@ def test_branches_and_housing_associations_need_the_org_number(monkeypatch):
     assert connector._site_lacks_our_name(None, v("legal_name_in_text")) is None
 
 
+def test_our_address_on_an_umbrella_domain_is_not_enough(monkeypatch):
+    from types import SimpleNamespace
+    from signalpost.web import connector
+    v = lambda *kinds: SimpleNamespace(signals=[SimpleNamespace(kind=k) for k in kinds])
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "HANS KONOWS STIFTELSE"})
+    monkeypatch.setattr(connector, "_website_org_count", lambda ctx, domain: {"kirken.no": 775, "metallco.com": 13}.get(domain, 0))
+    ctx = SimpleNamespace(registry={}, bulk={})
+    assert connector._site_lacks_our_name(ctx, v("registered_address", "registry_phone"), "https://www.kirken.no/gamlebyenoggronland")
+    assert connector._site_lacks_our_name(ctx, v("registered_address", "registry_phone"), "https://www.metallco.com/no/") is None
+    assert connector._site_lacks_our_name(ctx, v("legal_name_in_text", "registered_address"), "https://www.kirken.no/x") is None
+
+
+def test_a_plesk_default_page_is_parked():
+    from signalpost.web.crawl import is_parked_page
+    html = "<html><head><title>Web Server's Default Page</title></head><body><p>Plesk</p></body></html>"
+    assert is_parked_page(html, "Web Server's Default Page Plesk", "http://www.fallmyrgartneri.no/")
+
+
 def test_a_page_that_only_says_parked_is_parked():
     from signalpost.web.crawl import is_parked_page
     assert is_parked_page("<html><head><title>Parked</title></head><body><h1>Parked</h1></body></html>", "Parked", "http://arcticsubsea.no/")

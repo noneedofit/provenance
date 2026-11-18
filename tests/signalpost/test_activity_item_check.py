@@ -31,7 +31,8 @@ def test_feed_items_are_published_only_when_their_own_page_confirms_them():
     assert urls == ["https://firma.no/ny-avtale/"]
     # the off-domain item is never fetched; each own-domain item page is fetched once
     checked = [c["url"] for c in client.calls if c["purpose"] == "site_news_item_check"]
-    assert "https://annet.no/gjest/" not in checked and len(checked) == 4
+    # the off-domain item and the 2018 item (older than three years) are never fetched
+    assert "https://annet.no/gjest/" not in checked and len(checked) == 3
 
 
 def test_item_page_check_tolerates_a_day_or_two():
@@ -48,7 +49,7 @@ def _feed_ev():
 
 def test_a_site_with_theme_demo_posts_publishes_none_of_its_feed_items():
     ev = _feed_ev()
-    items = [({"title": "Ny avtale", "published": "2026-10-05"}, ev), ({"title": "Post with Gallery", "published": "2018-04-13"}, ev)]
+    items = [({"title": "Ny avtale", "published": "2026-10-05"}, ev), ({"title": "Post with Gallery", "published": "2026-04-13"}, ev)]
     assert feeds._without_demo_and_import_dates(items) == []
 
 
@@ -57,3 +58,19 @@ def test_posts_sharing_one_import_day_are_dropped():
     imported = [({"title": f"Gammel sak {i}", "published": "2021-01-27"}, ev) for i in range(3)]
     fresh = [({"title": "Ny sak", "published": "2026-10-05"}, ev)]
     assert feeds._without_demo_and_import_dates(imported + fresh) == fresh
+
+
+def test_old_items_and_the_sample_post_slug_are_dropped():
+    ev = _feed_ev()
+    items = [({"title": "Produkter og tjenester", "published": "2017-12-14", "url": "https://x.no/2017/12/14/produkter/"}, ev),
+             ({"title": "Nyheter på lager", "published": "2026-02-01", "url": "https://x.no/hei-verden/"}, ev),
+             ({"title": "Ny avtale", "published": "2026-10-05", "url": "https://x.no/ny-avtale/"}, ev)]
+    assert [i["title"] for i, _ in feeds._without_demo_and_import_dates(items)] == ["Ny avtale"]
+
+
+def test_a_wordpress_page_is_not_a_post():
+    page = ('<html><head><meta property="article:published_time" content="2026-10-05"></head>'
+            '<body class="page-template-default page page-id-12"><h1>Interiør</h1></body></html>')
+    assert not feeds._item_page_confirms(page, "2026-10-05")
+    post = page.replace('class="page-template-default page page-id-12"', 'class="post-template-default single single-post postid-40"')
+    assert feeds._item_page_confirms(post, "2026-10-05")

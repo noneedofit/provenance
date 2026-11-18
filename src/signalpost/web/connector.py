@@ -200,6 +200,9 @@ _NUMBER_KINDS = {"org_number_on_source", "jsonld_org_number", "wikidata", "osm_o
 _NAME_KINDS = {"legal_name_match", "legal_name_in_text", "domain_name_match"}
 
 
+# A domain at least this many organisations use (kirken.no: 775; a corporate group like metallco.com: 13) is an
+# umbrella domain: a page there carrying our office address is not our site unless it names us.
+_WIDELY_SHARED_DOMAIN_MIN = 50
 # Legal forms whose web presence usually belongs to someone else: a foreign company's Norwegian branch (NUF: the
 # parent's site), a housing co-op or an owners' association (the managing agent's or the developer's site; Builderr
 # flagged ww.obos.no for SAMEIET EGNERKVARTALET). Their site is published only when the page shows the org number.
@@ -215,7 +218,7 @@ def _is_proxy_form(ctx: Any, name: str) -> bool:
     return form in _PROXY_FORMS or bool(_PROXY_NAME.search(name))
 
 
-def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
+def _site_lacks_our_name(ctx: Any, verdict: Any, url: str = "") -> str | None:
     """Why an `exact` site must not be published as the company's, or None. The page (or its domain) must
     show the company's org number, its name or its registered address: a site tied only by the register's
     listing, an e-mail domain, a phone or a board member's name can be another business's (viggovenn.com,
@@ -230,8 +233,16 @@ def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
         return "branch, housing co-op or owners' association: the site does not show its org number"
     if re.search(r"\bHOLDING\b", name, re.I):
         return None if "legal_name_in_text" in kinds else "holding company: the site shows neither its org number nor its full legal name"
-    if kinds & (_NAME_KINDS | {"registered_address"}):
-        return None  # our name, or our registered street address printed on the page (A PLACE TO STAY STAVANGER AS)
+    if kinds & _NAME_KINDS:
+        return None
+    if "registered_address" in kinds:
+        domain = registered_domain(url) if url else ""
+        shared = _website_org_count(ctx, domain) if domain and ctx is not None else None
+        if shared is not None and shared >= _WIDELY_SHARED_DOMAIN_MIN:
+            # A domain many organisations use (kirken.no for every parish, so for HANS KONOWS STIFTELSE, run from
+            # the parish office): sharing its office address does not make the site ours.
+            return f"the site's domain is used by {shared} organisations and the page shows neither our name nor our org number"
+        return None  # our registered street address on our own site (A PLACE TO STAY STAVANGER AS)
     return "the site shows neither the company's org number, its name nor its registered address"
 
 
@@ -654,7 +665,7 @@ class WebConnector:
                 "note": verdict.note, "signals": [s.kind for s in verdict.signals],
                 "conflicts": [c.org_number for c in verdict.conflicts],
             })
-            if verdict.status == "exact" and (why := _site_lacks_our_name(ctx, verdict)) is not None:
+            if verdict.status == "exact" and (why := _site_lacks_our_name(ctx, verdict, cand.url)) is not None:
                 verdict = dataclasses.replace(verdict, status="rejected", relationship=None, identity_basis=None, note=why)
             if verdict.status != "exact":
                 _mark_unconfirmed(cand)

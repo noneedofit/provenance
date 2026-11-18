@@ -58,6 +58,7 @@ PARKED_MARKERS = (
 SERVER_DEFAULT_MARKERS = (
     "welcome to nginx!", "apache2 ubuntu default page", "apache2 debian default page",
     "test page for the apache http server", "default web site page",
+    "web server's default page",  # Plesk's placeholder for a domain with no site (fallmyrgartneri.no)
 )
 # "Coming soon" wording only marks a placeholder when it is (nearly) all the page says and the page has
 # almost no navigation: real sites also write "nye produkter kommer snart", or label a shop category so.

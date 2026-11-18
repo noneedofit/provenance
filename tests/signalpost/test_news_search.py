@@ -88,3 +88,10 @@ def test_registered_name_longer_name_at_sentence_start_and_names_without_form():
     assert f("Rapp-Hydema AS vant", "HYDEMA AS") is None
     assert f("Selskapet Hydema AS har", "HYDEMA AS") is not None
     assert f("Utbygger mener Valentinlyst borettslag kan", "VALENTINLYST BORETTSLAG") is not None
+
+
+def test_an_initial_before_the_name_makes_it_another_company():
+    from signalpost.text import find_registered_name
+    assert find_registered_name("Overskudd for A. Idsøe Holding AS i Stavanger", "IDSØE HOLDING AS") is None
+    assert find_registered_name("Scania leverer til K. Hansen Transport AS", "HANSEN TRANSPORT AS") is None
+    assert find_registered_name("Selskapet Hansen Transport AS vokser", "HANSEN TRANSPORT AS") is not None

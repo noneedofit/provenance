@@ -20,6 +20,8 @@ def fold(text: str | None) -> str:
 
 _FORMS_UPPER = ("AS", "ASA", "ANS", "DA", "SA", "NUF", "IKS", "BA")
 _PREV_WORD = re.compile(r"([A-ZÆØÅ][\w&'-]*)[ \t]+$")
+# An initial right before the name ("A. Idsøe Holding AS", "K. Hansen Transport AS") is part of a longer name.
+_PREV_INITIAL = re.compile(r"(?<!\w)[A-ZÆØÅ]\.[ \t]*$")
 # Capitalised words that start a sentence before a company name without being part of it.
 _SENTENCE_WORDS = {
     "selskapet", "firmaet", "bedriften", "daglig", "styreleder", "i", "og", "men", "nå", "her", "der", "da", "når",
@@ -46,7 +48,7 @@ def find_registered_name(text: str, legal_name: str) -> "re.Match[str] | None":
         body = r"(?i:" + sep.join(re.escape(t) for t in tokens) + r")"
     for m in re.finditer(r"(?<![\w-])" + body + r"(?!\w)", text or ""):
         before = text[: m.start()]
-        if before.endswith("-"):
+        if before.endswith("-") or _PREV_INITIAL.search(before):
             continue
         prev = _PREV_WORD.search(before)
         if prev is not None and prev.group(1).casefold() not in _SENTENCE_WORDS:

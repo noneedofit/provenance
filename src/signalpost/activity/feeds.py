@@ -67,6 +67,12 @@ _THEME_DEMO_TITLE = re.compile(
 # A feed where three or more posts share one publication day is an import (a site moved to WordPress and every
 # old post got the migration date): those dates are not publication dates.
 SAME_DAY_IMPORT_MIN = 3
+# Own-site items older than this are not published: on 1,300 hand-checked companies nearly every wrong own-site
+# item was an old post (theme samples, migrated pages, 2017 "products" posts), and old posts say little about
+# what a company does now.
+OWN_ITEM_MAX_AGE_DAYS = 3 * 365
+# WordPress's first post ("Hello world" / "Hei verden"), even when retitled, is the CMS's sample post.
+_PLACEHOLDER_SLUG = re.compile(r"/(hello-world|hei-verden|hallo-verden)/?$", re.I)
 _DEMO_TEXT = re.compile(r"\blorem ipsum\b|\bdolor sit amet\b", re.I)
 WP_POSTS_QUERY = "wp-json/wp/v2/posts?per_page=10&_fields=date,link,title"
 
@@ -652,8 +658,11 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
 
 
 def _without_demo_and_import_dates(candidates: list[tuple[dict, object]]) -> list[tuple[dict, object]]:
-    """Drop feed/WordPress items from a site that carries theme demo posts, and items whose publication day is
+    """Drop own-site items older than OWN_ITEM_MAX_AGE_DAYS or on WordPress's sample-post slug; drop feed/WordPress items from a site that carries theme demo posts, and items whose publication day is
     shared by SAME_DAY_IMPORT_MIN or more feed items (a bulk import's date). Page-dated items are kept."""
+    cutoff = (datetime.date.today() - datetime.timedelta(days=OWN_ITEM_MAX_AGE_DAYS)).isoformat()
+    candidates = [(item, ev) for item, ev in candidates
+                  if str(item.get("published") or "")[:10] >= cutoff and not _PLACEHOLDER_SLUG.search(str(item.get("url") or ""))]
     listed = [(item, ev) for item, ev in candidates if getattr(ev, "extraction_method", "") in ("rss_v1", "wp_rest_v1")]
     if any(_THEME_DEMO_TITLE.match(str(item.get("title") or "")) for item, _ev in listed):
         listed_ids = {id(item) for item, _ev in listed}
@@ -682,7 +691,11 @@ def _item_page_confirms(html: str, published: str) -> bool:
         return False
     if delta > ITEM_DATE_TOLERANCE_DAYS:
         return False
-    text = BeautifulSoup(html, "lxml").get_text(" ", strip=True)[:20000]
+    soup = BeautifulSoup(html, "lxml")
+    body_classes = set((soup.body.get("class") or []) if soup.body else [])
+    if "page" in body_classes or any(c.startswith(("page-id-", "page-template")) for c in body_classes):
+        return False  # a WordPress page (a service, category or archive page), not a post
+    text = soup.get_text(" ", strip=True)[:20000]
     return not _DEMO_TEXT.search(text)
 
 
