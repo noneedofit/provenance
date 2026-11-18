@@ -14,6 +14,10 @@ from typing import Any
 
 import tldextract
 
+# Offline: tldextract's bundled public-suffix list. The default fetches publicsuffix.org at run time (an undeclared
+# outbound host whose answer could change mid-competition, and a failed fetch in a restricted network).
+_TLD_EXTRACT = tldextract.TLDExtract(suffix_list_urls=())
+
 from ..text import fold
 from .blocklist import is_marketplace_or_directory
 from . import search as search_mod
@@ -97,7 +101,7 @@ def _slug_tokens_alt(value: str) -> list[str]:
 
 
 def registered_domain(url_or_host: str) -> str:
-    ext = tldextract.extract(url_or_host or "")
+    ext = _TLD_EXTRACT(url_or_host or "")
     return ext.top_domain_under_public_suffix or ""
 
 
