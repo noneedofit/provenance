@@ -49,8 +49,15 @@ _PLATFORM_ACCOUNTS = {
 }
 
 
+class HostLookupFailed(ValueError):
+    """The host name did not resolve. Not an SSRF verdict: the caller reports it as a (possibly transient) DNS error."""
+
+
 def assert_public_url(url: str) -> None:
-    """Raise ValueError unless `url` is http(s) and its host resolves only to public addresses."""
+    """Raise ValueError unless `url` is http(s) and its host resolves only to public addresses.
+
+    A failed lookup raises `HostLookupFailed` (a ValueError subclass), so callers can tell "this name did not
+    resolve" (retryable) from "this address is private" (blocked)."""
     parsed = urllib.parse.urlparse(url)
     host = (parsed.hostname or "").lower().rstrip(".")
     if parsed.scheme not in {"http", "https"} or not host:
@@ -61,7 +68,7 @@ def assert_public_url(url: str) -> None:
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         addresses = {item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
     except socket.gaierror as exc:
-        raise ValueError("Hostname did not resolve") from exc
+        raise HostLookupFailed("Hostname did not resolve") from exc
     for address in addresses:
         if not ipaddress.ip_address(address).is_global:
             raise ValueError("Private, loopback, link-local, multicast, and reserved addresses are blocked")

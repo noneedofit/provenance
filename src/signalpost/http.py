@@ -24,7 +24,7 @@ from typing import Any
 
 from .context import Response
 from .snapshots import SnapshotStore
-from .urls import assert_public_url
+from .urls import HostLookupFailed, assert_public_url
 
 
 def _retry_after_seconds(headers: dict | None, default: float = 5.0, cap: float = 20.0) -> float:
@@ -243,6 +243,46 @@ def _sha256(body: bytes) -> str:
 
 _DNS_NO_SUCH_NAME = {code for code in (getattr(socket, "EAI_NONAME", None), getattr(socket, "EAI_NODATA", None)) if code is not None}
 
+# Process-wide resolver hardening. Every request resolves its host twice (SSRF guard, then the connection), and a
+# 1,000-company run asks for the same few registry hosts thousands of times. In a busy container, a share of those
+# lookups fails with "temporary failure" (EAI_AGAIN). Successful answers are kept for the run, and a temporary
+# failure is retried twice after a short pause. "No such name" is passed through at once and never cached here.
+_RESOLVER_RETRY_PAUSES_S = (0.3, 1.0)
+_resolver_cache: dict[tuple, list] = {}
+_resolver_lock = threading.Lock()
+_resolver_installed = False
+
+
+def install_resolver_cache() -> None:
+    """Wrap `socket.getaddrinfo` once per process with the positive cache and transient-failure retry above."""
+    global _resolver_installed
+    with _resolver_lock:
+        if _resolver_installed:
+            return
+        _resolver_installed = True
+        real = socket.getaddrinfo
+
+    def getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):  # noqa: A002 - mirrors the stdlib signature
+        key = (host, port, family, type, proto, flags)
+        with _resolver_lock:
+            cached = _resolver_cache.get(key)
+        if cached is not None:
+            return list(cached)
+        for attempt in range(len(_RESOLVER_RETRY_PAUSES_S) + 1):
+            try:
+                result = real(host, port, family, type, proto, flags)
+            except socket.gaierror as exc:
+                if exc.errno in _DNS_NO_SUCH_NAME or attempt == len(_RESOLVER_RETRY_PAUSES_S):
+                    raise
+                time.sleep(_RESOLVER_RETRY_PAUSES_S[attempt])
+                continue
+            with _resolver_lock:
+                _resolver_cache[key] = list(result)
+            return result
+        raise socket.gaierror(getattr(socket, "EAI_AGAIN", -3), "temporary failure in name resolution")  # pragma: no cover
+
+    socket.getaddrinfo = getaddrinfo
+
 
 class BudgetedHttpClient:
     """Stdlib HttpClient implementation: manual redirects, retries, robots, SSRF guard, snapshots."""
@@ -257,6 +297,7 @@ class BudgetedHttpClient:
         self.budget = budget
         self.snapshots = snapshots
         self.dns_timeout = dns_timeout
+        install_resolver_cache()
 
         self._request_log: list[RequestLogEntry] = []
         self._log_lock = threading.Lock()
@@ -479,6 +520,11 @@ class BudgetedHttpClient:
             redirect_chain.append(current_url)
             try:
                 assert_public_url(current_url)
+            except HostLookupFailed:
+                # The name did not resolve (often a transient resolver failure under load): a "dns" error, which the
+                # pipeline treats as transient for the registry, not an SSRF block. Logging it as "blocked_ssrf"
+                # hid a whole company's registry lookup behind a non-retryable error.
+                return self._fail(url, redirect_chain, "dns", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
             except ValueError:
                 return self._fail(url, redirect_chain, "blocked_ssrf", org=org, purpose=purpose, requests_used=total_requests_used, started=started, already_logged=robots_logged)
 

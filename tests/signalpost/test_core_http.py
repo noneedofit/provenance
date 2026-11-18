@@ -364,3 +364,58 @@ def test_keepalive_only_for_listed_official_hosts_without_a_proxy(monkeypatch):
     assert not http_mod._keepalive_enabled(urllib.parse.urlsplit("http://data.brreg.no/x"))
     monkeypatch.setattr(http_mod.urllib.request, "getproxies", lambda: {"https": "http://proxy:3128"})
     assert not http_mod._keepalive_enabled(urllib.parse.urlsplit("https://data.brreg.no/x"))
+
+
+def test_a_failed_lookup_is_a_dns_error_not_an_ssrf_block(monkeypatch):
+    """A name that does not resolve is reported as "dns" (retryable for the registry), never as "blocked_ssrf"."""
+    import socket
+
+    def no_name(*args, **kwargs):
+        raise socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution")
+
+    from signalpost.urls import assert_public_url
+
+    monkeypatch.setattr(sp_http, "assert_public_url", assert_public_url)  # the real guard, not the test stub
+    monkeypatch.setattr(socket, "getaddrinfo", no_name)
+    client = BudgetedHttpClient(Budget(hard_cap=10))
+    response = client.get("https://data.brreg.no/enhetsregisteret/api/enheter/923609016", purpose="registry_entity", respect_robots=False)
+    assert response.error == "dns"
+
+
+def test_a_private_address_is_still_blocked(monkeypatch):
+    import socket
+
+    from signalpost.urls import assert_public_url
+
+    monkeypatch.setattr(sp_http, "assert_public_url", assert_public_url)  # the real guard, not the test stub
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", 443))])
+    client = BudgetedHttpClient(Budget(hard_cap=10))
+    response = client.get("https://intranet.example.no/", purpose="web_homepage", respect_robots=False)
+    assert response.error == "blocked_ssrf"
+
+
+def test_resolver_retries_a_temporary_failure_and_keeps_good_answers(monkeypatch):
+    import socket
+
+    calls = []
+    answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("193.161.0.1", 443))]
+
+    def flaky(host, port, *rest):
+        calls.append(host)
+        if host == "flaky.example" and calls.count(host) == 1:
+            raise socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution")
+        if host == "missing.example":
+            raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+        return answer
+
+    monkeypatch.setattr(socket, "getaddrinfo", flaky)
+    monkeypatch.setattr(sp_http, "_resolver_installed", False)
+    monkeypatch.setattr(sp_http, "_resolver_cache", {})
+    monkeypatch.setattr(sp_http, "_RESOLVER_RETRY_PAUSES_S", (0.0, 0.0))
+    sp_http.install_resolver_cache()
+    assert socket.getaddrinfo("flaky.example", 443) == answer  # second attempt succeeds
+    assert socket.getaddrinfo("flaky.example", 443) == answer  # served from the cache
+    assert calls.count("flaky.example") == 2
+    with pytest.raises(socket.gaierror):
+        socket.getaddrinfo("missing.example", 443)
+    assert calls.count("missing.example") == 1  # "no such name" is not retried
