@@ -195,7 +195,11 @@ Output, written to `--output-dir`:
 - `site/index.html` — the browsable viewer (search, compare, evidence on every fact; see above).
 - `envelopes.jsonl` — exactly one JSON `Envelope` per input organisation number, in input order.
 - `run-report.json` — request counts by purpose, runtime p50/p95, family-state counts, deadline/budget
-  hits, validation result, `third_party_cost_usd: 0.0`.
+  hits, validation result, `third_party_cost_usd: 0.0`, and `health`: companies found per external family
+  (website, profiles, activity, jobs), errors by kind, and `degraded: true` with reasons when the environment
+  limited the run (registry lookups failing for over 2% of companies, over 15% of requests failing at the
+  connection level, deadline or request-budget hits). The same verdict is printed as the last stderr line
+  (`run health OK | ...` or `run health DEGRADED: ...`).
 - `requests.jsonl` — every outbound request attempted (purpose, org, URL, status, requests used, error).
 
 State, written to `--state-dir` (reused across runs — see "Refresh" below):

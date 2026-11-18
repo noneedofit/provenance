@@ -558,5 +558,9 @@ def run_batch(
     )
     run_report["registry_retried_companies"] = registry_retried
     _atomic_write(output_path / "run-report.json", json.dumps(run_report, ensure_ascii=False, indent=2))
+    health = run_report["health"]
+    found = ", ".join(f"{fam} {count}" for fam, count in health["external_family_companies"].items())
+    status = "DEGRADED: " + "; ".join(health["reasons"]) if health["degraded"] else "OK"
+    print(f"run health {status} | companies with {found} (of {len(envelopes)})", file=sys.stderr)
 
     return run_report

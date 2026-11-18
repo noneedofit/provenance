@@ -14,6 +14,50 @@ def _percentile(values: list[float], pct: float) -> float:
     return ordered[idx]
 
 
+# External families: the ones a run has to leave the registry for (Builderr's recall pool).
+EXTERNAL_FAMILIES = ("website", "profiles", "activity", "jobs")
+_CONNECTION_ERRORS = ("network_error", "ssl_error", "timeout", "dns")
+# A run is flagged "degraded" when the environment, not the companies, limited what it could find.
+DEGRADED_IDENTITY_FAILED_SHARE = 0.02
+DEGRADED_CONNECTION_FAILURE_SHARE = 0.15
+
+
+def run_health(envelopes: list[Envelope], request_log: list[Any], *, deadline_hits: int, budget_exhausted_count: int) -> dict[str, Any]:
+    """How healthy the run's environment was, so a crippled run (no network, failing DNS, a starved request
+    budget) can never pass for "these companies have nothing online"."""
+    n = len(envelopes) or 1
+    external = {fam: sum(1 for env in envelopes if env.families.get(fam) is not None and env.families[fam].availability == "available")
+                for fam in EXTERNAL_FAMILIES}
+    identity_failed = sum(1 for env in envelopes if env.families.get("identity") is not None and env.families["identity"].availability == "failed")
+    registry_only = sum(1 for env in envelopes if any("registry-only" in (state.reason or "") for state in env.families.values()))
+    errors_by_kind: dict[str, int] = {}
+    for entry in request_log:
+        if entry.error:
+            errors_by_kind[entry.error] = errors_by_kind.get(entry.error, 0) + 1
+    attempts = len(request_log) or 1
+    connection_failures = sum(errors_by_kind.get(kind, 0) for kind in _CONNECTION_ERRORS)
+    reasons = []
+    if deadline_hits:
+        reasons.append(f"{deadline_hits} companies hit the run deadline")
+    if budget_exhausted_count:
+        reasons.append(f"{budget_exhausted_count} companies ran out of request budget")
+    if registry_only:
+        reasons.append(f"{registry_only} companies got only the registry pass (time budget)")
+    if identity_failed / n > DEGRADED_IDENTITY_FAILED_SHARE:
+        reasons.append(f"registry lookup failed for {identity_failed} of {len(envelopes)} companies")
+    if connection_failures / attempts > DEGRADED_CONNECTION_FAILURE_SHARE:
+        reasons.append(f"{connection_failures} of {len(request_log)} requests failed at the connection level")
+    return {
+        "degraded": bool(reasons),
+        "reasons": reasons,
+        "external_family_companies": external,
+        "identity_failed_companies": identity_failed,
+        "registry_only_companies": registry_only,
+        "connection_failure_share": round(connection_failures / attempts, 3),
+        "errors_by_kind": dict(sorted(errors_by_kind.items(), key=lambda kv: -kv[1])),
+    }
+
+
 def build_report(
     envelopes: list[Envelope],
     request_log: list[Any],
@@ -59,4 +103,5 @@ def build_report(
         "cache_versions": cache_versions,
         "validation": validation,
         "third_party_cost_usd": round(sum(env.operations.third_party_cost_usd for env in envelopes), 4),
+        "health": run_health(envelopes, request_log, deadline_hits=deadline_hits, budget_exhausted_count=budget_exhausted_count),
     }
