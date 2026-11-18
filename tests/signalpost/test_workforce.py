@@ -112,6 +112,22 @@ def test_published_site_must_show_our_number_or_name(monkeypatch):
     assert connector._site_lacks_our_name(None, v("registry_declared", "registered_address")) is None
 
 
+def test_branches_and_housing_associations_need_the_org_number(monkeypatch):
+    from types import SimpleNamespace
+    from signalpost.web import connector
+    v = lambda *kinds: SimpleNamespace(signals=[SimpleNamespace(kind=k) for k in kinds])
+    for name in ("KORP & SØNN norsk avdeling av utenlandsk foretak NUF", "SAMEIET EGNERKVARTALET", "KORSHAGEN BORETTSLAG"):
+        monkeypatch.setattr(connector, "_registry_facts", lambda ctx, name=name: {"name": name})
+        assert connector._site_lacks_our_name(None, v("registered_address", "legal_name_in_text"))
+        assert connector._site_lacks_our_name(None, v("org_number_on_source")) is None
+    # the form code alone is enough, whatever the name says
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "RUDSBERGET"})
+    ctx = SimpleNamespace(registry={"entity": {"organisasjonsform": {"kode": "ESEK"}}}, bulk={})
+    assert connector._site_lacks_our_name(ctx, v("legal_name_in_text"))
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "SAMEIENDOM AS"})
+    assert connector._site_lacks_our_name(None, v("legal_name_in_text")) is None
+
+
 def test_a_page_that_only_says_parked_is_parked():
     from signalpost.web.crawl import is_parked_page
     assert is_parked_page("<html><head><title>Parked</title></head><body><h1>Parked</h1></body></html>", "Parked", "http://arcticsubsea.no/")

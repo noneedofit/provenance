@@ -200,6 +200,21 @@ _NUMBER_KINDS = {"org_number_on_source", "jsonld_org_number", "wikidata", "osm_o
 _NAME_KINDS = {"legal_name_match", "legal_name_in_text", "domain_name_match"}
 
 
+# Legal forms whose web presence usually belongs to someone else: a foreign company's Norwegian branch (NUF: the
+# parent's site), a housing co-op or an owners' association (the managing agent's or the developer's site; Builderr
+# flagged ww.obos.no for SAMEIET EGNERKVARTALET). Their site is published only when the page shows the org number.
+_PROXY_FORMS = {"NUF", "BRL", "ESEK", "SAM"}
+_PROXY_NAME = re.compile(r"\b(NUF|\w*BORETTSLAG|\w*SAMEIET?)\b", re.I)
+
+
+def _is_proxy_form(ctx: Any, name: str) -> bool:
+    registry = getattr(ctx, "registry", None)
+    entity = (registry.get("entity") or {}) if isinstance(registry, dict) else {}
+    bulk = getattr(ctx, "bulk", None) or {}
+    form = str((entity.get("organisasjonsform") or {}).get("kode") or bulk.get("organisasjonsform.kode") or "").strip().upper()
+    return form in _PROXY_FORMS or bool(_PROXY_NAME.search(name))
+
+
 def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
     """Why an `exact` site must not be published as the company's, or None. The page (or its domain) must
     show the company's org number, its name or its registered address: a site tied only by the register's
@@ -211,6 +226,8 @@ def _site_lacks_our_name(ctx: Any, verdict: Any) -> str | None:
     if kinds & _NUMBER_KINDS:
         return None
     name = str(_registry_facts(ctx).get("name") or "")
+    if _is_proxy_form(ctx, name):
+        return "branch, housing co-op or owners' association: the site does not show its org number"
     if re.search(r"\bHOLDING\b", name, re.I):
         return None if "legal_name_in_text" in kinds else "holding company: the site shows neither its org number nor its full legal name"
     if kinds & (_NAME_KINDS | {"registered_address"}):
