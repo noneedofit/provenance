@@ -61,8 +61,11 @@ point into that company's `evidence` list (source URL, retrieval time, hash and 
   verification.
 - Reads NAV job ads (a bundled snapshot of active ads with each employer's org number, plus a live walk of
   `pam-stilling-feed` since that snapshot, kept incrementally in `--state-dir`; every posting is confirmed
-  live against the org number), ATS feeds, site RSS/news, and YouTube channel RSS for channels linked from
-  the verified site.
+  live against the org number), ATS feeds, and YouTube channel RSS for channels linked from the verified site.
+- Own-site news: on a verified WordPress site, the newest post from its post list (`wp-json`), published only
+  when the post's own page states the same date, is under three years old and is not theme sample content.
+  Site RSS feeds and news pages are read but not published: hand-checks found them carrying service pages,
+  job ads, imported posts and theme samples.
 - Searches Bing News RSS (keyless; `/news/search` is allowed by bing.com's robots.txt) for the company's legal
   name and publishes an article only when the article page itself names the company with its full registered
   name including the legal form, or its org number, and states its own publication date. One search and at most

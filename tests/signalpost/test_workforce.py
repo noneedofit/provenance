@@ -140,6 +140,15 @@ def test_our_address_on_an_umbrella_domain_is_not_enough(monkeypatch):
     assert connector._site_lacks_our_name(ctx, v("legal_name_in_text", "registered_address"), "https://www.kirken.no/x") is None
 
 
+def test_an_investment_company_needs_its_name_or_number(monkeypatch):
+    from types import SimpleNamespace
+    from signalpost.web import connector
+    v = lambda *kinds: SimpleNamespace(signals=[SimpleNamespace(kind=k) for k in kinds])
+    monkeypatch.setattr(connector, "_registry_facts", lambda ctx: {"name": "HANSNES INVEST AS"})
+    assert connector._site_lacks_our_name(None, v("registered_address", "registry_phone", "registry_email"), "https://aub.no/")
+    assert connector._site_lacks_our_name(None, v("domain_name_match", "legal_name_match"), "https://hansnesinvest.no/") is None
+
+
 def test_a_plesk_default_page_is_parked():
     from signalpost.web.crawl import is_parked_page
     html = "<html><head><title>Web Server's Default Page</title></head><body><p>Plesk</p></body></html>"

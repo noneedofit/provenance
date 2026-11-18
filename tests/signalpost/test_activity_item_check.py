@@ -15,7 +15,9 @@ FEED = """<?xml version="1.0"?><rss version="2.0"><channel><title>X</title>
 ARTICLE = '<html><head><meta property="article:published_time" content="{d}"></head><body><article><h1>T</h1><p>{body}</p></article></body></html>'
 
 
-def test_feed_items_are_published_only_when_their_own_page_confirms_them():
+def test_feed_items_are_published_only_when_their_own_page_confirms_them(monkeypatch):
+    monkeypatch.setattr(feeds, "OWN_SITE_METHODS", ("rss_v1",))
+    monkeypatch.setattr(feeds, "OWN_SITE_MAX_ITEMS", 10)
     client = FakeHttpClient(item_pages_exist=False)
     client.route("https://firma.no/feed/", FEED.encode())
     client.route("https://firma.no/ny-avtale/", ARTICLE.format(d="2026-10-05T10:00:00Z", body="Vi har signert.").encode())
@@ -74,3 +76,19 @@ def test_a_wordpress_page_is_not_a_post():
     assert not feeds._item_page_confirms(page, "2026-10-05")
     post = page.replace('class="page-template-default page page-id-12"', 'class="post-template-default single single-post postid-40"')
     assert feeds._item_page_confirms(post, "2026-10-05")
+
+
+def test_only_the_wordpress_post_list_is_published_and_one_item_per_company():
+    import json
+    posts = [{"date": f"2026-10-0{d}T10:00:00", "link": f"https://firma.no/post-{d}/", "title": {"rendered": f"Sak {d}"}} for d in (3, 5)]
+    client = FakeHttpClient(item_pages_exist=False)
+    client.route("https://firma.no/feed/", FEED.encode())
+    client.route(f"https://firma.no/{feeds.WP_POSTS_QUERY}", json.dumps(posts).encode())
+    for d in (3, 5):
+        client.route(f"https://firma.no/post-{d}/", ARTICLE.format(d=f"2026-10-0{d}", body="Tekst").encode())
+    ctx = make_ctx(client=client, shared={
+        "verified_site": {"url": "https://firma.no", "domain": "firma.no"}, "wordpress": True,
+        "feed_urls": ["https://firma.no/feed/"],
+    })
+    result = feeds.collect(ctx)
+    assert [c.value["url"] for c in result["claims"]] == ["https://firma.no/post-5/"]

@@ -19,6 +19,9 @@ def _item_pages_confirm(monkeypatch):
     monkeypatch.setattr(_feeds, "_item_page_confirms", lambda html, published: True)
     monkeypatch.setattr(_feeds, "_registered_domain", lambda url: "same-site")  # fixtures' feeds link other domains
     monkeypatch.setattr(_feeds, "SAME_DAY_IMPORT_MIN", 10_000)  # the fixture is a newsroom feed (3 stories a day)
+    # These tests cover feed/page parsing and discovery: every own-site source and item count is published here.
+    monkeypatch.setattr(_feeds, "OWN_SITE_METHODS", ("rss_v1", "wp_rest_v1", "html_news_v1"))
+    monkeypatch.setattr(_feeds, "OWN_SITE_MAX_ITEMS", 10)
 
 
 

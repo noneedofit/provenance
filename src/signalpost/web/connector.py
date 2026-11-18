@@ -200,6 +200,7 @@ _NUMBER_KINDS = {"org_number_on_source", "jsonld_org_number", "wikidata", "osm_o
 _NAME_KINDS = {"legal_name_match", "legal_name_in_text", "domain_name_match"}
 
 
+_INVESTMENT_NAME = re.compile(r"\b(INVEST|INVESTERING|INVESTMENT|KAPITAL|CAPITAL)\b", re.I)
 # A domain at least this many organisations use (kirken.no: 775; a corporate group like metallco.com: 13) is an
 # umbrella domain: a page there carrying our office address is not our site unless it names us.
 _WIDELY_SHARED_DOMAIN_MIN = 50
@@ -235,6 +236,10 @@ def _site_lacks_our_name(ctx: Any, verdict: Any, url: str = "") -> str | None:
         return None if "legal_name_in_text" in kinds else "holding company: the site shows neither its org number nor its full legal name"
     if kinds & _NAME_KINDS:
         return None
+    if _INVESTMENT_NAME.search(name):
+        # An investment company rarely has a site of its own; one matched only by shared contact details is the
+        # accountant's or manager's (aub.no, an accounting firm, for HANSNES INVEST AS registered at its office).
+        return "investment company: the site shows neither its org number nor its name"
     if "registered_address" in kinds:
         domain = registered_domain(url) if url else ""
         shared = _website_org_count(ctx, domain) if domain and ctx is not None else None

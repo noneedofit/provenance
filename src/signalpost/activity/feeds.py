@@ -58,6 +58,13 @@ ARTICLE_FOLLOW_MAX = 2
 # without this: location and service pages carried by the feed, theme demo posts (lorem ipsum), undated case
 # studies. At most ITEM_VERIFY_MAX item pages are fetched per company, newest first.
 ITEM_VERIFY_MAX = 6
+# Which own-site sources are published, and how many items per company. Hand-checks of 1,700 random companies
+# (17-18 Nov) put the WordPress post list (wp-json, which returns only real posts with their post dates) at
+# 13/13 right, page-dated news pages at 23/26 and site feeds at 63/91 (feeds carry pages, job ads, imports and
+# theme samples). Only the post list is published, and only each company's newest item: company coverage is
+# 70% of the score and every further item is one more chance of a wrong claim.
+OWN_SITE_METHODS = ("wp_rest_v1",)
+OWN_SITE_MAX_ITEMS = 1
 ITEM_DATE_TOLERANCE_DAYS = 2
 # WordPress theme demo / "theme unit test" content: one such post means the site's posts are the theme's sample data.
 _THEME_DEMO_TITLE = re.compile(
@@ -758,12 +765,13 @@ def collect(ctx) -> dict:
     # Extra discovery, only when the free sources above produced nothing, capped at ARTICLE_DISCOVERY_BUDGET
     # requests. Most dated items per request first.
     extra = 0
+    homepage = _homepage_url(ctx)
+    # 1. WordPress post list: one request, up to 10 dated posts with their own links (always on WordPress: it is
+    # the one own-site source published, see OWN_SITE_METHODS).
+    if shared.get("wordpress") and homepage and "wp_rest_v1" in OWN_SITE_METHODS:
+        candidates.extend(_process_wp_rest_url(ctx, f"{homepage.rstrip('/')}/{WP_POSTS_QUERY}", seen_urls, result))
+        extra += 1
     if not candidates:
-        homepage = _homepage_url(ctx)
-        # 1. WordPress post list: one request, up to 10 dated posts with their own links.
-        if shared.get("wordpress") and homepage:
-            candidates.extend(_process_wp_rest_url(ctx, f"{homepage.rstrip('/')}/{WP_POSTS_QUERY}", seen_urls, result))
-            extra += 1
         listings = {**(shared.get("news_listing_html") or {}), **(result.get("listings") or {})}
         # 2. A news/blog link seen on a fetched page but never fetched (crowded out by kontakt/om-oss).
         if not candidates and not listings:
@@ -799,9 +807,10 @@ def collect(ctx) -> dict:
     menu = _menu_links(ctx)
     candidates = [pair for pair in candidates
                   if not (str(pair[0].get("url") or "").rstrip("/") in menu and len(str(pair[0].get("title") or "").split()) <= 2)]
+    candidates = [pair for pair in candidates if getattr(pair[1], "extraction_method", "") in OWN_SITE_METHODS]
     candidates = _without_demo_and_import_dates(candidates)
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
-    candidates = _verified_on_own_page(ctx, candidates, result)
+    candidates = _verified_on_own_page(ctx, candidates, result)[:OWN_SITE_MAX_ITEMS]
     claims = []
     evidence = []
     quotes: dict[str, list[str]] = {}
