@@ -39,3 +39,16 @@ def test_registry_only_pass_is_counted():
     envs = [_env(reason="time_budget: registry-only pass")] + [_env() for _ in range(9)]
     health = run_health(envs, _log(None, 10), deadline_hits=0, budget_exhausted_count=0)
     assert health["registry_only_companies"] == 1 and health["degraded"] is True
+
+
+def test_profile_links_in_page_content_are_not_the_sites_own():
+    from types import SimpleNamespace
+    from signalpost.web.extract import extract_social_links
+    html = ('<html><body><header><a href="https://facebook.com/klinikken">fb</a></header>'
+            '<main><p>Samarbeid med <a href="https://instagram.com/orto_lab_szczecin">laben</a></p>'
+            '<div class="portfolio"><a href="https://linkedin.com/company/investee-as">Visit</a></div></main>'
+            '<footer><a href="https://linkedin.com/company/klinikken">li</a></footer></body></html>')
+    urls = [x["url"] for x in extract_social_links([SimpleNamespace(ok=True, html=html, final_url="https://klinikken.no/")])]
+    assert urls == ["https://facebook.com/klinikken", "https://linkedin.com/company/klinikken"]
+    table = '<html><body><table><tr><td><a href="https://facebook.com/gamlesiden">fb</a></td></tr></table></body></html>'
+    assert extract_social_links([SimpleNamespace(ok=True, html=table, final_url="https://x.no/")])

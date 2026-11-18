@@ -294,13 +294,49 @@ def _is_credit_link(node: Any) -> bool:
     return len(text) <= 150 and any(word in text for word in _CREDIT_WORDS)
 
 
+_CHROME_TAGS = {"header", "footer", "nav", "aside"}
+_CHROME_HINT = re.compile(r"foot|head|social|sosial|some\b|follow|f.lg|contact|kontakt|nav|menu|topbar|toolbar|icons?\b|share", re.I)
+
+
+def _domain_label(url: str) -> str:
+    host = urllib.parse.urlsplit(url or "").netloc.lower().removeprefix("www.")
+    return re.sub(r"[^a-z0-9]", "", host.rsplit(".", 1)[0]) if host else ""
+
+
+def _is_site_profile_link(node: Any, site_label: str, page_has_chrome: bool = True) -> bool:
+    """A profile link counts as the site's own when it sits in the site's chrome (header, footer, menu, a social or
+    contact block) or its handle carries the site's name. A link inside an article or a portfolio entry points at
+    someone else's account (an investee's LinkedIn on peterseninvest.no, a Polish lab's Instagram in a clinic's
+    blog post)."""
+    href = str(node.get("href") or "")
+    handle = re.sub(r"[^a-z0-9]", "", urllib.parse.urlsplit(href).path.lower())
+    if site_label and len(site_label) >= 4 and (site_label in handle or (len(handle) >= 4 and handle in site_label)):
+        return True
+    for parent in node.parents:
+        name = getattr(parent, "name", None)
+        if name in _CHROME_TAGS:
+            return True
+        if name in ("article", "main"):
+            return False
+        attrs = " ".join([*(parent.get("class") or []), str(parent.get("id") or "")]) if hasattr(parent, "get") else ""
+        if attrs and _CHROME_HINT.search(attrs):
+            return True
+    # Outside every header/footer/social block: someone else's account, unless the page has no such structure at
+    # all (an old table layout), where a profile link anywhere is kept as before.
+    return not page_has_chrome
+
+
 def extract_social_links(pages: list[PageFetch]) -> list[dict[str, str]]:
     found: dict[tuple[str, str], dict[str, str]] = {}
     for page in pages:
         if not page.ok:
             continue
         soup = BeautifulSoup(page.html, "lxml")
-        candidates = [str(node.get("href") or "") for node in soup.select("a[href]") if not _is_credit_link(node)]
+        site_label = _domain_label(page.final_url)
+        has_chrome = soup.find(list(_CHROME_TAGS)) is not None or soup.find(
+            lambda tag: _CHROME_HINT.search(" ".join([*(tag.get("class") or []), str(tag.get("id") or "")]) or "") is not None) is not None
+        candidates = [str(node.get("href") or "") for node in soup.select("a[href]")
+                      if not _is_credit_link(node) and _is_site_profile_link(node, site_label, has_chrome)]
         candidates.extend(str(node.get("src") or "") for node in soup.select("iframe[src]"))
         for raw in candidates:
             url = urllib.parse.urljoin(page.final_url, raw)

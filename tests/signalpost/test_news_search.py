@@ -95,3 +95,11 @@ def test_an_initial_before_the_name_makes_it_another_company():
     assert find_registered_name("Overskudd for A. Idsøe Holding AS i Stavanger", "IDSØE HOLDING AS") is None
     assert find_registered_name("Scania leverer til K. Hansen Transport AS", "HANSEN TRANSPORT AS") is None
     assert find_registered_name("Selskapet Hansen Transport AS vokser", "HANSEN TRANSPORT AS") is not None
+
+
+def test_founding_date_comes_from_the_register():
+    from types import SimpleNamespace
+    from signalpost.activity.news_search import _founded
+    ctx = SimpleNamespace(registry={"entity": {"stiftelsesdato": "2022-03-01", "registreringsdatoEnhetsregisteret": "2022-03-10"}}, bulk={})
+    assert _founded(ctx) == "2022-03-01"
+    assert _founded(SimpleNamespace(registry={}, bulk={})) is None

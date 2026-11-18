@@ -105,6 +105,17 @@ def _wait_for_bing() -> None:
         _bing_last[0] = time.monotonic()
 
 
+def _founded(ctx: Any) -> str | None:
+    """The company's founding or registration date from the register (ISO), whichever is earlier."""
+    registry = getattr(ctx, "registry", None)
+    entity = (registry.get("entity") or {}) if isinstance(registry, dict) else {}
+    bulk = getattr(ctx, "bulk", None) or {}
+    dates = [str(d)[:10] for d in (entity.get("stiftelsesdato"), entity.get("registreringsdatoEnhetsregisteret"),
+                                   bulk.get("stiftelsesdato"), bulk.get("registreringsdatoenhetsregisteret")) if d]
+    dates = [d for d in dates if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d)]
+    return min(dates) if dates else None
+
+
 def collect(ctx: Any) -> dict:
     """{"claims", "evidence", "checked", "errors"}"""
     result: dict = {"claims": [], "evidence": [], "checked": False, "errors": []}
@@ -134,6 +145,7 @@ def collect(ctx: Any) -> dict:
     own_host = urllib.parse.urlsplit(own_site).netloc.lower().removeprefix("www.") if own_site else ""
     seen: set[str] = set()
     fetched = 0
+    founded = _founded(ctx)
     for item in parse_rss(resp.body):
         if fetched >= MAX_ARTICLES or client.remaining(ctx.org) < 1:
             break
@@ -157,6 +169,8 @@ def collect(ctx: Any) -> dict:
         iso, span = extract_date_from_html(page_html)
         if not iso:
             continue  # no publication date stated by the page itself
+        if founded and iso[:10] < founded:
+            continue  # written before the company existed: about a namesake (EVERCOM AS, 2022; Evercom Network ASA, 2002)
         article_url = page.final_url or item["url"]
         ev = make_evidence(
             source_url=item["url"], final_url=page.final_url, redirect_chain=page.redirect_chain, http_status=page.status,

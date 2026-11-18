@@ -854,6 +854,14 @@ def assess(
                     "unrelated or parent entity"
                 ),
             )
+        if owner_name_mismatch and not (distinct_corroborating_raw & {"legal_name_in_text", "domain_name_match"}):
+            # The page names a different legal entity as its owner and never our full name: a namesake abroad
+            # (jinert.se, "Sven Jinert AB", for JINERT AS) or a parent sharing our office (aasen-ovrelid.no, owned by
+            # Asen & Ovrelid AS, for A&O UTVIKLING AS).
+            return Verdict(
+                "related", None, "brand", signals=signals, conflicts=[],
+                note=f"corroborated, but the site names a different legal entity as its owner ({owner_name_mismatch!r}); treated as brand",
+            )
         if _LOCATION_PAGE_RE.search(urllib.parse.urlparse(homepage.final_url).path or ""):
             # A chain's location page (tess.no/lokasjoner/alesund/): it carries our address, but the site,
             # its news and its social profiles belong to the chain.
