@@ -59,6 +59,14 @@ ARTICLE_FOLLOW_MAX = 2
 # studies. At most ITEM_VERIFY_MAX item pages are fetched per company, newest first.
 ITEM_VERIFY_MAX = 6
 ITEM_DATE_TOLERANCE_DAYS = 2
+# WordPress theme demo / "theme unit test" content: one such post means the site's posts are the theme's sample data.
+_THEME_DEMO_TITLE = re.compile(
+    r"^\s*(post with (gallery|vimeo video|youtube video|audio|image|video|link|quote)|gutenberg sample post|"
+    r"(post format|markup|template|edge case)\s*:|a post showing how headings looks like|hello world!?|"
+    r"sample post|nyheter med bilde|city bike)\s*", re.I)
+# A feed where three or more posts share one publication day is an import (a site moved to WordPress and every
+# old post got the migration date): those dates are not publication dates.
+SAME_DAY_IMPORT_MIN = 3
 _DEMO_TEXT = re.compile(r"\blorem ipsum\b|\bdolor sit amet\b", re.I)
 WP_POSTS_QUERY = "wp-json/wp/v2/posts?per_page=10&_fields=date,link,title"
 
@@ -643,6 +651,25 @@ def _process_news_url(ctx, news_url: str, seen_urls: set[str], result: dict, *, 
     return ({"title": title, "url": news_url, "published": iso}, ev)
 
 
+def _without_demo_and_import_dates(candidates: list[tuple[dict, object]]) -> list[tuple[dict, object]]:
+    """Drop feed/WordPress items from a site that carries theme demo posts, and items whose publication day is
+    shared by SAME_DAY_IMPORT_MIN or more feed items (a bulk import's date). Page-dated items are kept."""
+    listed = [(item, ev) for item, ev in candidates if getattr(ev, "extraction_method", "") in ("rss_v1", "wp_rest_v1")]
+    if any(_THEME_DEMO_TITLE.match(str(item.get("title") or "")) for item, _ev in listed):
+        listed_ids = {id(item) for item, _ev in listed}
+        candidates = [(item, ev) for item, ev in candidates if id(item) not in listed_ids]
+        listed = []
+    per_day: dict[str, int] = {}
+    for item, _ev in listed:
+        day = str(item.get("published") or "")[:10]
+        per_day[day] = per_day.get(day, 0) + 1
+    crowded = {day for day, count in per_day.items() if count >= SAME_DAY_IMPORT_MIN}
+    if not crowded:
+        return candidates
+    return [(item, ev) for item, ev in candidates
+            if getattr(ev, "extraction_method", "") not in ("rss_v1", "wp_rest_v1") or str(item.get("published") or "")[:10] not in crowded]
+
+
 def _item_page_confirms(html: str, published: str) -> bool:
     """The item's own page states a publication date within ITEM_DATE_TOLERANCE_DAYS of the feed's date and is
     not placeholder (lorem ipsum) content."""
@@ -759,6 +786,7 @@ def collect(ctx) -> dict:
     menu = _menu_links(ctx)
     candidates = [pair for pair in candidates
                   if not (str(pair[0].get("url") or "").rstrip("/") in menu and len(str(pair[0].get("title") or "").split()) <= 2)]
+    candidates = _without_demo_and_import_dates(candidates)
     candidates.sort(key=lambda pair: pair[0]["published"], reverse=True)
     candidates = _verified_on_own_page(ctx, candidates, result)
     claims = []

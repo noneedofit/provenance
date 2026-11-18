@@ -39,3 +39,21 @@ def test_item_page_check_tolerates_a_day_or_two():
     assert feeds._item_page_confirms(page, "2026-10-05")
     assert not feeds._item_page_confirms(page, "2026-09-20")
     assert not feeds._item_page_confirms("<html><body><p>Ingen dato</p></body></html>", "2026-10-05")
+
+
+def _feed_ev():
+    from types import SimpleNamespace
+    return SimpleNamespace(extraction_method="rss_v1")
+
+
+def test_a_site_with_theme_demo_posts_publishes_none_of_its_feed_items():
+    ev = _feed_ev()
+    items = [({"title": "Ny avtale", "published": "2026-10-05"}, ev), ({"title": "Post with Gallery", "published": "2018-04-13"}, ev)]
+    assert feeds._without_demo_and_import_dates(items) == []
+
+
+def test_posts_sharing_one_import_day_are_dropped():
+    ev = _feed_ev()
+    imported = [({"title": f"Gammel sak {i}", "published": "2021-01-27"}, ev) for i in range(3)]
+    fresh = [({"title": "Ny sak", "published": "2026-10-05"}, ev)]
+    assert feeds._without_demo_and_import_dates(imported + fresh) == fresh

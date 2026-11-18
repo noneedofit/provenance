@@ -18,6 +18,7 @@ def _item_pages_confirm(monkeypatch):
     from signalpost.activity import feeds as _feeds
     monkeypatch.setattr(_feeds, "_item_page_confirms", lambda html, published: True)
     monkeypatch.setattr(_feeds, "_registered_domain", lambda url: "same-site")  # fixtures' feeds link other domains
+    monkeypatch.setattr(_feeds, "SAME_DAY_IMPORT_MIN", 10_000)  # the fixture is a newsroom feed (3 stories a day)
 
 
 
